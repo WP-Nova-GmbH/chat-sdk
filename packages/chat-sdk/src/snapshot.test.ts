@@ -24,6 +24,7 @@ class FakeElement {
     readonly ownerDocument: FakeDocument;
     parentElement: FakeElement | null = null;
     rect: RectLike = { bottom: 20, height: 20, left: 0, right: 200, top: 0, width: 200 };
+    value?: string;
 
     constructor(
         readonly tagName: string,
@@ -284,6 +285,193 @@ test("data-ai-context respects ignore, viewport, sensitivity, and caps", () => {
         assert.equal(context.aiFields?.offscreen, undefined);
         assert.equal(context.aiFields?.secret_token, undefined);
         assert.equal(context.aiFields?.long?.length, 500);
+    } finally {
+        restoreGlobals();
+    }
+});
+
+test("field values omitted by policy are reported without leaking the value", () => {
+    const document = new FakeDocument();
+    const customerName = new FakeElement(
+        "input",
+        new Map([
+            ["type", "text"],
+            ["aria-label", "Customer name"],
+        ]),
+        "",
+        document,
+    );
+    customerName.value = "Ada Lovelace";
+    const password = new FakeElement(
+        "input",
+        new Map([
+            ["type", "password"],
+            ["aria-label", "Portal password"],
+        ]),
+        "",
+        document,
+    );
+    password.value = "swordfish";
+    const city = new FakeElement(
+        "input",
+        new Map([
+            ["type", "text"],
+            ["aria-label", "City"],
+            ["data-wp-nova-include", ""],
+        ]),
+        "",
+        document,
+    );
+    city.value = "Berlin";
+    document.body.append(customerName);
+    document.body.append(password);
+    document.body.append(city);
+
+    Object.defineProperty(globalThis, "document", { configurable: true, value: document });
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            innerHeight: 800,
+            innerWidth: 1200,
+            getSelection: () => "",
+        },
+    });
+    Object.defineProperty(globalThis, "getComputedStyle", {
+        configurable: true,
+        value: () => ({ display: "block", opacity: "1", visibility: "visible" }),
+    });
+
+    try {
+        const snapshot = captureVisiblePageSnapshot();
+        const serialized = JSON.stringify(snapshot);
+
+        assert.equal(serialized.includes("Ada Lovelace"), false);
+        assert.equal(serialized.includes("swordfish"), false);
+        assert.equal(serialized.includes("Berlin"), true);
+        assert.deepEqual(
+            snapshot.omittedValues?.map(({ label, reason }) => ({ label, reason })),
+            [
+                { label: "Customer name", reason: "not_opted_in" },
+                { label: "Portal password", reason: "sensitive" },
+            ],
+        );
+    } finally {
+        restoreGlobals();
+    }
+});
+
+test("controls include nearby row context without repeating the clicked label", () => {
+    const document = new FakeDocument();
+    const row = new FakeElement("tr", new Map(), "", document);
+    const idCell = new FakeElement("td", new Map(), "HF-219", document);
+    const actionCell = new FakeElement("td", new Map(), "", document);
+    const button = new FakeElement("button", new Map(), "Select", document);
+    actionCell.append(button);
+    row.append(idCell);
+    row.append(actionCell);
+    document.body.append(row);
+
+    Object.defineProperty(globalThis, "document", { configurable: true, value: document });
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            innerHeight: 800,
+            innerWidth: 1200,
+            getSelection: () => "",
+        },
+    });
+    Object.defineProperty(globalThis, "getComputedStyle", {
+        configurable: true,
+        value: () => ({ display: "block", opacity: "1", visibility: "visible" }),
+    });
+
+    try {
+        const snapshot = captureVisiblePageSnapshot();
+
+        assert.equal(snapshot.controls?.[0]?.label, "Select");
+        assert.equal(snapshot.controls?.[0]?.context, "HF-219");
+        assert.equal(snapshot.controls?.[0]?.context?.includes("Select"), false);
+    } finally {
+        restoreGlobals();
+    }
+});
+
+test("list/card-like control context is capped", () => {
+    const document = new FakeDocument();
+    const item = new FakeElement(
+        "li",
+        new Map(),
+        `Record ${"x".repeat(220)}`,
+        document,
+    );
+    const button = new FakeElement("button", new Map(), "Select", document);
+    item.childNodes.push({ nodeType: 3, textContent: `Record ${"x".repeat(220)}` });
+    item.append(button);
+    document.body.append(item);
+
+    Object.defineProperty(globalThis, "document", { configurable: true, value: document });
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            innerHeight: 800,
+            innerWidth: 1200,
+            getSelection: () => "",
+        },
+    });
+    Object.defineProperty(globalThis, "getComputedStyle", {
+        configurable: true,
+        value: () => ({ display: "block", opacity: "1", visibility: "visible" }),
+    });
+
+    try {
+        const snapshot = captureVisiblePageSnapshot();
+
+        assert.equal(snapshot.controls?.[0]?.context?.startsWith("Record "), true);
+        assert.equal(snapshot.controls?.[0]?.context?.length, 160);
+    } finally {
+        restoreGlobals();
+    }
+});
+
+test("target context does not include field-like text withheld by policy", () => {
+    const document = new FakeDocument();
+    const row = new FakeElement("tr", new Map(), "", document);
+    const idCell = new FakeElement("td", new Map(), "HF-219", document);
+    const notes = new FakeElement(
+        "div",
+        new Map([
+            ["contenteditable", ""],
+            ["aria-label", "Internal notes"],
+        ]),
+        "do not leak this note",
+        document,
+    );
+    const button = new FakeElement("button", new Map(), "Select", document);
+    row.append(idCell);
+    row.append(notes);
+    row.append(button);
+    document.body.append(row);
+
+    Object.defineProperty(globalThis, "document", { configurable: true, value: document });
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            innerHeight: 800,
+            innerWidth: 1200,
+            getSelection: () => "",
+        },
+    });
+    Object.defineProperty(globalThis, "getComputedStyle", {
+        configurable: true,
+        value: () => ({ display: "block", opacity: "1", visibility: "visible" }),
+    });
+
+    try {
+        const snapshot = captureVisiblePageSnapshot();
+        const selectControl = snapshot.controls?.find((control) => control.label === "Select");
+
+        assert.equal(selectControl?.context, "HF-219");
+        assert.equal(JSON.stringify(snapshot).includes("do not leak this note"), false);
     } finally {
         restoreGlobals();
     }

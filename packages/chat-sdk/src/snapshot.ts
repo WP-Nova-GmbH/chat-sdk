@@ -37,6 +37,7 @@
 
 import type {
     ElementHandle,
+    OmittedFieldValue,
     PageContext,
     PageStructuredData,
     VisibleControl,
@@ -56,6 +57,12 @@ const FIELD_VALUE_CAP = 500;
 const MAX_LINKS = 100;
 /** Max visible controls carried in the snapshot. */
 const MAX_CONTROLS = 100;
+/** Max omitted/blurred field-value metadata entries carried in the snapshot. */
+const MAX_OMITTED_VALUES = 100;
+/** Max nearby target-context characters carried per visible control/link. */
+const TARGET_CONTEXT_CAP = 160;
+/** Max ancestor levels searched for a semantic target context container. */
+const TARGET_CONTEXT_DEPTH = 8;
 /** Attribute stamped on captured elements; the handle id. */
 export const HANDLE_ATTR = "data-wp-nova-h";
 /** Opt-in attribute that allows a field value to be captured (on it or an ancestor). */
@@ -72,6 +79,19 @@ const HARD_EXCLUDE_AUTOCOMPLETE = new Set(["current-password", "new-password", "
 
 /** Tags treated as interactive controls. */
 const CONTROL_TAGS = new Set(["button", "input", "select", "textarea"]);
+/** Controls whose values are governed by the default-deny field-value policy. */
+const VALUE_FIELD_TAGS = new Set(["input", "select", "textarea"]);
+/** Ancestor tags that usually name a row/list/card-like target. */
+const CONTEXT_CONTAINER_TAGS = new Set(["tr", "li", "article", "section"]);
+/** Ancestor roles that usually name a row/list/card-like target. */
+const CONTEXT_CONTAINER_ROLES = new Set(["row", "listitem", "article", "region", "group"]);
+/** Common non-semantic card/list container hints used by many host apps. */
+const CONTEXT_CONTAINER_HINT_RE = /\b(card|tile|record|row|item|list-item)\b/i;
+
+interface ValueCaptureDecision {
+    allowed: boolean;
+    omissionReason?: OmittedFieldValue["reason"];
+}
 
 // --- Handle store ------------------------------------------------------------
 
@@ -178,6 +198,42 @@ function fieldLabel(el: Element): string {
     return "";
 }
 
+/** A field label that avoids descendant text that may be the field value itself. */
+function safeFieldLabel(el: Element): string {
+    const id = el.getAttribute("id");
+    if (id) {
+        const forLabel = el.ownerDocument.querySelector(`label[for="${cssEscape(id)}"]`);
+        if (forLabel?.textContent?.trim()) return forLabel.textContent.trim().slice(0, 120);
+    }
+    const wrapping = el.closest("label");
+    const wrappingText = wrapping ? directText(wrapping) : "";
+    if (wrappingText) return wrappingText.slice(0, 120);
+    const aria = el.getAttribute("aria-label");
+    if (aria?.trim()) return aria.trim().slice(0, 120);
+    const placeholder = el.getAttribute("placeholder");
+    if (placeholder?.trim()) return placeholder.trim().slice(0, 120);
+    return "";
+}
+
+/** A control label that does not fall back to field text/value content. */
+function controlLabel(el: Element): string {
+    const isField = isValueField(el);
+    const label = isField ? safeFieldLabel(el) : fieldLabel(el);
+    if (label) return label;
+
+    if (isField) {
+        const title = el.getAttribute("title");
+        if (title?.trim()) return title.trim().slice(0, 120);
+        const name = el.getAttribute("name");
+        if (name?.trim()) return name.trim().slice(0, 120);
+        const id = el.getAttribute("id");
+        if (id?.trim()) return id.trim().slice(0, 120);
+        return "";
+    }
+
+    return accessibleName(el);
+}
+
 /** Minimal CSS.escape fallback for attribute-selector building. */
 export function cssEscape(value: string): string {
     if (typeof CSS !== "undefined" && typeof CSS.escape === "function") return CSS.escape(value);
@@ -189,26 +245,34 @@ export function cssEscape(value: string): string {
  * explicit opt-in AND passing every hard-exclude / sensitivity check. Safe
  * selectors (per-surface allowlist) count as opt-in too.
  */
-function mayCaptureValue(el: Element, safeSelectors: string[]): boolean {
+function getValueCaptureDecision(el: Element, safeSelectors: string[]): ValueCaptureDecision {
     const tag = el.tagName.toLowerCase();
     const type = (el.getAttribute("type") || "").toLowerCase();
 
     // Hard-exclude by input type.
-    if (tag === "input" && HARD_EXCLUDE_INPUT_TYPES.has(type)) return false;
+    if (tag === "input" && HARD_EXCLUDE_INPUT_TYPES.has(type)) {
+        return { allowed: false, omissionReason: "sensitive" };
+    }
 
     // Hard-exclude by autocomplete (cc-* by prefix, plus the explicit set).
     const autocomplete = (el.getAttribute("autocomplete") || "").toLowerCase().trim();
-    if (autocomplete.startsWith("cc-") || HARD_EXCLUDE_AUTOCOMPLETE.has(autocomplete)) return false;
+    if (autocomplete.startsWith("cc-") || HARD_EXCLUDE_AUTOCOMPLETE.has(autocomplete)) {
+        return { allowed: false, omissionReason: "sensitive" };
+    }
 
     // Hard-exclude by sensitive name / id / placeholder / aria-label.
-    if (hasSensitiveDescriptor(el)) return false;
+    if (hasSensitiveDescriptor(el)) return { allowed: false, omissionReason: "sensitive" };
 
     // Opt-in gate: the element or an ancestor carries data-wp-nova-include, OR
     // the element matches a per-surface safe selector.
     const optedIn =
         el.closest(`[${INCLUDE_ATTR}]`) !== null ||
         safeSelectors.some((selector) => safeMatch(el, selector));
-    return optedIn;
+    return optedIn ? { allowed: true } : { allowed: false, omissionReason: "not_opted_in" };
+}
+
+function mayCaptureValue(el: Element, safeSelectors: string[]): boolean {
+    return getValueCaptureDecision(el, safeSelectors).allowed;
 }
 
 /** Guarded `Element.matches` (a malformed selector must not throw the capture). */
@@ -235,7 +299,7 @@ function hasSensitiveDescriptor(el: Element, extraDescriptors: Array<string | nu
 
 /** Read + cap a field value (already passed `mayCaptureValue`). */
 function readValue(el: Element): string | undefined {
-    const html = el as HTMLInputElement | HTMLTextAreaElement;
+    const html = el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
     const raw =
         html.value !== undefined && html.value !== null
             ? String(html.value)
@@ -246,6 +310,17 @@ function readValue(el: Element): string | undefined {
     return trimmed ? trimmed.slice(0, FIELD_VALUE_CAP) : undefined;
 }
 
+function isValueField(el: Element): boolean {
+    return (
+        VALUE_FIELD_TAGS.has(el.tagName.toLowerCase()) ||
+        el.getAttribute("contenteditable") !== null
+    );
+}
+
+function hasFieldValue(el: Element): boolean {
+    return readValue(el) !== undefined;
+}
+
 function normalizeText(value: string): string {
     return value.replace(/\s+/g, " ").trim();
 }
@@ -253,7 +328,7 @@ function normalizeText(value: string): string {
 /** Direct text nodes only, so ignored/hidden descendants cannot leak via parent textContent. */
 function directText(el: Element): string {
     const childNodes = (el as Element & { childNodes?: ArrayLike<ChildNode> }).childNodes;
-    if (childNodes) {
+    if (childNodes && childNodes.length > 0) {
         return normalizeText(
             Array.from(childNodes)
                 .filter((node) => node.nodeType === 3)
@@ -264,6 +339,103 @@ function directText(el: Element): string {
 
     // Test doubles may not model childNodes; keep the old leaf fallback for them.
     return el.children.length === 0 ? normalizeText(el.textContent || "") : "";
+}
+
+function isDescendantOf(node: Element, ancestor: Element): boolean {
+    let current: Element | null = node;
+    while (current) {
+        if (current === ancestor) return true;
+        current = current.parentElement;
+    }
+    return false;
+}
+
+function isTargetContextContainer(el: Element): boolean {
+    const tag = el.tagName.toLowerCase();
+    if (CONTEXT_CONTAINER_TAGS.has(tag)) return true;
+    const role = el.getAttribute("role")?.toLowerCase();
+    if (role && CONTEXT_CONTAINER_ROLES.has(role)) return true;
+    const hints = [
+        el.getAttribute("class"),
+        el.getAttribute("data-testid"),
+        el.getAttribute("part"),
+    ].join(" ");
+    return CONTEXT_CONTAINER_HINT_RE.test(hints);
+}
+
+function collectContextText(
+    container: Element,
+    target: Element,
+    safeSelectors: string[],
+): string | undefined {
+    const parts: string[] = [];
+    let budget = TARGET_CONTEXT_CAP;
+
+    const append = (text: string): void => {
+        if (!text || budget <= 0) return;
+        const slice = text.slice(0, budget);
+        parts.push(slice);
+        budget -= slice.length;
+    };
+
+    const walk = (el: Element): void => {
+        if (budget <= 0) return;
+        if (el === target || isDescendantOf(el, target)) return;
+        if (isExcludedSubtree(el) || !isVisible(el)) return;
+
+        const tag = el.tagName.toLowerCase();
+        if (tag === "script" || tag === "style" || tag === "noscript") return;
+        if (tag === "iframe" || tag === "canvas") return;
+
+        const fieldLike = isValueField(el);
+        const mayReadOwnText = !fieldLike || mayCaptureValue(el, safeSelectors);
+        if (mayReadOwnText) {
+            append(directText(el));
+        }
+        if (fieldLike && !mayReadOwnText) {
+            return;
+        }
+
+        for (const child of Array.from(el.children)) {
+            walk(child);
+            if (budget <= 0) return;
+        }
+        const shadow = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+        if (shadow) {
+            const shadowChildren = (shadow as unknown as { children?: HTMLCollection }).children;
+            for (const child of Array.from(shadowChildren ?? [])) {
+                walk(child);
+                if (budget <= 0) return;
+            }
+        }
+    };
+
+    walk(container);
+    const context = normalizeText(parts.join(" "));
+    return context ? context.slice(0, TARGET_CONTEXT_CAP) : undefined;
+}
+
+function targetContext(
+    target: Element,
+    targetLabel: string | undefined,
+    safeSelectors: string[],
+): string | undefined {
+    const normalizedTargetLabel = normalizeText(targetLabel ?? "").toLowerCase();
+    let node = target.parentElement;
+    let depth = 0;
+
+    while (node && depth < TARGET_CONTEXT_DEPTH) {
+        if (isTargetContextContainer(node)) {
+            const context = collectContextText(node, target, safeSelectors);
+            if (context && context.toLowerCase() !== normalizedTargetLabel) {
+                return context;
+            }
+        }
+        node = node.parentElement;
+        depth++;
+    }
+
+    return undefined;
 }
 
 // --- Traversal ---------------------------------------------------------------
@@ -344,11 +516,7 @@ function captureVisibleText(
             // and prevents ignored descendants from leaking via parent textContent).
             // Apply the SAME default-deny field-value gate as the controls loop:
             // contenteditable / form field typed text is OMITTED unless opted in.
-            const isFieldLike =
-                tag === "input" ||
-                tag === "textarea" ||
-                tag === "select" ||
-                el.getAttribute("contenteditable") !== null;
+            const isFieldLike = isValueField(el);
             if (isFieldLike && !mayCaptureValue(el, safeSelectors)) continue;
             const own = directText(el);
             if (own) {
@@ -419,39 +587,66 @@ export function captureVisiblePageSnapshot(safeSelectors: string[] = []): Visibl
         const name = accessibleName(el);
         const handle = issueHandle(el, name);
         if (!handle) break;
+        const context = targetContext(el, name, safeSelectors);
         links.push({
             handle,
             label: name,
             href: (el as HTMLAnchorElement).href || el.getAttribute("href") || undefined,
+            ...(context ? { context } : {}),
         });
     }
 
     const controls: VisibleControl[] = [];
+    const omittedValues: OmittedFieldValue[] = [];
     for (const { el } of controlCandidates) {
         if (controls.length >= MAX_CONTROLS) {
             truncated = true;
             break;
         }
-        const handle = issueHandle(el);
-        if (!handle) break;
         const tag = el.tagName.toLowerCase();
-        const isField =
-            tag === "input" || tag === "textarea" || el.getAttribute("contenteditable") !== null;
-        const value = isField && mayCaptureValue(el, safeSelectors) ? readValue(el) : undefined;
+        const isField = isValueField(el);
         const role = el.getAttribute("role") || el.getAttribute("type") || undefined;
+        const label = controlLabel(el) || undefined;
+        const handle = issueHandle(el, isField ? (label ?? "") : undefined);
+        if (!handle) break;
+        const valueDecision: ValueCaptureDecision = isField
+            ? getValueCaptureDecision(el, safeSelectors)
+            : { allowed: false };
+        const value = isField && valueDecision.allowed ? readValue(el) : undefined;
+        const context = targetContext(el, label, safeSelectors);
         controls.push({
             handle,
             tag,
             role,
-            label: fieldLabel(el) || accessibleName(el) || undefined,
+            label,
             value,
+            ...(context ? { context } : {}),
         });
+        if (
+            isField &&
+            !valueDecision.allowed &&
+            valueDecision.omissionReason &&
+            hasFieldValue(el)
+        ) {
+            if (omittedValues.length >= MAX_OMITTED_VALUES) {
+                truncated = true;
+            } else {
+                omittedValues.push({
+                    handle,
+                    tag,
+                    role,
+                    label,
+                    reason: valueDecision.omissionReason,
+                });
+            }
+        }
     }
 
     return {
         visibleText: visibleText || undefined,
         links: links.length ? links : undefined,
         controls: controls.length ? controls : undefined,
+        omittedValues: omittedValues.length ? omittedValues : undefined,
         handles: handles.length ? handles : undefined,
         truncated: truncated || undefined,
         partial: state.partial || undefined,

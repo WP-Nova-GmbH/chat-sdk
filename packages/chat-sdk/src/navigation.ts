@@ -1,6 +1,6 @@
 // Navigation action executor (WS5).
 //
-// Navigation actions (navigate / open_record / set_filter / scroll_to /
+// Navigation actions (navigate / click / open_record / set_filter / scroll_to /
 // highlight) are CLIENT-EXECUTED client tools. The SDK is a PURE EXECUTOR: it
 // performs no client-side mutation classification and runs only actions the
 // iframe has already approved (the server's `mutating` flag is authoritative,
@@ -22,6 +22,7 @@ import type { ClientToolCall, ClientToolResult } from "./types.js";
 export const NAVIGATION_ACTIONS = [
     "refresh_context",
     "navigate",
+    "click",
     "open_record",
     "set_filter",
     "scroll_to",
@@ -282,6 +283,25 @@ export async function executeNavigation(
         }
         case "refresh_context": {
             result = { ok: true, refreshed: true, url: location.href };
+            break;
+        }
+        case "click": {
+            const { handle, fingerprint } = targetHandle(args);
+            const el = resolveHandle(handle, fingerprint);
+            scrollAndHighlight(el);
+            const target = sameOriginAnchorHref(el);
+            if (target) {
+                const navigation = navigateSameDocument(target);
+                result = {
+                    ok: true,
+                    navigatedTo: target,
+                    clicked: handle,
+                    navigation: navigation.mode,
+                };
+            } else {
+                el.click();
+                result = { ok: true, clicked: handle };
+            }
             break;
         }
         case "open_record": {

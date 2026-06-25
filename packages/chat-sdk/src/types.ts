@@ -96,6 +96,11 @@ export interface VisiblePageSnapshot {
     /** Visible interactive controls (buttons/inputs/selects) with handles. */
     controls?: VisibleControl[];
     /**
+     * Visible field values intentionally withheld by the SDK's privacy policy.
+     * Carries labels/types/reasons only — never the hidden value.
+     */
+    omittedValues?: OmittedFieldValue[];
+    /**
      * Stable element handles issued this capture. Valid ONLY within the snapshot
      * they were issued with; every tool/navigation result returns a fresh
      * snapshot with re-issued handles.
@@ -122,6 +127,8 @@ export interface VisibleLink {
     label?: string;
     /** Resolved href. */
     href?: string;
+    /** Nearby row/card/list context that helps identify the target. */
+    context?: string;
 }
 
 /** A captured visible interactive control. */
@@ -136,6 +143,25 @@ export interface VisibleControl {
     label?: string;
     /** Allowlisted + sensitivity-checked field value (default-deny — usually omitted). */
     value?: string;
+    /** Nearby row/card/list context that helps identify the target. */
+    context?: string;
+}
+
+/** Why a visible field value was withheld from the snapshot. */
+export type FieldValueOmissionReason = "not_opted_in" | "sensitive";
+
+/** Metadata for a visible field whose value was intentionally withheld. */
+export interface OmittedFieldValue {
+    /** Stable element handle id. */
+    handle: string;
+    /** Tag (input|select|textarea|...). */
+    tag: string;
+    /** Control role / input type. */
+    role?: string;
+    /** Accessible name / associated label. */
+    label?: string;
+    /** The privacy-policy reason the value was withheld. */
+    reason: FieldValueOmissionReason;
 }
 
 /**

@@ -301,6 +301,79 @@ test("open_record can use a durable same-origin URL", async () => {
     }
 });
 
+test("click executes a captured UI control natively", async () => {
+    let clicked = 0;
+    const button = {
+        tagName: "BUTTON",
+        textContent: "Select",
+        style: { outline: "" },
+        getAttribute(name: string) {
+            if (name === "aria-label") return null;
+            if (name === "role") return null;
+            return null;
+        },
+        scrollIntoView() {
+            return undefined;
+        },
+        click() {
+            clicked += 1;
+        },
+    };
+
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: {
+            href: "https://app.example/customers",
+            pathname: "/customers",
+            origin: "https://app.example",
+        },
+    });
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            innerHeight: 800,
+            innerWidth: 1200,
+            dispatchEvent() {
+                return true;
+            },
+            getSelection: () => "",
+        },
+    });
+    Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: {
+            title: "Customers",
+            body: { children: [] },
+            children: [],
+            documentElement: { clientHeight: 800, clientWidth: 1200 },
+            querySelector: () => null,
+            querySelectorAll: (selector: string) =>
+                selector === "a, button, input, select, textarea, [role]" ? [button] : [],
+        },
+    });
+    Object.defineProperty(globalThis, "requestAnimationFrame", {
+        configurable: true,
+        value: (callback: FrameRequestCallback) => {
+            callback(0);
+            return 1;
+        },
+    });
+
+    try {
+        const result = await executeNavigation({
+            name: "click",
+            args: { handle: "stale-handle", fingerprint: { role: "button", name: "Select" } },
+        });
+
+        assert.equal(clicked, 1);
+        assert.deepEqual(result.result, { ok: true, clicked: "stale-handle" });
+        assert.equal(result.snapshot?.url, "https://app.example/customers");
+    } finally {
+        restoreBrowserGlobals();
+    }
+});
+
+
 test("stale handle fallback resolves an anchor by implicit link role and exact name", async () => {
     const events: string[] = [];
     let pushedUrl: string | undefined;
