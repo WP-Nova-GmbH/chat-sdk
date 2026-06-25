@@ -213,6 +213,49 @@ test("token transport errors schedule a cooldown retry", async () => {
     }
 });
 
+test("stale token responses after frame reset are ignored", async () => {
+    let resolveFetch: (response: unknown) => void = () => undefined;
+    const sentTokens: string[] = [];
+    const element = makeElement() as {
+        resolved: ResolvedConfig;
+        iframeReady: boolean;
+        bridge?: {
+            sendAuthToken: (token: string) => void;
+            stop: () => void;
+        };
+        lastToken?: string;
+        acquireToken: () => Promise<void>;
+        resetFrame: () => void;
+    };
+    element.resolved = resolvedConfig();
+    element.iframeReady = true;
+    element.bridge = {
+        sendAuthToken: (token: string) => {
+            sentTokens.push(token);
+        },
+        stop: () => undefined,
+    };
+
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: () =>
+            new Promise((resolve) => {
+                resolveFetch = resolve;
+            }),
+    });
+
+    const pending = element.acquireToken();
+    element.resetFrame();
+    resolveFetch({
+        ok: true,
+        json: async () => ({ access_token: "old-token", expires_in: 60 }),
+    });
+    await pending;
+
+    assert.deepEqual(sentTokens, []);
+    assert.equal(element.lastToken, undefined);
+});
+
 test("config changes that target a different iframe reset bridge and buffered auth", () => {
     let stopped = false;
     const element = makeElement() as {

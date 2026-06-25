@@ -77,6 +77,7 @@ export class WpNovaChatElement extends HTMLElement {
     private errorRetryTimer?: ReturnType<typeof setTimeout>;
     private booting = false;
     private launcherThemeReady = false;
+    private tokenRequestId = 0;
 
     static get observedAttributes(): string[] {
         return ["open", "title", "accent"];
@@ -89,15 +90,15 @@ export class WpNovaChatElement extends HTMLElement {
             this.resetFrame();
         }
         this.resolved = next;
-        this.launcherThemeReady = this.resolved.hasFirstPaintLauncherColor;
+        this.launcherThemeReady = next.hasFirstPaintLauncherColor;
         if (this.shadowReady) {
             if (!this.launcherThemeReady) {
                 this.syncLauncherThemeVisibility();
             }
             this.applyLauncherTheme({
-                triggerColor: this.resolved.triggerColor,
-                triggerIconColor: this.resolved.triggerIconColor,
-                reveal: this.resolved.hasFirstPaintLauncherColor,
+                triggerColor: next.triggerColor,
+                triggerIconColor: next.triggerIconColor,
+                reveal: next.hasFirstPaintLauncherColor,
             });
         }
         if (this.isConnected) this.boot();
@@ -140,11 +141,14 @@ export class WpNovaChatElement extends HTMLElement {
     private boot(): void {
         if (!this.resolved || this.booting) return;
         this.booting = true;
-        if (!this.shadowReady) this.render(this.resolved);
-        if (!this.bridge) this.wireBridge(this.resolved);
-        this.bridge?.start();
-        void this.acquireToken();
-        this.booting = false;
+        try {
+            if (!this.shadowReady) this.render(this.resolved);
+            if (!this.bridge) this.wireBridge(this.resolved);
+            this.bridge?.start();
+            void this.acquireToken();
+        } finally {
+            this.booting = false;
+        }
     }
 
     private requiresFrameReset(current: ResolvedConfig, next: ResolvedConfig): boolean {
@@ -166,6 +170,7 @@ export class WpNovaChatElement extends HTMLElement {
         this.shadowReady = false;
         this.iframeReady = false;
         this.booting = false;
+        this.tokenRequestId++;
         this.lastToken = undefined;
         this.lastDisplaySettings = undefined;
         this.lastUnavailable = undefined;
@@ -304,8 +309,8 @@ export class WpNovaChatElement extends HTMLElement {
         minVersion?: number,
         maxVersion?: number,
     ): boolean {
-        const min = typeof minVersion === "number" ? minVersion : config.protocolVersion;
-        const max = typeof maxVersion === "number" ? maxVersion : config.protocolVersion;
+        const min = minVersion ?? config.protocolVersion;
+        const max = maxVersion ?? config.protocolVersion;
         return min <= config.protocolVersion && config.protocolVersion <= max;
     }
 
@@ -364,9 +369,12 @@ export class WpNovaChatElement extends HTMLElement {
      * renders the unavailable / error UI; the SDK renders nothing actionable.
      */
     private async acquireToken(): Promise<void> {
-        if (!this.resolved) return;
+        const config = this.resolved;
+        if (!config) return;
+        const requestId = ++this.tokenRequestId;
         this.clearErrorRetry();
-        const result = await fetchToken(this.resolved);
+        const result = await fetchToken(config);
+        if (requestId !== this.tokenRequestId || this.resolved !== config) return;
         if (result.kind === "granted") {
             this.lastToken = result.token;
             this.lastDisplaySettings = result.displaySettings ?? null;

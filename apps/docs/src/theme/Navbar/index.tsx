@@ -27,8 +27,12 @@ const mobileLinks = [
     { label: "Release", to: "/release-cdn" }
 ];
 
+function stripLocalePrefix(pathname: string): string {
+    return pathname.replace(/^\/(de|fr)(?=\/|$)/, "") || "/";
+}
+
 function localeHref(pathname: string, locale: string): string {
-    const withoutLocale = pathname.replace(/^\/(de|fr)(?=\/|$)/, "") || "/";
+    const withoutLocale = stripLocalePrefix(pathname);
     if (locale === "en") return withoutLocale;
     return `/${locale}${withoutLocale === "/" ? "" : withoutLocale}`;
 }
@@ -79,6 +83,7 @@ export default function Navbar() {
     const { colorMode, setColorMode } = useColorMode();
     const [menuOpen, setMenuOpen] = useState(false);
     const currentLocale = i18n.currentLocale;
+    const currentDocsPath = stripLocalePrefix(location.pathname);
     const activeApi = location.pathname.includes("api-reference");
 
     return (
@@ -178,7 +183,7 @@ export default function Navbar() {
                         <Link
                             className={clsx(
                                 "nova-mobile-menu__link",
-                                location.pathname === link.to && "nova-mobile-menu__link--active",
+                                currentDocsPath === link.to && "nova-mobile-menu__link--active",
                             )}
                             key={link.to}
                             to={link.to}

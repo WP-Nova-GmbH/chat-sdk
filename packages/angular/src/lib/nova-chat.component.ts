@@ -24,16 +24,18 @@ export class NovaChatComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     ngOnDestroy(): void {
-        for (const name of this.toolNames) {
-            this.nova.unregisterToolHandler(name);
-        }
+        this.unregisterTools();
     }
 
-    private sync(): void {
+    private unregisterTools(): void {
         for (const name of this.toolNames) {
             this.nova.unregisterToolHandler(name);
         }
         this.toolNames = [];
+    }
+
+    private sync(): void {
+        this.unregisterTools();
 
         if (!this.enabled) return;
         if (this.config) this.nova.init(this.config);
