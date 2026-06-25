@@ -34,7 +34,7 @@ function stripLocalePrefix(pathname: string): string {
 function localeHref(pathname: string, locale: string): string {
     const withoutLocale = stripLocalePrefix(pathname);
     if (locale === "en") return withoutLocale;
-    return `/${locale}${withoutLocale === "/" ? "" : withoutLocale}`;
+    return withoutLocale === "/" ? `/${locale}/` : `/${locale}${withoutLocale}`;
 }
 
 function SearchBox() {
@@ -141,17 +141,16 @@ export default function Navbar() {
                 </button>
                 <div className="nova-dropdown__menu">
                     {i18n.locales.map((locale) => (
-                        <Link
+                        <a
                             className={clsx(
                                 "nova-dropdown__item",
                                 locale === currentLocale && "nova-dropdown__item--active",
                             )}
+                            href={localeHref(location.pathname, locale)}
                             key={locale}
-                            to={localeHref(location.pathname, locale)}
-                            data-noBrokenLinkCheck
                         >
                             {localeLabels[locale] ?? locale}
-                        </Link>
+                        </a>
                     ))}
                 </div>
             </div>
@@ -195,18 +194,17 @@ export default function Navbar() {
                 </nav>
                 <div className="nova-mobile-menu__meta">
                     {i18n.locales.map((locale) => (
-                        <Link
+                        <a
                             className={clsx(
                                 "nova-mobile-menu__chip",
                                 locale === currentLocale && "nova-mobile-menu__chip--active",
                             )}
+                            href={localeHref(location.pathname, locale)}
                             key={locale}
-                            to={localeHref(location.pathname, locale)}
                             onClick={() => setMenuOpen(false)}
-                            data-noBrokenLinkCheck
                         >
                             {localeLabels[locale] ?? locale}
-                        </Link>
+                        </a>
                     ))}
                 </div>
             </div>
