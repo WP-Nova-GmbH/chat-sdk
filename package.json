@@ -14,7 +14,7 @@
     "scripts": {
         "build": "turbo run build",
         "check-types": "turbo run check-types",
-        "dev": "turbo run dev --parallel",
+        "dev": "npm --workspace @wp-nova/chat-sdk-docs run dev",
         "format": "biome format --write .",
         "lint": "turbo run lint",
         "lint:fix": "biome check --formatter-enabled=false --write .",
