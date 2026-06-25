@@ -21,7 +21,7 @@ const darkCodeTheme = {
 const config: Config = {
     title: "Nova Chat SDK",
     tagline: "Embed the Nova assistant into any website.",
-    favicon: "img/wpnova-wordmark-mono.svg",
+    favicon: "favicon.ico",
     url: "https://chat.wp-nova.ai",
     baseUrl: "/",
     organizationName: "WP-Nova-GmbH",
