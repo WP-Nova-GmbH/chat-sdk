@@ -74,11 +74,6 @@ const config: Config = {
             textColor: "#FFFFFF",
             isCloseable: true
         },
-        docs: {
-            sidebar: {
-                hideable: true
-            }
-        },
         navbar: {
             hideOnScroll: false
         },

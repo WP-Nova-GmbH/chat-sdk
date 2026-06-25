@@ -3,7 +3,7 @@ import { useLocation } from "@docusaurus/router";
 import { useColorMode } from "@docusaurus/theme-common";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import clsx from "clsx";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NovaWordmark } from "../../components/NovaWordmark";
 import { searchIndex } from "../../data/searchIndex";
 
@@ -39,17 +39,51 @@ function localeHref(pathname: string, locale: string): string {
 
 function SearchBox() {
     const [query, setQuery] = useState("");
+    const inputRef = useRef<HTMLInputElement>(null);
+    const normalizedQuery = query.trim().toLowerCase();
     const results = useMemo(() => {
-        const normalized = query.trim().toLowerCase();
-        if (!normalized) return searchIndex.slice(0, 5);
+        if (!normalizedQuery) return searchIndex.slice(0, 5);
         return searchIndex
             .filter((entry) =>
                 [entry.title, entry.section, entry.description].some((value) =>
-                    value.toLowerCase().includes(normalized),
+                    value.toLowerCase().includes(normalizedQuery),
                 ),
             )
             .slice(0, 6);
-    }, [query]);
+    }, [normalizedQuery]);
+    const hasEmptySearch = Boolean(normalizedQuery) && results.length === 0;
+
+    useEffect(() => {
+        function isEditableTarget(target: EventTarget | null): boolean {
+            if (!(target instanceof HTMLElement)) return false;
+            const tagName = target.tagName.toLowerCase();
+
+            return (
+                tagName === "input" ||
+                tagName === "textarea" ||
+                tagName === "select" ||
+                target.isContentEditable
+            );
+        }
+
+        function handleKeyDown(event: KeyboardEvent) {
+            if (
+                event.key !== "/" ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.altKey ||
+                isEditableTarget(event.target)
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+            inputRef.current?.focus();
+        }
+
+        document.addEventListener("keydown", handleKeyDown);
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, []);
 
     return (
         <div className="nova-search">
@@ -58,6 +92,7 @@ function SearchBox() {
                 <path d="m21 21-4.3-4.3" />
             </svg>
             <input
+                ref={inputRef}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search"
@@ -65,13 +100,17 @@ function SearchBox() {
             />
             <kbd>/</kbd>
             <div className="nova-search__panel">
-                {results.map((entry) => (
-                    <Link className="nova-search__item" key={entry.href} to={entry.href}>
-                        <span>{entry.section}</span>
-                        <strong>{entry.title}</strong>
-                        <small>{entry.description}</small>
-                    </Link>
-                ))}
+                {hasEmptySearch ? (
+                    <p className="nova-search__empty">No results found</p>
+                ) : (
+                    results.map((entry) => (
+                        <Link className="nova-search__item" key={entry.href} to={entry.href}>
+                            <span>{entry.section}</span>
+                            <strong>{entry.title}</strong>
+                            <small>{entry.description}</small>
+                        </Link>
+                    ))
+                )}
             </div>
         </div>
     );
@@ -89,7 +128,7 @@ export default function Navbar() {
     return (
         <header className="navbar nova-navbar">
             <button
-                className="nova-navbar__burger"
+                className={clsx("nova-navbar__burger", menuOpen && "nova-navbar__burger--open")}
                 type="button"
                 aria-label="Menu"
                 aria-controls="nova-mobile-menu"

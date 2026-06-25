@@ -247,6 +247,14 @@ html[data-theme="dark"] .nova-wordmark--mono {
     text-decoration: none;
 }
 
+.nova-search__empty {
+    margin: 0;
+    padding: 9px 10px;
+    color: var(--fg-muted);
+    font-size: 13.5px;
+    line-height: 1.4;
+}
+
 .nova-search__item span {
     color: var(--fg-subtle);
     font-size: 11px;
@@ -419,6 +427,24 @@ html[data-theme="dark"] .nova-theme-toggle__moon {
     font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
+}
+
+.theme-doc-sidebar-container .menu__link--sublist-caret::after,
+.theme-doc-sidebar-container .menu__caret::before {
+    width: 0.875rem;
+    min-width: 0.875rem;
+    height: 0.875rem;
+    background-size: 1.35rem 1.35rem;
+    opacity: 0.72;
+}
+
+.theme-doc-sidebar-container .menu__link--sublist-caret::after {
+    margin-left: 6px;
+}
+
+.theme-doc-sidebar-container .menu__caret {
+    padding-right: 8px;
+    padding-left: 8px;
 }
 
 main {
@@ -805,6 +831,11 @@ div[class*="docMainContainer"] {
         justify-content: center;
     }
 
+    .nova-navbar__burger--open {
+        background: var(--surface);
+        color: var(--primary);
+    }
+
     .nova-navbar__links,
     .nova-search,
     .nova-dropdown {
@@ -831,6 +862,8 @@ div[class*="docMainContainer"] {
 
     .nova-mobile-menu--open {
         display: block;
+        background: var(--surface);
+        backdrop-filter: none;
     }
 
     .nova-mobile-menu__links {
