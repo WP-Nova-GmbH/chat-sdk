@@ -1,5 +1,22 @@
 import type { Options as ClassicOptions } from "@docusaurus/preset-classic";
 import type { Config } from "@docusaurus/types";
+import { themes as prismThemes } from "prism-react-renderer";
+
+const lightCodeTheme = {
+    ...prismThemes.nightOwl,
+    plain: {
+        ...prismThemes.nightOwl.plain,
+        backgroundColor: "#16161F"
+    }
+};
+
+const darkCodeTheme = {
+    ...prismThemes.nightOwl,
+    plain: {
+        ...prismThemes.nightOwl.plain,
+        backgroundColor: "#0D0D18"
+    }
+};
 
 const config: Config = {
     title: "Nova Chat SDK",
@@ -66,14 +83,9 @@ const config: Config = {
             hideOnScroll: false
         },
         prism: {
-            theme: {
-                plain: { color: "#E7E3DA", backgroundColor: "#16161F" },
-                styles: []
-            },
-            darkTheme: {
-                plain: { color: "#E7E3DA", backgroundColor: "#0D0D18" },
-                styles: []
-            }
+            theme: lightCodeTheme,
+            darkTheme: darkCodeTheme,
+            defaultLanguage: "typescript"
         }
     }
 };
