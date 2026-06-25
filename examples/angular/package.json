@@ -4,13 +4,17 @@
     "version": "1.0.0",
     "type": "module",
     "scripts": {
-        "build": "tsc -p tsconfig.json --noEmit",
+        "dev": "vite --host 127.0.0.1 --port 4312",
+        "build": "tsc -p tsconfig.json --noEmit && vite build",
         "check-types": "tsc -p tsconfig.json --noEmit",
         "lint": "biome check --formatter-enabled=false src",
+        "preview": "vite preview --host 127.0.0.1 --port 4312",
         "test": "vitest run --passWithNoTests"
     },
     "dependencies": {
+        "@angular/compiler": "^20.3.25",
         "@angular/core": "^20.3.0",
+        "@angular/platform-browser": "^20.3.25",
         "@wp-nova/sdk": "1.0.0",
         "@wp-nova/sdk-angular": "1.0.0",
         "rxjs": "^7.8.1",
@@ -19,6 +23,7 @@
     "devDependencies": {
         "@wp-nova/typescript-config": "*",
         "typescript": "5.8.2",
+        "vite": "^8.1.0",
         "vitest": "^4.0.18"
     }
 }

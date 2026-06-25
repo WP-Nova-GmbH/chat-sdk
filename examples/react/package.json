@@ -4,9 +4,11 @@
     "version": "1.0.0",
     "type": "module",
     "scripts": {
-        "build": "tsc --noEmit",
+        "dev": "vite --host 127.0.0.1 --port 4311",
+        "build": "tsc --noEmit && vite build",
         "check-types": "tsc --noEmit",
         "lint": "biome check --formatter-enabled=false src",
+        "preview": "vite preview --host 127.0.0.1 --port 4311",
         "test": "vitest run --passWithNoTests"
     },
     "dependencies": {
@@ -20,6 +22,7 @@
         "@types/react-dom": "^19.0.4",
         "@wp-nova/typescript-config": "*",
         "typescript": "5.8.2",
+        "vite": "^8.1.0",
         "vitest": "^4.0.18"
     }
 }
