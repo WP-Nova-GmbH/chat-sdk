@@ -1,0 +1,10 @@
+.content {
+    padding: 5px 0;
+    font-size: 85%;
+    text-align: center;
+}
+
+.content a {
+    color: inherit;
+    text-decoration: underline;
+}

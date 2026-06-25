@@ -1,13 +1,13 @@
 ---
 id: dom-access
-title: Giving the agent DOM access
+title: Dem Agenten DOM-Zugriff geben
 ---
 
-## Giving the Agent DOM Access
+## Dem Agenten DOM-Zugriff geben
 
-Nova cannot run arbitrary JavaScript in the host page. It can only request capabilities that the SDK exposes through page snapshots, built-in navigation actions, and tool handlers you register.
+Nova kann auf der Host-Seite kein beliebiges JavaScript ausführen. Es kann nur Fähigkeiten anfordern, die das SDK über Seiten-Snapshots, eingebaute Navigationsaktionen und von dir registrierte Tool-Handler bereitstellt.
 
-### Register Tool Handlers
+### Tool-Handler registrieren
 
 ```ts
 import { registerToolHandler, unregisterToolHandler } from "@wp-nova/sdk";
@@ -22,18 +22,18 @@ registerToolHandler("set_customer_status", async (args) => {
 unregisterToolHandler("set_customer_status");
 ```
 
-The set of tools the agent can ask for is declared server-side on the embedded surface. Browser registration only supplies matching execution callbacks.
+Welche Tools der Agent anfragen darf, wird serverseitig auf der Embedded Surface definiert. Die Registrierung im Browser stellt nur die passenden Ausführungs-Callbacks bereit.
 
-### Page Snapshots
+### Seiten-Snapshots
 
-When the iframe sends `REQUEST_SNAPSHOT`, the SDK captures visible page structure, text, links, controls, labels, selection, structured data, and stable element handles. Closed shadow roots, cross-origin iframes, canvas regions, and oversized pages are marked as partial or truncated.
+Wenn das iframe `REQUEST_SNAPSHOT` sendet, erfasst das SDK sichtbare Seitenstruktur, Text, Links, Bedienelemente, Labels, Auswahl, strukturierte Daten und stabile Element-Handles. Geschlossene Shadow Roots, Cross-Origin-iframes, Canvas-Bereiche und zu große Seiten werden als teilweise oder gekürzt markiert.
 
-### Field Values Are Default-Deny
+### Feldwerte sind standardmäßig gesperrt
 
-Input values are omitted unless explicitly allowed and still pass sensitivity checks.
+Eingabewerte werden ausgelassen, sofern sie nicht ausdrücklich erlaubt sind und weiterhin Sensitivitätsprüfungen bestehen.
 
-- Add `data-wp-nova-include` to a field or ancestor.
-- Or pass selectors in `safeValueSelectors`.
-- Passwords, hidden inputs, files, payment fields, tokens, secrets, and similar sensitive fields are always excluded.
+- Füge `data-wp-nova-include` zu einem Feld oder Vorfahren hinzu.
+- Oder übergib Selektoren in `safeValueSelectors`.
+- Passwörter, versteckte Inputs, Dateien, Zahlungsfelder, Tokens, Secrets und ähnliche sensible Felder werden immer ausgeschlossen.
 
-Use `data-wp-nova-ignore` on any subtree the assistant should not see.
+Verwende `data-wp-nova-ignore` für jeden Teilbaum, den der Assistent nicht sehen soll.

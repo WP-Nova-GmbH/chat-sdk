@@ -26,7 +26,7 @@ const config: Config = {
     baseUrl: "/",
     organizationName: "WP-Nova-GmbH",
     projectName: "chat-sdk",
-    trailingSlash: false,
+    trailingSlash: true,
     onBrokenLinks: "throw",
     i18n: {
         defaultLocale: "en",
@@ -34,7 +34,7 @@ const config: Config = {
         localeConfigs: {
             en: { label: "English" },
             de: { label: "Deutsch" },
-            fr: { label: "Francais" }
+            fr: { label: "Français" }
         }
     },
     markdown: {

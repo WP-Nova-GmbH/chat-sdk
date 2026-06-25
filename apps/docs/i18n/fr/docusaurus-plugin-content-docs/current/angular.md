@@ -5,7 +5,7 @@ title: Angular
 
 ## Angular
 
-`@wp-nova/sdk-angular` provides an Angular service, environment provider, and standalone component.
+`@wp-nova/sdk-angular` fournit un service Angular, un provider d'environnement et un composant standalone.
 
 ```bash
 npm install @wp-nova/sdk @wp-nova/sdk-angular

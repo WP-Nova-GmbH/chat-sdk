@@ -1,26 +1,26 @@
 ---
 id: events
-title: Events
+title: Ereignisse
 ---
 
-## Events
+## Ereignisse
 
-The bridge protocol is intentionally explicit. Every frame carries a source tag and protocol version, and request/response pairs carry a `correlationId`.
+Das Bridge-Protokoll ist bewusst explizit. Jeder Frame enthält ein Source-Tag und eine Protokollversion, und Request/Response-Paare enthalten eine `correlationId`.
 
-### Important Frames
+### Wichtige Frames
 
-| Frame | Direction | Purpose |
+| Frame | Richtung | Zweck |
 | --- | --- | --- |
-| `READY` | iframe to SDK | The iframe is ready to receive token and tool registration data. |
-| `AUTH_TOKEN` | SDK to iframe | Pushes a short-lived embedded-session token. |
-| `AUTH_EXPIRED` | iframe to SDK | Requests a token re-mint after a 401. |
-| `REQUEST_SNAPSHOT` | iframe to SDK | Requests fresh visible page context. |
-| `CLIENT_TOOL_REQUEST` | iframe to SDK | Requests a built-in navigation action or registered tool. |
-| `CLIENT_TOOL_RESULT` | SDK to iframe | Returns the tool result and fresh snapshot. |
-| `CLIENT_TOOL_ERROR` | SDK to iframe | Returns typed failure details such as `no_handler` or `timeout`. |
+| `READY` | iframe an SDK | Das iframe ist bereit, Token- und Tool-Registrierungsdaten zu empfangen. |
+| `AUTH_TOKEN` | SDK an iframe | Sendet ein kurzlebiges Embedded-Session-Token. |
+| `AUTH_EXPIRED` | iframe an SDK | Fordert nach einem 401 ein neues Token an. |
+| `REQUEST_SNAPSHOT` | iframe an SDK | Fordert frischen sichtbaren Seitenkontext an. |
+| `CLIENT_TOOL_REQUEST` | iframe an SDK | Fordert eine eingebaute Navigationsaktion oder ein registriertes Tool an. |
+| `CLIENT_TOOL_RESULT` | SDK an iframe | Gibt das Tool-Ergebnis und einen frischen Snapshot zurück. |
+| `CLIENT_TOOL_ERROR` | SDK an iframe | Gibt typisierte Fehlerdetails wie `no_handler` oder `timeout` zurück. |
 
-### Token Refresh
+### Token-Erneuerung
 
-The SDK refreshes proactively at roughly 80 percent of `expires_in` and reactively when the iframe emits `AUTH_EXPIRED`.
+Das SDK erneuert proaktiv bei ungefähr 80 Prozent von `expires_in` und reaktiv, wenn das iframe `AUTH_EXPIRED` sendet.
 
-Transport failures retry with backoff and cooldown. An unavailable user response is terminal and is sent to the iframe as `UNAVAILABLE`.
+Transportfehler werden mit Backoff und Cooldown erneut versucht. Eine Antwort für einen nicht verfügbaren Benutzer ist final und wird als `UNAVAILABLE` an das iframe gesendet.

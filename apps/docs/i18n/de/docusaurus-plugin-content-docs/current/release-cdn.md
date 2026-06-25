@@ -1,23 +1,23 @@
 ---
 id: release-cdn
-title: Release & CDN
+title: Versionierung & CDN
 ---
 
-## Release & CDN
+## Versionierung & CDN
 
-The core SDK build emits:
+Der Core-SDK-Build erzeugt:
 
-- `dist/index.js` for ESM imports.
-- `dist/index.cjs` for CommonJS consumers.
-- `dist/index.d.ts` for TypeScript.
-- `dist/index.global.js` for the script-tag CDN artifact.
-- `dist/index.global.js.sri` for immutable URL integrity metadata.
+- `dist/index.js` für ESM-Imports.
+- `dist/index.cjs` für CommonJS-Nutzer.
+- `dist/index.d.ts` für TypeScript.
+- `dist/index.global.js` für das Script-Tag-CDN-Artefakt.
+- `dist/index.global.js.sri` für Integritätsmetadaten unveränderlicher URLs.
 
-### Channels
+### Kanäle
 
-| Channel | URL | Cache | SRI |
+| Kanal | URL | Cache | SRI |
 | --- | --- | --- | --- |
-| Immutable | `https://chat.wp-nova.ai/sdk/<version>/sdk.js` | long-lived | required |
-| Rolling | `https://chat.wp-nova.ai/sdk/v1/sdk.js` | no-cache | not available |
+| Unveränderlich | `https://chat.wp-nova.ai/sdk/<version>/sdk.js` | langlebig | erforderlich |
+| Rolling | `https://chat.wp-nova.ai/sdk/v1/sdk.js` | no-cache | nicht verfügbar |
 
-The rolling channel is an opt-in convenience. The immutable versioned URL is the default recommendation for production installs.
+Der Rolling Channel ist eine optionale Komfortfunktion. Die unveränderliche versionierte URL ist die Standardempfehlung für Produktionsinstallationen.

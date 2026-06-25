@@ -5,7 +5,7 @@ title: React
 
 ## React
 
-`@wp-nova/sdk-react` wraps the browser SDK without importing it during server render.
+`@wp-nova/sdk-react` umhüllt das Browser-SDK, ohne es während des Server-Renderings zu importieren.
 
 ```bash
 npm install @wp-nova/sdk @wp-nova/sdk-react
@@ -37,4 +37,4 @@ export function App() {
 }
 ```
 
-The provider initializes once on the client. Wrapper-owned tools are unregistered on unmount.
+Der Provider initialisiert einmalig im Client. Tools, die vom Wrapper verwaltet werden, werden beim Unmount wieder deregistriert.

@@ -1,0 +1,18 @@
+{
+  "version.label": {
+    "message": "Aktuell",
+    "description": "The label for version current"
+  },
+  "sidebar.sdkSidebar.category.Getting started": {
+    "message": "Einstieg",
+    "description": "The label for category Getting started in sidebar sdkSidebar"
+  },
+  "sidebar.sdkSidebar.category.Guides": {
+    "message": "Anleitungen",
+    "description": "The label for category Guides in sidebar sdkSidebar"
+  },
+  "sidebar.sdkSidebar.category.Reference": {
+    "message": "Referenz",
+    "description": "The label for category Reference in sidebar sdkSidebar"
+  }
+}

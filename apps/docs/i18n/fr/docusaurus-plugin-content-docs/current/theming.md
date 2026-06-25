@@ -1,11 +1,11 @@
 ---
 id: theming
-title: Theming
+title: Personnalisation visuelle
 ---
 
-## Theming
+## Personnalisation visuelle
 
-The SDK owns only the launcher and outer panel. The iframe owns the chat header and conversation UI, using trusted surface display settings after authentication.
+Le SDK gère uniquement le lanceur et le panneau externe. L’iframe gère l’en-tête du chat et l’interface de conversation, en utilisant les réglages d’affichage fiables de la surface après authentification.
 
 ```ts
 init({
@@ -17,10 +17,10 @@ init({
 });
 ```
 
-### First Paint
+### Premier rendu
 
-If `accent` or `triggerColor` is supplied, the launcher can render on-brand before the first token response. Otherwise, the launcher stays hidden until trusted surface theme data arrives from the iframe.
+Si `accent` ou `triggerColor` est fourni, le lanceur peut s’afficher aux couleurs de la marque avant la première réponse de token. Sinon, le lanceur reste masqué jusqu’à l’arrivée des données de thème fiables de la surface depuis l’iframe.
 
-### Launcher Icon Color
+### Couleur de l’icône du lanceur
 
-`triggerIconColor` accepts `light`, `dark`, or a hex color. Invalid values are ignored and fall back to a readable default.
+`triggerIconColor` accepte `light`, `dark` ou une couleur hexadécimale. Les valeurs invalides sont ignorées et utilisent une valeur par défaut lisible.

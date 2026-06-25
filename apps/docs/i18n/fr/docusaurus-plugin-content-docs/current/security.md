@@ -1,25 +1,25 @@
 ---
 id: security
-title: Security & permissions
+title: Sécurité et permissions
 ---
 
-## Security & Permissions
+## Sécurité et permissions
 
-The SDK is designed around a narrow browser trust boundary.
+Le SDK est conçu autour d’une limite de confiance navigateur étroite.
 
-- The browser never receives the Nova integration secret.
-- The SDK posts messages only to the iframe's exact origin.
-- Inbound frames must match both `event.origin` and `event.source`.
-- Tool errors are explicit typed frames, not silent empty results.
-- Mutating tool classification is server-side; the SDK only executes approved requests.
-- Field values are default-deny and sensitivity checks cannot be bypassed by opt-in selectors.
+- Le navigateur ne reçoit jamais le secret d’intégration Nova.
+- Le SDK poste des messages uniquement vers l’origine exacte de l’iframe.
+- Les frames entrantes doivent correspondre à la fois à `event.origin` et `event.source`.
+- Les erreurs d’outils sont des frames typées explicites, pas des résultats vides silencieux.
+- La classification des outils mutateurs est côté serveur ; le SDK exécute seulement les requêtes approuvées.
+- Les valeurs de champs sont refusées par défaut et les contrôles de sensibilité ne peuvent pas être contournés par des sélecteurs opt-in.
 
-### Token Endpoint Responsibilities
+### Responsabilités de l’endpoint de token
 
-Your backend must authenticate the current user with your own session. It should call Nova with a server-side secret and return either the token response or the unavailable-user response.
+Votre backend doit authentifier l’utilisateur courant avec votre propre session. Il doit appeler Nova avec un secret côté serveur et renvoyer soit la réponse de token, soit la réponse utilisateur indisponible.
 
-Do not trust an email or user id supplied by the browser for token minting.
+Ne faites pas confiance à une adresse e-mail ou à un identifiant utilisateur fourni par le navigateur pour émettre un token.
 
-### CSP and Framing
+### CSP et framing
 
-The Nova iframe route should be frameable by allowed customer origins. The current fronto deployment keeps `/sdk/v1/sdk.js` no-cache while immutable SDK URLs are long-lived and suitable for SRI.
+La route de l’iframe Nova doit pouvoir être affichée dans une frame par les origines clientes autorisées. Le déploiement fronto actuel garde `/sdk/v1/sdk.js` sans cache, tandis que les URL SDK immuables sont durables et adaptées au SRI.

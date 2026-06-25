@@ -1,15 +1,15 @@
 ---
 id: quickstart
-title: Quickstart
+title: Démarrage rapide
 ---
 
-## Quickstart
+## Démarrage rapide
 
-Choose the script tag when you want the smallest integration surface, or npm when the host app is already bundled.
+Choisissez la balise script si vous voulez la surface d’intégration la plus petite, ou npm si l’app hôte est déjà bundlee.
 
-### Script Tag
+### Balise script
 
-The queued snippet lets you register tools before the SDK file has loaded. Calls are replayed in order when the global bundle installs the real dispatcher.
+Le snippet en file d’attente permet d’enregistrer des outils avant que le fichier du SDK soit chargé. Les appels sont rejoués dans l’ordre lorsque le bundle global installe le vrai dispatcher.
 
 ```html
 <script>
@@ -55,9 +55,9 @@ init({
 });
 ```
 
-### Token Endpoint
+### Endpoint de token
 
-Your endpoint receives `{ publicSurfaceId, origin }` from the SDK and should use the authenticated server-side user, not a browser-asserted email.
+Votre endpoint reçoit `{ publicSurfaceId, origin }` depuis le SDK et doit utiliser l’utilisateur authentifié côté serveur, pas une adresse e-mail déclarée par le navigateur.
 
 ```ts
 app.post("/api/nova-token", async (req, res) => {

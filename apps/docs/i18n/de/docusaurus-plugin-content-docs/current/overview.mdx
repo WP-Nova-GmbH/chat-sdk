@@ -1,7 +1,7 @@
 ---
 id: overview
 slug: /
-title: Overview
+title: Übersicht
 hide_title: true
 ---
 
@@ -9,34 +9,34 @@ import { ImplementationPromptCallout } from "@site/src/components/Implementation
 
 # Nova Chat SDK
 
-<p className="nova-lede">Embed the Nova assistant into any website and wire it to your own DOM. The SDK ships the iframe shell, token refresh, page snapshots, navigation actions, and integrator tools while your backend keeps the secret.</p>
+<p className="nova-lede">Bette den Nova-Assistenten in jede Website ein und verbinde ihn mit deinem eigenen DOM. Das SDK liefert die iframe-Hülle, Token-Erneuerung, Seiten-Snapshots, Navigationsaktionen und Integrator-Tools, während dein Backend das Secret schützt.</p>
 
 <ImplementationPromptCallout />
 
-## Overview
+## Übersicht
 
-The Nova Chat SDK is the browser package that mounts a Nova-hosted chat iframe inside a customer-owned page. It is intentionally thin: the SDK owns the launcher, the iframe container, the token handoff, and the `postMessage` bridge. The iframe owns the conversation UI and talks to Nova services with a short-lived embedded-session token.
+Das Nova Chat SDK ist das Browser-Paket, das ein von Nova gehostetes Chat-iframe in eine kundeneigene Seite einbindet. Es ist bewusst schlank: Das SDK steuert den Launcher, den iframe-Container, die Token-Übergabe und die `postMessage`-Bridge. Das iframe steuert die Konversationsoberfläche und kommuniziert mit Nova-Diensten über ein kurzlebiges Embedded-Session-Token.
 
-The browser never receives an integration secret. Your app exposes a `tokenEndpoint` that authenticates the current user, calls Nova's `POST /embed/session` from the server, and returns the embedded-session response to the SDK.
+Der Browser erhält niemals ein Integrations-Secret. Deine App stellt einen `tokenEndpoint` bereit, der den aktuellen Benutzer authentifiziert, Nova serverseitig über `POST /embed/session` aufruft und die Embedded-Session-Antwort an das SDK zurückgibt.
 
-The SDK bridge handles three host-page capabilities:
+Die SDK-Bridge verarbeitet drei Fähigkeiten der Host-Seite:
 
-- Page snapshots that summarize visible text, links, controls, labels, selection, and safe field values.
-- Built-in navigation actions against stable element handles from the latest snapshot.
-- Integrator tools registered by your app with `registerToolHandler`.
+- Seiten-Snapshots, die sichtbaren Text, Links, Bedienelemente, Labels, Auswahl und sichere Feldwerte zusammenfassen.
+- Eingebaute Navigationsaktionen gegen stabile Element-Handles aus dem neuesten Snapshot.
+- Integrator-Tools, die deine App mit `registerToolHandler` registriert.
 
 ## Packages
 
-| Package | Purpose |
+| Package | Zweck |
 | --- | --- |
-| `@wp-nova/sdk` | Framework-agnostic browser SDK and CDN artifact. |
-| `@wp-nova/sdk-react` | React provider, component, and hooks around the core SDK. |
-| `@wp-nova/sdk-angular` | Angular provider, service, and standalone component around the core SDK. |
+| `@wp-nova/sdk` | Framework-unabhängiges Browser-SDK und CDN-Artefakt. |
+| `@wp-nova/sdk-react` | React-Provider, Komponente und Hooks rund um das Core-SDK. |
+| `@wp-nova/sdk-angular` | Angular-Provider, Service und Standalone-Komponente rund um das Core-SDK. |
 
-## Runtime Model
+## Laufzeitmodell
 
-1. The customer page loads `@wp-nova/sdk` by script tag or npm.
-2. The page calls `WpNova("init", { publicSurfaceId, tokenEndpoint })`.
-3. The SDK mounts `<wp-nova-chat>`, points its iframe at `<baseUrl>/embed/chat?surface=<publicSurfaceId>`, and fetches a token from the customer backend.
-4. The iframe sends bridge requests such as `REQUEST_SNAPSHOT` or `CLIENT_TOOL_REQUEST`.
-5. The SDK replies only after strict origin and source checks.
+1. Die Kundenseite lädt `@wp-nova/sdk` per Script-Tag oder npm.
+2. Die Seite ruft `WpNova("init", { publicSurfaceId, tokenEndpoint })` auf.
+3. Das SDK mountet `<wp-nova-chat>`, zeigt das iframe auf `<baseUrl>/embed/chat?surface=<publicSurfaceId>` und holt ein Token vom Kunden-Backend.
+4. Das iframe sendet Bridge-Anfragen wie `REQUEST_SNAPSHOT` oder `CLIENT_TOOL_REQUEST`.
+5. Das SDK antwortet nur nach strikten Origin- und Source-Prüfungen.

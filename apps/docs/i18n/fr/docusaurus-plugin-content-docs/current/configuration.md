@@ -5,22 +5,22 @@ title: Configuration
 
 ## Configuration
 
-All options are passed to `WpNova("init", config)` or the `init(config)` helper.
+Toutes les options sont transmises à `WpNova("init", config)` ou au helper `init(config)`.
 
-| Field | Required | Description |
+| Champ | Obligatoire | Description |
 | --- | --- | --- |
-| `publicSurfaceId` | yes | Non-secret SDK-facing surface handle. |
-| `tokenEndpoint` | yes | Customer backend endpoint that mints an embedded-session token. |
-| `baseUrl` | no | Nova iframe base URL. Defaults to `https://chat.wp-nova.ai`. |
-| `mount` | no | CSS selector or element to mount into. Defaults to `document.body`. |
-| `title` | no | Pre-auth launcher and panel title. |
-| `accent` | no | Pre-auth accent color. |
-| `triggerColor` | no | Launcher/open-button color. Defaults to `accent`. |
-| `triggerIconColor` | no | `light`, `dark`, or a hex color. |
-| `safeValueSelectors` | no | CSS selectors that opt field values into snapshot capture. |
-| `protocolVersion` | no | Bridge protocol override for compatibility testing. |
+| `publicSurfaceId` | oui | Handle de surface non secret expose au SDK. |
+| `tokenEndpoint` | oui | Endpoint du backend client qui émet un token de session intégrée. |
+| `baseUrl` | non | URL de base de l’iframe Nova. Par défaut : `https://chat.wp-nova.ai`. |
+| `mount` | non | Sélecteur CSS ou élément dans lequel monter le widget. Par défaut : `document.body`. |
+| `title` | non | Titre du lanceur et du panneau avant authentification. |
+| `accent` | non | Couleur d’accent avant authentification. |
+| `triggerColor` | non | Couleur du lanceur/bouton d’ouverture. Par défaut : `accent`. |
+| `triggerIconColor` | non | `light`, `dark` ou une couleur hexadécimale. |
+| `safeValueSelectors` | non | Sélecteurs CSS qui autorisent la capture des valeurs de champ dans les instantanés. |
+| `protocolVersion` | non | Override du protocole de bridge pour les tests de compatibilité. |
 
-### Defaults
+### Valeurs par défaut
 
 ```ts
 init({
@@ -33,6 +33,6 @@ init({
 });
 ```
 
-### Re-initialization
+### Reinitialisation
 
-The SDK is singleton-safe. Re-running `init` during HMR or a route-level remount reuses the existing custom element. If `publicSurfaceId`, `baseUrl`, or `protocolVersion` changes, the element rebuilds the iframe/bridge and fetches a fresh token before posting auth.
+Le SDK est compatible singleton. Relancer `init` pendant le HMR ou un remount au niveau d’une route réutilise le Custom Element existant. Si `publicSurfaceId`, `baseUrl` ou `protocolVersion` change, l’élément reconstruit l’iframe et le bridge, puis récupère un nouveau token avant de poster l’authentification.

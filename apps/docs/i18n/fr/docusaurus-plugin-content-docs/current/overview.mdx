@@ -1,7 +1,7 @@
 ---
 id: overview
 slug: /
-title: Overview
+title: Vue d’ensemble
 hide_title: true
 ---
 
@@ -9,34 +9,34 @@ import { ImplementationPromptCallout } from "@site/src/components/Implementation
 
 # Nova Chat SDK
 
-<p className="nova-lede">Embed the Nova assistant into any website and wire it to your own DOM. The SDK ships the iframe shell, token refresh, page snapshots, navigation actions, and integrator tools while your backend keeps the secret.</p>
+<p className="nova-lede">Intégrez l’assistant Nova à n’importe quel site web et connectez-le à votre propre DOM. Le SDK fournit l’enveloppe iframe, le renouvellement des tokens, les instantanés de page, les actions de navigation et les outils d’intégration, pendant que votre backend garde le secret.</p>
 
 <ImplementationPromptCallout />
 
-## Overview
+## Vue d’ensemble
 
-The Nova Chat SDK is the browser package that mounts a Nova-hosted chat iframe inside a customer-owned page. It is intentionally thin: the SDK owns the launcher, the iframe container, the token handoff, and the `postMessage` bridge. The iframe owns the conversation UI and talks to Nova services with a short-lived embedded-session token.
+Le Nova Chat SDK est le package navigateur qui monte une iframe de chat hébergée par Nova dans une page appartenant au client. Il est volontairement léger : le SDK gère le lanceur, le conteneur iframe, la transmission du token et le bridge `postMessage`. L’iframe gère l’interface de conversation et communique avec les services Nova au moyen d’un token de session intégrée à courte durée de vie.
 
-The browser never receives an integration secret. Your app exposes a `tokenEndpoint` that authenticates the current user, calls Nova's `POST /embed/session` from the server, and returns the embedded-session response to the SDK.
+Le navigateur ne reçoit jamais de secret d’intégration. Votre app expose un `tokenEndpoint` qui authentifie l’utilisateur courant, appelle `POST /embed/session` de Nova depuis le serveur, puis renvoie la réponse de session intégrée au SDK.
 
-The SDK bridge handles three host-page capabilities:
+Le bridge du SDK gère trois capacités de la page hôte :
 
-- Page snapshots that summarize visible text, links, controls, labels, selection, and safe field values.
-- Built-in navigation actions against stable element handles from the latest snapshot.
-- Integrator tools registered by your app with `registerToolHandler`.
+- Des instantanés de page qui résument le texte visible, les liens, les contrôles, les libellés, la sélection et les valeurs de champ sûres.
+- Des actions de navigation intégrées sur des handles d’éléments stables issus du dernier instantané.
+- Des outils d’intégration enregistrés par votre app avec `registerToolHandler`.
 
 ## Packages
 
-| Package | Purpose |
+| Package | Rôle |
 | --- | --- |
-| `@wp-nova/sdk` | Framework-agnostic browser SDK and CDN artifact. |
-| `@wp-nova/sdk-react` | React provider, component, and hooks around the core SDK. |
-| `@wp-nova/sdk-angular` | Angular provider, service, and standalone component around the core SDK. |
+| `@wp-nova/sdk` | SDK navigateur indépendant du framework et artefact CDN. |
+| `@wp-nova/sdk-react` | Provider, composant et hooks React autour du SDK cœur. |
+| `@wp-nova/sdk-angular` | Provider, service et composant standalone Angular autour du SDK cœur. |
 
-## Runtime Model
+## Modèle d’exécution
 
-1. The customer page loads `@wp-nova/sdk` by script tag or npm.
-2. The page calls `WpNova("init", { publicSurfaceId, tokenEndpoint })`.
-3. The SDK mounts `<wp-nova-chat>`, points its iframe at `<baseUrl>/embed/chat?surface=<publicSurfaceId>`, and fetches a token from the customer backend.
-4. The iframe sends bridge requests such as `REQUEST_SNAPSHOT` or `CLIENT_TOOL_REQUEST`.
-5. The SDK replies only after strict origin and source checks.
+1. La page cliente charge `@wp-nova/sdk` par balise script ou via npm.
+2. La page appelle `WpNova("init", { publicSurfaceId, tokenEndpoint })`.
+3. Le SDK monte `<wp-nova-chat>`, pointe son iframe vers `<baseUrl>/embed/chat?surface=<publicSurfaceId>` et récupère un token depuis le backend client.
+4. L’iframe envoie des requêtes de bridge comme `REQUEST_SNAPSHOT` ou `CLIENT_TOOL_REQUEST`.
+5. Le SDK ne répond qu’après des contrôles stricts de l’origine et de la source.

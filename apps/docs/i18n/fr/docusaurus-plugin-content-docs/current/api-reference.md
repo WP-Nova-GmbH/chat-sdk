@@ -1,11 +1,11 @@
 ---
 id: api-reference
-title: API reference
+title: Référence API
 ---
 
-## API Reference
+## Référence API
 
-### Global Dispatcher
+### Dispatcher global
 
 ```ts
 WpNova("init", config);
@@ -13,7 +13,7 @@ WpNova("registerToolHandler", name, handler);
 WpNova("unregisterToolHandler", name);
 ```
 
-### npm Helpers
+### Helpers npm
 
 ```ts
 import {
@@ -50,4 +50,4 @@ export type ToolHandler = (
 
 ### Custom Element
 
-The SDK defines `<wp-nova-chat>` lazily and idempotently. You can pre-place the element in the DOM, but most integrations should let `init` create and mount it.
+Le SDK définit `<wp-nova-chat>` de façon lazy et idempotente. Vous pouvez placer l’élément à l’avance dans le DOM, mais la plupart des intégrations doivent laisser `init` le créer et le monter.
