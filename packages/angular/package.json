@@ -1,0 +1,36 @@
+{
+    "name": "@wp-nova/sdk-angular",
+    "version": "1.0.0",
+    "description": "Angular component and service wrappers for the Nova Chat SDK.",
+    "license": "MIT",
+    "private": false,
+    "type": "module",
+    "sideEffects": false,
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "build": "ng-packagr -p ng-package.json",
+        "check-types": "tsc -p tsconfig.lib.json --noEmit",
+        "dev": "ng-packagr -p ng-package.json --watch",
+        "lint": "biome check --formatter-enabled=false ./src --error-on-warnings",
+        "test": "vitest run --passWithNoTests"
+    },
+    "dependencies": {
+        "tslib": "^2.8.1"
+    },
+    "peerDependencies": {
+        "@angular/core": ">=17 <22",
+        "@wp-nova/sdk": "^1.0.0",
+        "rxjs": ">=7.8 <8"
+    },
+    "devDependencies": {
+        "@angular/compiler-cli": "^20.3.0",
+        "@angular/core": "^20.3.0",
+        "@wp-nova/typescript-config": "*",
+        "ng-packagr": "^20.3.0",
+        "typescript": "5.8.2",
+        "vitest": "^4.0.18",
+        "@wp-nova/sdk": "1.0.0"
+    }
+}

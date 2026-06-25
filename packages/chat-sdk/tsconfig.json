@@ -1,0 +1,11 @@
+{
+    "extends": "@wp-nova/typescript-config/base.json",
+    "compilerOptions": {
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "lib": ["ES2019", "DOM", "DOM.Iterable"],
+        "target": "ES2019"
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist"]
+}

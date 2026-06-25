@@ -1,0 +1,44 @@
+{
+    "name": "@wp-nova/sdk-react",
+    "version": "1.0.0",
+    "description": "React provider and hooks for the Nova Chat SDK.",
+    "license": "MIT",
+    "private": false,
+    "type": "module",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "scripts": {
+        "build": "tsup",
+        "check-types": "tsc --noEmit",
+        "dev": "tsup --watch",
+        "lint": "biome check --formatter-enabled=false ./src --error-on-warnings",
+        "test": "vitest run --passWithNoTests"
+    },
+    "dependencies": {
+        "@wp-nova/sdk": "1.0.0"
+    },
+    "peerDependencies": {
+        "react": ">=18 <20"
+    },
+    "devDependencies": {
+        "@types/react": "^19.0.10",
+        "@wp-nova/typescript-config": "*",
+        "tsup": "^8.5.0",
+        "typescript": "5.8.2",
+        "vitest": "^4.0.18"
+    }
+}

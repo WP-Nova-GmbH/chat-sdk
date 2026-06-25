@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nova Chat SDK Plain HTML Example</title>
+  </head>
+  <body>
+    <main>
+      <h1>Nova Chat SDK Plain HTML Example</h1>
+      <button id="demo-toast" type="button">Host-page action target</button>
+    </main>
+    <script>
+      ((w, d, s) => {
+        w.WpNova = w.WpNova || ((...args) => {
+          w.WpNova.q = w.WpNova.q || [];
+          w.WpNova.q.push(args);
+        });
+        var j = d.createElement(s);
+        j.async = 1;
+        j.src = "https://chat.wp-nova.ai/sdk/v1/sdk.js";
+        d.head.appendChild(j);
+      })(window, document, "script");
+
+      WpNova("registerToolHandler", "show_toast", (args) => {
+        document.getElementById("demo-toast").textContent = String(args.message || "Hello from Nova");
+        return { ok: true };
+      });
+
+      WpNova("init", {
+        publicSurfaceId: "srf_live_replace_me",
+        tokenEndpoint: "/api/nova-token",
+      });
+    </script>
+  </body>
+</html>

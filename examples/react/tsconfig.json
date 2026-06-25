@@ -1,0 +1,4 @@
+{
+    "extends": "@wp-nova/typescript-config/react.json",
+    "include": ["src"]
+}

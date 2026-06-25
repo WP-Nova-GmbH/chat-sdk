@@ -1,0 +1,17 @@
+{
+    "extends": "@wp-nova/typescript-config/angular.json",
+    "compilerOptions": {
+        "declaration": true,
+        "declarationMap": true,
+        "outDir": "dist",
+        "types": []
+    },
+    "exclude": [
+        "dist",
+        "node_modules",
+        "**/*.test.ts"
+    ],
+    "include": [
+        "src/**/*.ts"
+    ]
+}

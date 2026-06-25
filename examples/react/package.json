@@ -1,0 +1,25 @@
+{
+    "name": "@wp-nova/chat-sdk-example-react",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "build": "tsc --noEmit",
+        "check-types": "tsc --noEmit",
+        "lint": "biome check --formatter-enabled=false src",
+        "test": "vitest run --passWithNoTests"
+    },
+    "dependencies": {
+        "@wp-nova/sdk": "1.0.0",
+        "@wp-nova/sdk-react": "1.0.0",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0"
+    },
+    "devDependencies": {
+        "@types/react": "^19.0.10",
+        "@types/react-dom": "^19.0.4",
+        "@wp-nova/typescript-config": "*",
+        "typescript": "5.8.2",
+        "vitest": "^4.0.18"
+    }
+}

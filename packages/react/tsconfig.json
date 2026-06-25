@@ -1,0 +1,9 @@
+{
+    "extends": "@wp-nova/typescript-config/react.json",
+    "compilerOptions": {
+        "rootDir": "src",
+        "outDir": "dist"
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist"]
+}

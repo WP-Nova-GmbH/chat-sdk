@@ -1,0 +1,43 @@
+{
+    "name": "@wp-nova/sdk",
+    "version": "1.0.0",
+    "private": false,
+    "type": "module",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "unpkg": "./dist/index.global.js",
+    "jsdelivr": "./dist/index.global.js",
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "scripts": {
+        "build": "tsup && node ../../scripts/write-sri.mjs dist/index.global.js",
+        "prepublishOnly": "npm run build",
+        "dev": "tsup --watch",
+        "lint": "biome check --formatter-enabled=false ./src --error-on-warnings",
+        "lint:fix": "biome check --formatter-enabled=false --write ./src",
+        "check-types": "tsc --noEmit",
+        "test": "tsx --test --test-force-exit 'src/**/*.test.ts'"
+    },
+    "author": "",
+    "license": "MIT",
+    "description": "Framework-agnostic browser SDK that mounts the Nova-hosted embedded chat iframe and bridges page snapshots, navigation, and integrator tools over postMessage.",
+    "devDependencies": {
+        "@wp-nova/typescript-config": "*",
+        "tsup": "^8.5.0",
+        "typescript": "5.8.2",
+        "@biomejs/biome": "^2.4.5",
+        "tsx": "^4.19.4"
+    }
+}

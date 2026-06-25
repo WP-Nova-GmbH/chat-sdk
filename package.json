@@ -1,0 +1,34 @@
+{
+    "name": "nova-chat-sdk",
+    "private": true,
+    "type": "module",
+    "packageManager": "npm@11.6.0",
+    "engines": {
+        "node": ">=22"
+    },
+    "workspaces": [
+        "apps/*",
+        "packages/*",
+        "examples/*"
+    ],
+    "scripts": {
+        "build": "turbo run build",
+        "check-types": "turbo run check-types",
+        "dev": "turbo run dev --parallel",
+        "format": "biome format --write .",
+        "lint": "turbo run lint",
+        "lint:fix": "biome check --formatter-enabled=false --write .",
+        "pack:dry-run": "npm pack --dry-run --json --workspace packages/chat-sdk && npm pack --dry-run --json --workspace packages/react && npm --workspace @wp-nova/sdk-angular run build && npm pack --dry-run --json packages/angular/dist",
+        "test": "turbo run test",
+        "version-packages": "changeset version",
+        "release": "npm run build && changeset publish"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.4.5",
+        "@changesets/cli": "^2.29.7",
+        "turbo": "^2.9.3",
+        "tsx": "^4.19.4",
+        "typescript": "5.8.2",
+        "vitest": "^4.0.18"
+    }
+}

@@ -1,0 +1,42 @@
+---
+id: overview
+slug: /
+title: Overview
+hide_title: true
+---
+
+import { ImplementationPromptCallout } from "@site/src/components/ImplementationPromptCallout";
+
+# Nova Chat SDK
+
+<p className="nova-lede">Embed the Nova assistant into any website and wire it to your own DOM. The SDK ships the iframe shell, token refresh, page snapshots, navigation actions, and integrator tools while your backend keeps the secret.</p>
+
+<ImplementationPromptCallout />
+
+## Overview
+
+The Nova Chat SDK is the browser package that mounts a Nova-hosted chat iframe inside a customer-owned page. It is intentionally thin: the SDK owns the launcher, the iframe container, the token handoff, and the `postMessage` bridge. The iframe owns the conversation UI and talks to Nova services with a short-lived embedded-session token.
+
+The browser never receives an integration secret. Your app exposes a `tokenEndpoint` that authenticates the current user, calls Nova's `POST /embed/session` from the server, and returns the embedded-session response to the SDK.
+
+The SDK bridge handles three host-page capabilities:
+
+- Page snapshots that summarize visible text, links, controls, labels, selection, and safe field values.
+- Built-in navigation actions against stable element handles from the latest snapshot.
+- Integrator tools registered by your app with `registerToolHandler`.
+
+## Packages
+
+| Package | Purpose |
+| --- | --- |
+| `@wp-nova/sdk` | Framework-agnostic browser SDK and CDN artifact. |
+| `@wp-nova/sdk-react` | React provider, component, and hooks around the core SDK. |
+| `@wp-nova/sdk-angular` | Angular provider, service, and standalone component around the core SDK. |
+
+## Runtime Model
+
+1. The customer page loads `@wp-nova/sdk` by script tag or npm.
+2. The page calls `WpNova("init", { publicSurfaceId, tokenEndpoint })`.
+3. The SDK mounts `<wp-nova-chat>`, points its iframe at `<baseUrl>/embed/chat?surface=<publicSurfaceId>`, and fetches a token from the customer backend.
+4. The iframe sends bridge requests such as `REQUEST_SNAPSHOT` or `CLIENT_TOOL_REQUEST`.
+5. The SDK replies only after strict origin and source checks.

@@ -1,0 +1,34 @@
+{
+    "name": "@wp-nova/chat-sdk-docs",
+    "private": true,
+    "version": "1.0.0",
+    "scripts": {
+        "build": "docusaurus build",
+        "check-types": "tsc --noEmit",
+        "clear": "docusaurus clear",
+        "dev": "docusaurus start --host 0.0.0.0",
+        "lint": "biome check --formatter-enabled=false docusaurus.config.ts sidebars.ts src docs",
+        "serve": "docusaurus serve --host 0.0.0.0",
+        "test": "vitest run --passWithNoTests"
+    },
+    "dependencies": {
+        "@docusaurus/core": "3.10.1",
+        "@docusaurus/preset-classic": "3.10.1",
+        "@docusaurus/theme-common": "3.10.1",
+        "@docusaurus/theme-translations": "3.10.1",
+        "@mdx-js/react": "^3.1.0",
+        "clsx": "^2.1.1",
+        "prism-react-renderer": "^2.4.1",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0"
+    },
+    "devDependencies": {
+        "@docusaurus/module-type-aliases": "3.10.1",
+        "@docusaurus/tsconfig": "3.10.1",
+        "@docusaurus/types": "3.10.1",
+        "@types/react": "^19.0.10",
+        "@types/react-dom": "^19.0.4",
+        "typescript": "5.8.2",
+        "vitest": "^4.0.18"
+    }
+}

@@ -1,0 +1,24 @@
+{
+    "name": "@wp-nova/chat-sdk-example-angular",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "build": "tsc -p tsconfig.json --noEmit",
+        "check-types": "tsc -p tsconfig.json --noEmit",
+        "lint": "biome check --formatter-enabled=false src",
+        "test": "vitest run --passWithNoTests"
+    },
+    "dependencies": {
+        "@angular/core": "^20.3.0",
+        "@wp-nova/sdk": "1.0.0",
+        "@wp-nova/sdk-angular": "1.0.0",
+        "rxjs": "^7.8.1",
+        "tslib": "^2.8.1"
+    },
+    "devDependencies": {
+        "@wp-nova/typescript-config": "*",
+        "typescript": "5.8.2",
+        "vitest": "^4.0.18"
+    }
+}

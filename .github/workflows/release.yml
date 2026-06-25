@@ -1,0 +1,103 @@
+name: Release SDK
+
+on:
+    push:
+        tags:
+            - "sdk-*"
+    workflow_dispatch:
+        inputs:
+            version:
+                description: Version to publish, matching all public package manifests.
+                required: true
+                type: string
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+                  registry-url: "https://registry.npmjs.org"
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Derive SDK version
+              id: ver
+              run: |
+                  if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+                    VERSION="${{ inputs.version }}"
+                  else
+                    TAG="${GITHUB_REF#refs/tags/}"
+                    VERSION="${TAG#sdk-}"
+                  fi
+                  export VERSION
+
+                  node <<'NODE'
+                  const version = process.env.VERSION;
+                  const manifests = [
+                    ["@wp-nova/sdk", "packages/chat-sdk/package.json"],
+                    ["@wp-nova/sdk-react", "packages/react/package.json"],
+                    ["@wp-nova/sdk-angular", "packages/angular/package.json"],
+                  ];
+                  for (const [name, manifestPath] of manifests) {
+                    const manifest = require(`./${manifestPath}`);
+                    if (manifest.version !== version) {
+                      throw new Error(`${name} is ${manifest.version}, expected ${version}`);
+                    }
+                  }
+                  NODE
+
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+            - name: Validate release
+              run: |
+                  npm run build
+                  npm run check-types
+                  npm run lint
+                  npm test
+                  npm run pack:dry-run
+
+            - name: Publish npm packages
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: |
+                  npm publish --workspace packages/chat-sdk --access public
+                  npm publish --workspace packages/react --access public
+                  npm publish packages/angular/dist --access public
+
+            - name: Stage CDN artifacts
+              id: stage
+              run: |
+                  VERSION="${{ steps.ver.outputs.version }}"
+                  SRC="packages/chat-sdk/dist/index.global.js"
+                  SRI="packages/chat-sdk/dist/index.global.js.sri"
+                  STAGE="cdn-upload"
+                  rm -rf "$STAGE"
+                  mkdir -p "$STAGE/sdk/$VERSION" "$STAGE/sdk/v1"
+                  cp "$SRC" "$STAGE/sdk/$VERSION/sdk.js"
+                  cp "$SRC" "$STAGE/sdk/v1/sdk.js"
+                  cp "$SRI" "$STAGE/sdk/$VERSION/sdk.js.sri"
+                  INTEGRITY="$(cat "$SRI")"
+                  echo "integrity=$INTEGRITY" >> "$GITHUB_OUTPUT"
+                  echo "Immutable URL: https://chat.wp-nova.ai/sdk/$VERSION/sdk.js"
+                  echo "  integrity:   $INTEGRITY"
+                  echo "Rolling URL:   https://chat.wp-nova.ai/sdk/v1/sdk.js (no SRI)"
+
+            - name: Upload CDN artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: sdk-${{ steps.ver.outputs.version }}-cdn
+                  path: cdn-upload/
+                  retention-days: 30
