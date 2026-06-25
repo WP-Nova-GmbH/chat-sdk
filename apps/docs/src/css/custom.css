@@ -261,6 +261,7 @@ html[data-theme="dark"] .nova-wordmark--mono {
 
 .nova-dropdown {
     position: relative;
+    --nova-dropdown-gap: 6px;
 }
 
 .nova-dropdown__button,
@@ -322,7 +323,7 @@ html[data-theme="dark"] .nova-theme-toggle__moon {
 
 .nova-dropdown__menu {
     position: absolute;
-    top: calc(100% + 8px);
+    top: calc(100% + var(--nova-dropdown-gap));
     right: 0;
     z-index: 120;
     display: none;
@@ -334,7 +335,17 @@ html[data-theme="dark"] .nova-theme-toggle__moon {
     box-shadow: 0 10px 34px rgba(20, 20, 34, 0.16);
 }
 
+.nova-dropdown__menu::before {
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    left: 0;
+    height: var(--nova-dropdown-gap);
+    content: "";
+}
+
 .nova-dropdown:hover .nova-dropdown__menu,
+.nova-dropdown:focus-within .nova-dropdown__menu,
 .nova-dropdown__menu:hover {
     display: block;
 }
