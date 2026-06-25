@@ -42,8 +42,11 @@ export interface BridgeHandlers {
     onClientToolRequest: (call: ClientToolCall) => Promise<ClientToolResult>;
     /** The embedded-session token expired; re-fetch + re-push AUTH_TOKEN. */
     onAuthExpired: () => void;
-    /** The iframe announced READY; the host pushes the token + REGISTER_TOOLS. */
-    onReady: (minVersion?: number, maxVersion?: number) => void;
+    /**
+     * The iframe announced READY; the host pushes the token + REGISTER_TOOLS.
+     * Return false to reject the iframe protocol and fail closed.
+     */
+    onReady: (minVersion?: number, maxVersion?: number) => boolean | undefined;
     /** A confirmation decision arrived from the iframe (optional host hook). */
     onConfirmationResult?: (correlationId: string, approved: boolean) => void;
     /** The iframe's header asked to minimize; the host closes the panel. */
@@ -110,6 +113,7 @@ export class Bridge {
     private readonly listener: (event: MessageEvent) => void;
     private iframeWindow: Window | null = null;
     private listening = false;
+    private protocolAccepted = false;
 
     constructor(config: ResolvedConfig, handlers: BridgeHandlers) {
         this.config = config;
@@ -119,6 +123,9 @@ export class Bridge {
 
     /** Bind the iframe's contentWindow once it exists. */
     setIframeWindow(win: Window | null): void {
+        if (win !== this.iframeWindow) {
+            this.protocolAccepted = false;
+        }
         this.iframeWindow = win;
     }
 
@@ -158,6 +165,16 @@ export class Bridge {
         });
     }
 
+    /** Tell the iframe token acquisition failed before a session token was issued. */
+    sendAuthError(message: string): void {
+        this.post({
+            source: SDK_SOURCE,
+            protocolVersion: this.config.protocolVersion,
+            type: "AUTH_ERROR",
+            message,
+        });
+    }
+
     /** Tell the iframe which integrator tool handlers the host has registered. */
     sendRegisterTools(tools: string[]): void {
         this.post({
@@ -185,24 +202,32 @@ export class Bridge {
 
         switch (data.type) {
             case "READY":
-                this.handlers.onReady(data.minProtocolVersion, data.maxProtocolVersion);
+                this.protocolAccepted =
+                    this.handlers.onReady(data.minProtocolVersion, data.maxProtocolVersion) !==
+                    false;
                 break;
             case "REQUEST_SNAPSHOT":
+                if (!this.protocolAccepted) return;
                 this.handleSnapshot(data.correlationId);
                 break;
             case "CLIENT_TOOL_REQUEST":
+                if (!this.protocolAccepted) return;
                 void this.handleClientTool(data.correlationId, data.call);
                 break;
             case "CONFIRMATION_RESULT":
+                if (!this.protocolAccepted) return;
                 this.handlers.onConfirmationResult?.(data.correlationId, data.approved);
                 break;
             case "AUTH_EXPIRED":
+                if (!this.protocolAccepted) return;
                 this.handlers.onAuthExpired();
                 break;
             case "MINIMIZE":
+                if (!this.protocolAccepted) return;
                 this.handlers.onMinimize?.();
                 break;
             case "SURFACE_THEME":
+                if (!this.protocolAccepted) return;
                 this.handlers.onSurfaceTheme?.({
                     accent: data.accent,
                     triggerColor: data.triggerColor,

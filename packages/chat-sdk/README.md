@@ -168,7 +168,9 @@ load) reuses the existing element instead of mounting a second one. If the ifram
 identity changes (`publicSurfaceId`, `baseUrl`, or `protocolVersion`), the element
 rebuilds the iframe/bridge and clears buffered auth before fetching a fresh token.
 The element guards `customElements.define`, `window.WpNova`, and the message
-listener.
+listener. Framework wrappers call `destroy()` when disabled or unmounted; direct
+SDK users can call `WpNova("destroy")` or `destroy()` to remove the launcher,
+iframe, timers, and bridge listener.
 
 ## Page snapshot (Visible Page Snapshot)
 
@@ -223,6 +225,12 @@ re-issued handles:
 | `set_filter` | Set a search/filter field value (fires `input`/`change`). |
 | `scroll_to` | Scroll a handle into view. |
 | `highlight` | Scroll to and briefly outline a handle. |
+
+For same-origin URL/link navigation, the SDK first dispatches a cancelable
+`wp-nova:navigate` event with `{ url }`. SPA routers can handle the route and
+call `preventDefault()`; if they do not, the SDK falls back to normal document
+navigation instead of reporting a successful route change against an unchanged
+page.
 
 If a handle no longer resolves (SPA re-render), the SDK falls back to the handle's
 fingerprint (stable selector → role + accessible name) and, failing that, returns

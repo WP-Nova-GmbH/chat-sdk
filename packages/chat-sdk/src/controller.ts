@@ -8,6 +8,7 @@ export type Command =
     | ["init", SdkConfig]
     | ["registerToolHandler", string, ToolHandler]
     | ["unregisterToolHandler", string]
+    | ["destroy"]
     | [string, ...unknown[]];
 
 /** The callable + queue carried on `window.WpNova` before the CDN bundle loads. */
@@ -38,6 +39,9 @@ class SdkController {
             case "unregisterToolHandler":
                 this.registry.unregister(rest[0] as string);
                 break;
+            case "destroy":
+                this.destroy();
+                break;
             default:
                 console.warn(`[wp-nova] unknown command: ${String(command)}`);
         }
@@ -59,6 +63,11 @@ class SdkController {
         }
 
         this.element.setConfig(config);
+    }
+
+    private destroy(): void {
+        this.element?.destroy();
+        this.element = undefined;
     }
 
     private mountInto(element: HTMLElement, mount?: string | HTMLElement): void {
@@ -106,6 +115,10 @@ export function registerToolHandler(name: string, handler: ToolHandler): void {
 
 export function unregisterToolHandler(name: string): void {
     WpNova("unregisterToolHandler", name);
+}
+
+export function destroy(): void {
+    WpNova("destroy");
 }
 
 /**

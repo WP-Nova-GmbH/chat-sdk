@@ -170,25 +170,32 @@ function resolveSameOriginUrl(url: string): string | null {
     return resolved.href;
 }
 
+type NavigationMode = "host" | "document";
+
 /**
- * Move the host app to a same-origin URL without unloading the SDK/iframe bridge.
- * Host routers can either react to the standard popstate event or listen for the
- * explicit `wp-nova:navigate` hook.
+ * Move the host app to a same-origin URL. SPA routers can intercept the
+ * cancelable `wp-nova:navigate` event and call preventDefault() after handling
+ * the route; otherwise the SDK falls back to normal document navigation.
  */
-function navigateSameDocument(target: string): void {
-    history.pushState({}, "", target);
-
-    const popStateEvent =
-        typeof PopStateEvent === "function"
-            ? new PopStateEvent("popstate", { state: history.state })
-            : new Event("popstate");
-    window.dispatchEvent(popStateEvent);
-
+function navigateSameDocument(target: string): { mode: NavigationMode } {
     const navigateEvent =
         typeof CustomEvent === "function"
-            ? new CustomEvent("wp-nova:navigate", { detail: { url: target } })
-            : new Event("wp-nova:navigate");
-    window.dispatchEvent(navigateEvent);
+            ? new CustomEvent("wp-nova:navigate", {
+                  cancelable: true,
+                  detail: { url: target },
+              })
+            : new Event("wp-nova:navigate", { cancelable: true });
+    const notCanceled = window.dispatchEvent(navigateEvent);
+    if (!notCanceled || navigateEvent.defaultPrevented) {
+        return { mode: "host" };
+    }
+
+    if (typeof location.assign === "function") {
+        location.assign(target);
+    } else {
+        location.href = target;
+    }
+    return { mode: "document" };
 }
 
 /**
@@ -251,8 +258,8 @@ export async function executeNavigation(
                 // navigation while keeping same-origin relative URLs working.
                 const target = resolveSameOriginUrl(args.url);
                 if (!target) throw new StaleHandleError(args.url);
-                result = { ok: true, navigatedTo: target };
-                navigateSameDocument(target);
+                const navigation = navigateSameDocument(target);
+                result = { ok: true, navigatedTo: target, navigation: navigation.mode };
                 break;
             }
             const { handle, fingerprint } = targetHandle(args);
@@ -260,8 +267,13 @@ export async function executeNavigation(
             scrollAndHighlight(el);
             const target = sameOriginAnchorHref(el);
             if (target) {
-                navigateSameDocument(target);
-                result = { ok: true, navigatedTo: target, clicked: handle };
+                const navigation = navigateSameDocument(target);
+                result = {
+                    ok: true,
+                    navigatedTo: target,
+                    clicked: handle,
+                    navigation: navigation.mode,
+                };
             } else {
                 el.click();
                 result = { ok: true, clicked: handle };
@@ -278,8 +290,13 @@ export async function executeNavigation(
             if (typeof args.url === "string" && args.url) {
                 const target = resolveSameOriginUrl(args.url);
                 if (!target) throw new StaleHandleError(args.url);
-                navigateSameDocument(target);
-                result = { ok: true, navigatedTo: target, openedUrl: target };
+                const navigation = navigateSameDocument(target);
+                result = {
+                    ok: true,
+                    navigatedTo: target,
+                    openedUrl: target,
+                    navigation: navigation.mode,
+                };
                 break;
             }
             const { handle, fingerprint } = targetHandle(args);
@@ -287,8 +304,13 @@ export async function executeNavigation(
             scrollAndHighlight(el);
             const target = sameOriginAnchorHref(el);
             if (target) {
-                navigateSameDocument(target);
-                result = { ok: true, navigatedTo: target, opened: handle };
+                const navigation = navigateSameDocument(target);
+                result = {
+                    ok: true,
+                    navigatedTo: target,
+                    opened: handle,
+                    navigation: navigation.mode,
+                };
             } else {
                 el.click();
                 result = { ok: true, opened: handle };

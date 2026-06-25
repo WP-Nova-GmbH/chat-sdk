@@ -1,11 +1,19 @@
-import { Component, Input, inject, type OnChanges, type OnDestroy, type OnInit, type SimpleChanges } from "@angular/core";
+import {
+    Component,
+    Input,
+    inject,
+    type OnChanges,
+    type OnDestroy,
+    type OnInit,
+    type SimpleChanges,
+} from "@angular/core";
 import type { SdkConfig, ToolHandler } from "@wp-nova/sdk";
 import { NovaChatService } from "./nova-chat.service";
 
 @Component({
     selector: "wp-nova-chat-mount",
     standalone: true,
-    template: ""
+    template: "",
 })
 export class NovaChatComponent implements OnInit, OnChanges, OnDestroy {
     @Input() config?: SdkConfig;
@@ -25,6 +33,7 @@ export class NovaChatComponent implements OnInit, OnChanges, OnDestroy {
 
     ngOnDestroy(): void {
         this.unregisterTools();
+        this.nova.destroy();
     }
 
     private unregisterTools(): void {
@@ -37,7 +46,10 @@ export class NovaChatComponent implements OnInit, OnChanges, OnDestroy {
     private sync(): void {
         this.unregisterTools();
 
-        if (!this.enabled) return;
+        if (!this.enabled) {
+            this.nova.destroy();
+            return;
+        }
         if (this.config) this.nova.init(this.config);
 
         this.toolNames = Object.keys(this.tools ?? {});

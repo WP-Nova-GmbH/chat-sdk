@@ -213,6 +213,55 @@ test("token transport errors schedule a cooldown retry", async () => {
     }
 });
 
+test("token transport errors are forwarded to a ready iframe", async () => {
+    __resetTokenCooldownForTests();
+    const sentErrors: string[] = [];
+    const element = makeElement() as {
+        resolved: Record<string, unknown>;
+        iframeReady: boolean;
+        bridge?: {
+            sendAuthError: (message: string) => void;
+        };
+        acquireToken: () => Promise<void>;
+    };
+    element.resolved = {
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token",
+        baseUrl: "https://chat.wp-nova.ai",
+        iframeOrigin: "https://chat.wp-nova.ai",
+        iframeSrc: "https://chat.wp-nova.ai/embed/chat",
+        title: "Assistant",
+        accent: "#111",
+        triggerColor: "#111111",
+        triggerIconColor: "light",
+        safeValueSelectors: [],
+        protocolVersion: 1,
+    };
+    element.iframeReady = true;
+    element.bridge = {
+        sendAuthError: (message) => {
+            sentErrors.push(message);
+        },
+    };
+
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => ({
+            ok: false,
+            status: 401,
+            json: async () => ({}),
+        }),
+    });
+
+    try {
+        await element.acquireToken();
+
+        assert.deepEqual(sentErrors, ["token endpoint returned 401"]);
+    } finally {
+        __resetTokenCooldownForTests();
+    }
+});
+
 test("stale token responses after frame reset are ignored", async () => {
     let resolveFetch: (response: unknown) => void = () => undefined;
     const sentTokens: string[] = [];

@@ -26,10 +26,10 @@
 // keeps its existing handle id so background captures cannot invalidate handles
 // the model just saw.
 //
-// SIZE BUDGET: enforced client-side BEFORE postMessage. A priority order
-// (selection > viewport-visible controls/links/labeled fields > off-viewport
-// long tail) fills bounded budgets for handle count, visible-text chars, and
-// per-field value length; anything dropped flips `truncated: true`.
+// SIZE BUDGET: enforced client-side BEFORE postMessage. Viewport-visible
+// controls/links/labeled fields fill bounded budgets for handle count,
+// visible-text chars, and per-field value length; anything dropped flips
+// `truncated: true`.
 //
 // SCOPE: open shadow roots are traversed (composed). Closed shadow roots,
 // cross-origin iframes, and canvas/WebGL/SVG-only regions cannot be read and
@@ -122,7 +122,7 @@ function isExcludedSubtree(el: Element): boolean {
     return false;
 }
 
-/** True when the element renders with a non-zero box inside the viewport. */
+/** True when the element renders with a non-zero box that overlaps the viewport. */
 function isVisible(el: Element): boolean {
     const html = el as HTMLElement;
     if (!html.getClientRects || html.getClientRects().length === 0) return false;
@@ -132,7 +132,7 @@ function isVisible(el: Element): boolean {
     }
     const rect = html.getBoundingClientRect();
     if (rect.width === 0 && rect.height === 0) return false;
-    return true;
+    return isInViewport(el);
 }
 
 /** True when the element's box currently overlaps the viewport. */
@@ -201,15 +201,7 @@ function mayCaptureValue(el: Element, safeSelectors: string[]): boolean {
     if (autocomplete.startsWith("cc-") || HARD_EXCLUDE_AUTOCOMPLETE.has(autocomplete)) return false;
 
     // Hard-exclude by sensitive name / id / placeholder / aria-label.
-    const descriptors = [
-        el.getAttribute("name"),
-        el.getAttribute("id"),
-        el.getAttribute("placeholder"),
-        el.getAttribute("aria-label"),
-    ];
-    for (const descriptor of descriptors) {
-        if (descriptor && SENSITIVE_NAME_RE.test(descriptor)) return false;
-    }
+    if (hasSensitiveDescriptor(el)) return false;
 
     // Opt-in gate: the element or an ancestor carries data-wp-nova-include, OR
     // the element matches a per-surface safe selector.
@@ -228,6 +220,19 @@ function safeMatch(el: Element, selector: string): boolean {
     }
 }
 
+function hasSensitiveDescriptor(el: Element, extraDescriptors: Array<string | null> = []): boolean {
+    const descriptors = [
+        el.getAttribute("name"),
+        el.getAttribute("id"),
+        el.getAttribute("placeholder"),
+        el.getAttribute("aria-label"),
+        ...extraDescriptors,
+    ];
+    return descriptors.some((descriptor) =>
+        Boolean(descriptor && SENSITIVE_NAME_RE.test(descriptor)),
+    );
+}
+
 /** Read + cap a field value (already passed `mayCaptureValue`). */
 function readValue(el: Element): string | undefined {
     const html = el as HTMLInputElement | HTMLTextAreaElement;
@@ -241,12 +246,31 @@ function readValue(el: Element): string | undefined {
     return trimmed ? trimmed.slice(0, FIELD_VALUE_CAP) : undefined;
 }
 
+function normalizeText(value: string): string {
+    return value.replace(/\s+/g, " ").trim();
+}
+
+/** Direct text nodes only, so ignored/hidden descendants cannot leak via parent textContent. */
+function directText(el: Element): string {
+    const childNodes = (el as Element & { childNodes?: ArrayLike<ChildNode> }).childNodes;
+    if (childNodes) {
+        return normalizeText(
+            Array.from(childNodes)
+                .filter((node) => node.nodeType === 3)
+                .map((node) => node.textContent || "")
+                .join(" "),
+        );
+    }
+
+    // Test doubles may not model childNodes; keep the old leaf fallback for them.
+    return el.children.length === 0 ? normalizeText(el.textContent || "") : "";
+}
+
 // --- Traversal ---------------------------------------------------------------
 
-/** A candidate element collected during traversal, with priority + viewport flag. */
+/** A visible candidate element collected during traversal. */
 interface Candidate {
     el: Element;
-    inViewport: boolean;
 }
 
 /**
@@ -277,11 +301,10 @@ function collect(
         const shadow = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
 
         if (isVisible(el)) {
-            const inViewport = isInViewport(el);
             if (tag === "a" && el.getAttribute("href")) {
-                links.push({ el, inViewport });
+                links.push({ el });
             } else if (CONTROL_TAGS.has(tag) || el.getAttribute("contenteditable") !== null) {
-                controls.push({ el, inViewport });
+                controls.push({ el });
             }
         }
 
@@ -317,26 +340,22 @@ function captureVisibleText(
                 state.partial = true;
                 continue;
             }
-            // Leaf-ish text: take the element's own direct text when it has no
-            // element children (avoids duplicating ancestor text). Apply the
-            // SAME default-deny field-value gate as the controls loop: a
-            // contenteditable / form field's typed text is OMITTED unless
-            // mayCaptureValue opts it in, so typed PII never leaks via the
-            // highest-risk visibleText path while label/structure text flows.
-            const hasElementChildren = el.children.length > 0;
+            // Take direct text nodes only (avoids duplicating descendant text
+            // and prevents ignored descendants from leaking via parent textContent).
+            // Apply the SAME default-deny field-value gate as the controls loop:
+            // contenteditable / form field typed text is OMITTED unless opted in.
             const isFieldLike =
                 tag === "input" ||
                 tag === "textarea" ||
                 tag === "select" ||
                 el.getAttribute("contenteditable") !== null;
-            if (!hasElementChildren && (!isFieldLike || mayCaptureValue(el, safeSelectors))) {
-                const own = el.textContent?.replace(/\s+/g, " ").trim();
-                if (own) {
-                    const slice = own.slice(0, budget);
-                    parts.push(slice);
-                    budget -= slice.length;
-                    if (slice.length < own.length) truncated = true;
-                }
+            if (isFieldLike && !mayCaptureValue(el, safeSelectors)) continue;
+            const own = directText(el);
+            if (own) {
+                const slice = own.slice(0, budget);
+                parts.push(slice);
+                budget -= slice.length;
+                if (slice.length < own.length) truncated = true;
             }
             const shadow = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
             walk(el);
@@ -390,12 +409,6 @@ export function captureVisiblePageSnapshot(safeSelectors: string[] = []): Visibl
         });
         return id;
     };
-
-    // Prioritize viewport-visible elements over the off-viewport long tail.
-    const byViewportFirst = (a: Candidate, b: Candidate): number =>
-        a.inViewport === b.inViewport ? 0 : a.inViewport ? -1 : 1;
-    linkCandidates.sort(byViewportFirst);
-    controlCandidates.sort(byViewportFirst);
 
     const links: VisibleLink[] = [];
     for (const { el } of linkCandidates) {
@@ -507,8 +520,10 @@ function captureAiFields(): Record<string, string | undefined> {
     const fields: Record<string, string | undefined> = {};
     const nodes = document.querySelectorAll("[data-ai-context]");
     for (const node of Array.from(nodes)) {
-        const name = node.getAttribute("data-ai-context");
-        const text = node.textContent ? node.textContent.trim() : "";
+        if (isExcludedSubtree(node) || !isVisible(node)) continue;
+        const name = node.getAttribute("data-ai-context")?.trim();
+        if (!name || hasSensitiveDescriptor(node, [name])) continue;
+        const text = normalizeText(node.textContent || "").slice(0, FIELD_VALUE_CAP);
         if (name && text) fields[name] = text;
     }
     return fields;

@@ -5,6 +5,7 @@ import {
     useContext,
     useEffect,
     useMemo,
+    useRef,
 } from "react";
 
 type SdkModule = typeof import("@wp-nova/sdk");
@@ -26,6 +27,7 @@ export interface NovaChatApi {
     init: (config: SdkConfig) => Promise<void>;
     registerToolHandler: (name: string, handler: ToolHandler) => Promise<void>;
     unregisterToolHandler: (name: string) => Promise<void>;
+    destroy: () => Promise<void>;
 }
 
 const NovaChatContext = createContext<NovaChatApi | null>(null);
@@ -49,6 +51,10 @@ function useSdkApi(): NovaChatApi {
                 const sdk = await loadSdk();
                 sdk.unregisterToolHandler(name);
             },
+            async destroy() {
+                const sdk = await loadSdk();
+                sdk.destroy();
+            },
         }),
         [],
     );
@@ -61,11 +67,29 @@ export function NovaChatProvider({
     tools,
 }: NovaChatProviderProps) {
     const api = useSdkApi();
+    const wasEnabled = useRef(false);
 
     useEffect(() => {
-        if (!enabled) return;
+        if (!enabled) {
+            if (wasEnabled.current) {
+                wasEnabled.current = false;
+                void api.destroy();
+            }
+            return;
+        }
+        wasEnabled.current = true;
         void api.init(config);
     }, [api, config, enabled]);
+
+    useEffect(
+        () => () => {
+            if (wasEnabled.current) {
+                wasEnabled.current = false;
+                void api.destroy();
+            }
+        },
+        [api],
+    );
 
     useEffect(() => {
         if (!enabled || !tools) return;

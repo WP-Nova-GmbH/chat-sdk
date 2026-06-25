@@ -137,6 +137,26 @@ export class WpNovaChatElement extends HTMLElement {
         else this.open();
     }
 
+    /** Explicit teardown used by framework wrappers and the public destroy command. */
+    destroy(): void {
+        this.clearRefresh();
+        this.clearErrorRetry();
+        this.bridge?.stop();
+        this.bridge = undefined;
+        this.iframe = undefined;
+        this.panel = undefined;
+        this.launcher = undefined;
+        this.shadowReady = false;
+        this.iframeReady = false;
+        this.booting = false;
+        this.tokenRequestId++;
+        this.lastToken = undefined;
+        this.lastDisplaySettings = undefined;
+        this.lastUnavailable = undefined;
+        this.lastAuthError = undefined;
+        this.remove();
+    }
+
     /** Idempotent boot: render the shell once, wire the bridge, fetch the token. */
     private boot(): void {
         if (!this.resolved || this.booting) return;
@@ -174,6 +194,7 @@ export class WpNovaChatElement extends HTMLElement {
         this.lastToken = undefined;
         this.lastDisplaySettings = undefined;
         this.lastUnavailable = undefined;
+        this.lastAuthError = undefined;
     }
 
     /**
@@ -278,7 +299,7 @@ export class WpNovaChatElement extends HTMLElement {
                             maxVersion ?? "?"
                         } does not support SDK protocol ${config.protocolVersion}`,
                     );
-                    return;
+                    return false;
                 }
                 this.iframeReady = true;
                 // Push the latest token (if any) and the current handler set; if the
@@ -289,7 +310,9 @@ export class WpNovaChatElement extends HTMLElement {
                         this.lastUnavailable.email,
                         this.lastUnavailable.message,
                     );
+                else if (this.lastAuthError) bridge.sendAuthError(this.lastAuthError);
                 bridge.sendRegisterTools(this.registry.names());
+                return true;
             },
         });
         bridge.setIframeWindow(this.iframe?.contentWindow ?? null);
@@ -361,6 +384,7 @@ export class WpNovaChatElement extends HTMLElement {
     private lastToken?: string;
     private lastDisplaySettings?: SurfaceDisplaySettings | null;
     private lastUnavailable?: { email: string; message: string };
+    private lastAuthError?: string;
 
     /**
      * Fetch a token from the customer's tokenEndpoint and act on the typed
@@ -379,6 +403,7 @@ export class WpNovaChatElement extends HTMLElement {
             this.lastToken = result.token;
             this.lastDisplaySettings = result.displaySettings ?? null;
             this.lastUnavailable = undefined;
+            this.lastAuthError = undefined;
             this.applyLauncherTheme({
                 accent: this.lastDisplaySettings?.accent,
                 triggerColor: this.lastDisplaySettings?.triggerColor,
@@ -394,11 +419,17 @@ export class WpNovaChatElement extends HTMLElement {
             this.lastToken = undefined;
             this.lastDisplaySettings = undefined;
             this.lastUnavailable = { email: result.email, message: result.message };
+            this.lastAuthError = undefined;
             this.revealLauncherTheme();
             this.clearRefresh();
             if (this.iframeReady) this.bridge?.sendUnavailable(result.email, result.message);
         } else {
+            this.lastToken = undefined;
+            this.lastDisplaySettings = undefined;
+            this.lastUnavailable = undefined;
+            this.lastAuthError = result.message;
             this.revealLauncherTheme();
+            if (this.iframeReady) this.bridge?.sendAuthError(result.message);
             this.armErrorRetry();
         }
     }

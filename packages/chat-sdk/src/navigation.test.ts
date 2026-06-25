@@ -27,7 +27,7 @@ function restoreBrowserGlobals(): void {
     }
 }
 
-test("URL navigation stays in-document and returns a tool result", async () => {
+test("URL navigation falls back to document navigation and returns a tool result", async () => {
     const events: string[] = [];
     let assignedUrl: string | undefined;
     let pushedUrl: string | undefined;
@@ -37,6 +37,8 @@ test("URL navigation stays in-document and returns a tool result", async () => {
         origin: "https://app.example",
         assign(url: string) {
             assignedUrl = url;
+            locationStub.href = url;
+            locationStub.pathname = new URL(url).pathname;
         },
     };
 
@@ -110,12 +112,91 @@ test("URL navigation stays in-document and returns a tool result", async () => {
             [],
         );
 
-        assert.equal(assignedUrl, undefined);
-        assert.equal(pushedUrl, "https://app.example/orders/9");
-        assert.deepEqual(events, ["popstate", "wp-nova:navigate"]);
+        assert.equal(assignedUrl, "https://app.example/orders/9");
+        assert.equal(pushedUrl, undefined);
+        assert.deepEqual(events, ["wp-nova:navigate"]);
         assert.deepEqual(result.result, {
             ok: true,
             navigatedTo: "https://app.example/orders/9",
+            navigation: "document",
+        });
+        assert.equal(result.snapshot?.url, "https://app.example/orders/9");
+    } finally {
+        restoreBrowserGlobals();
+    }
+});
+
+test("URL navigation lets host routers intercept the navigation event", async () => {
+    const events: string[] = [];
+    let assignedUrl: string | undefined;
+    const locationStub = {
+        href: "https://app.example/orders",
+        pathname: "/orders",
+        origin: "https://app.example",
+        assign(url: string) {
+            assignedUrl = url;
+        },
+    };
+
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: locationStub,
+    });
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            innerHeight: 800,
+            innerWidth: 1200,
+            dispatchEvent(event: Event) {
+                events.push(event.type);
+                if (event.type === "wp-nova:navigate") {
+                    event.preventDefault();
+                    locationStub.href = (event as CustomEvent<{ url: string }>).detail.url;
+                    locationStub.pathname = new URL(locationStub.href).pathname;
+                }
+                return !event.defaultPrevented;
+            },
+            getSelection: () => "",
+        },
+    });
+    Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: {
+            title: "Orders",
+            body: { children: [] },
+            children: [],
+            documentElement: { clientHeight: 800, clientWidth: 1200 },
+            querySelector: () => null,
+            querySelectorAll: () => [],
+        },
+    });
+    Object.defineProperty(globalThis, "requestAnimationFrame", {
+        configurable: true,
+        value: (callback: FrameRequestCallback) => {
+            callback(0);
+            return 1;
+        },
+    });
+    Object.defineProperty(globalThis, "CustomEvent", {
+        configurable: true,
+        value: class extends Event {
+            detail: unknown;
+            constructor(type: string, init?: CustomEventInit) {
+                super(type, init);
+                this.detail = init?.detail;
+            }
+        },
+    });
+
+    try {
+        const result = await executeNavigation({ name: "navigate", args: { url: "/orders/9" } });
+
+        assert.equal(assignedUrl, undefined);
+        assert.deepEqual(events, ["wp-nova:navigate"]);
+        assert.deepEqual(result.result, {
+            ok: true,
+            navigatedTo: "https://app.example/orders/9",
+            navigation: "host",
         });
         assert.equal(result.snapshot?.url, "https://app.example/orders/9");
     } finally {
@@ -130,6 +211,11 @@ test("open_record can use a durable same-origin URL", async () => {
         href: "https://app.example/customers",
         pathname: "/customers",
         origin: "https://app.example",
+        assign(url: string) {
+            pushedUrl = url;
+            locationStub.href = url;
+            locationStub.pathname = new URL(url).pathname;
+        },
     };
 
     Object.defineProperty(globalThis, "location", {
@@ -203,11 +289,12 @@ test("open_record can use a durable same-origin URL", async () => {
         });
 
         assert.equal(pushedUrl, "https://app.example/customers/cus-001");
-        assert.deepEqual(events, ["popstate", "wp-nova:navigate"]);
+        assert.deepEqual(events, ["wp-nova:navigate"]);
         assert.deepEqual(result.result, {
             ok: true,
             navigatedTo: "https://app.example/customers/cus-001",
             openedUrl: "https://app.example/customers/cus-001",
+            navigation: "document",
         });
     } finally {
         restoreBrowserGlobals();
@@ -221,6 +308,11 @@ test("stale handle fallback resolves an anchor by implicit link role and exact n
         href: "https://app.example/customers",
         pathname: "/customers",
         origin: "https://app.example",
+        assign(url: string) {
+            pushedUrl = url;
+            locationStub.href = url;
+            locationStub.pathname = new URL(url).pathname;
+        },
     };
     const anchor = {
         tagName: "A",
@@ -276,7 +368,8 @@ test("stale handle fallback resolves an anchor by implicit link role and exact n
             children: [],
             documentElement: { clientHeight: 800, clientWidth: 1200 },
             querySelector: () => null,
-            querySelectorAll: () => [anchor],
+            querySelectorAll: (selector: string) =>
+                selector === "a, button, input, select, textarea, [role]" ? [anchor] : [],
         },
     });
     Object.defineProperty(globalThis, "requestAnimationFrame", {
@@ -315,11 +408,12 @@ test("stale handle fallback resolves an anchor by implicit link role and exact n
         });
 
         assert.equal(pushedUrl, "https://app.example/customers/cus-001");
-        assert.deepEqual(events, ["popstate", "wp-nova:navigate"]);
+        assert.deepEqual(events, ["wp-nova:navigate"]);
         assert.deepEqual(result.result, {
             ok: true,
             navigatedTo: "https://app.example/customers/cus-001",
             opened: "stale-handle",
+            navigation: "document",
         });
         assert.equal(result.snapshot?.url, "https://app.example/customers/cus-001");
     } finally {

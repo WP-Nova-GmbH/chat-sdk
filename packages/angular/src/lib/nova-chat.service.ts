@@ -27,6 +27,11 @@ export class NovaChatService {
         void this.load().then((sdk) => sdk.unregisterToolHandler(name));
     }
 
+    destroy(): void {
+        this.registeredTools.clear();
+        void this.load().then((sdk) => sdk.destroy());
+    }
+
     destroyRegisteredTools(): void {
         for (const name of this.registeredTools) {
             this.unregisterToolHandler(name);

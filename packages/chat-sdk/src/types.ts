@@ -288,6 +288,14 @@ export interface UnavailableFrame extends FrameBase {
     message: string;
 }
 
+/** Tell the iframe token acquisition failed for transport or malformed-response reasons. */
+export interface AuthErrorFrame extends FrameBase {
+    source: SdkSource;
+    type: "AUTH_ERROR";
+    /** User-renderable transport/error message. No token was issued. */
+    message: string;
+}
+
 /** Union of every frame the SDK sends to the iframe. */
 export type SdkFrame =
     | AuthTokenFrame
@@ -296,7 +304,8 @@ export type SdkFrame =
     | ClientToolResultFrame
     | ClientToolErrorFrame
     | RegisterToolsFrame
-    | UnavailableFrame;
+    | UnavailableFrame
+    | AuthErrorFrame;
 
 // ---------------------------------------------------------------------------
 // Wire frames — iframe → SDK (source = "wp-nova-embed")

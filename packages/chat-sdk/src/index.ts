@@ -1,5 +1,6 @@
 export {
     type Command,
+    destroy,
     init,
     installGlobal,
     type QueuedWpNova,
