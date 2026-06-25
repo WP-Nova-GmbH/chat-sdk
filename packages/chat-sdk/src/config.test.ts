@@ -34,3 +34,20 @@ test("triggerColor is used directly for first-paint launcher theming", () => {
     assert.equal(config.triggerColor, "#0f1117");
     assert.equal(config.hasFirstPaintLauncherColor, true);
 });
+
+test("voice mode is disabled by default and omitted from the iframe URL", () => {
+    const config = resolveConfig(REQUIRED_CONFIG);
+
+    assert.equal(config.voiceModeEnabled, false);
+    assert.equal(new URL(config.iframeSrc).searchParams.has("voice"), false);
+});
+
+test("voice mode opt-in adds the iframe URL capability signal", () => {
+    const config = resolveConfig({
+        ...REQUIRED_CONFIG,
+        voiceMode: true,
+    });
+
+    assert.equal(config.voiceModeEnabled, true);
+    assert.equal(new URL(config.iframeSrc).searchParams.get("voice"), "1");
+});

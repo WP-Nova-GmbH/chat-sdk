@@ -18,6 +18,7 @@ All options are passed to `WpNova("init", config)` or the `init(config)` helper.
 | `triggerColor` | no | Launcher/open-button color. Defaults to `accent`. |
 | `triggerIconColor` | no | `light`, `dark`, or a hex color. |
 | `safeValueSelectors` | no | CSS selectors that opt field values into snapshot capture. |
+| `voiceMode` | no | Enables the embedded voice button and delegates microphone access to the Nova iframe. Defaults to `false`. |
 | `protocolVersion` | no | Bridge protocol override for compatibility testing. |
 
 ### Defaults

@@ -220,6 +220,7 @@ export class WpNovaChatElement extends HTMLElement {
         const title = config.title;
         this.syncLauncherThemeVisibility();
         const launcherHiddenAttribute = this.launcherThemeReady ? "" : " hidden";
+        const microphoneAllowAttribute = config.voiceModeEnabled ? ' allow="microphone"' : "";
         shadow.innerHTML = [
             "<style>",
             // `all:initial` resets inherited host styles but NOT custom properties,
@@ -278,7 +279,7 @@ export class WpNovaChatElement extends HTMLElement {
             '  <span class="dev-badge" aria-hidden="true">DEV</span>',
             "</button>",
             `<div id="panel" role="dialog" aria-modal="false" aria-label="${escapeAttr(title)}" hidden>`,
-            `  <iframe id="frame" title="${escapeAttr(title)}"></iframe>`,
+            `  <iframe id="frame" title="${escapeAttr(title)}"${microphoneAllowAttribute}></iframe>`,
             "</div>",
         ].join("");
 

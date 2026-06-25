@@ -95,6 +95,7 @@ WpNova("registerToolHandler", "create_ticket", async (args) => myApp.createTicke
 | `triggerColor`    | no       | Launcher/open-button color for the pre-auth shell. Defaults to `accent`.                     |
 | `triggerIconColor` | no      | Launcher icon color for the pre-auth shell. Use `light`, `dark`, or a hex color.             |
 | `safeValueSelectors` | no    | Per-surface safe-value selector allowlist for the Visible Page Snapshot (see Page snapshot). |
+| `voiceMode`       | no       | Opt in to embedded voice mode. When `true`, the SDK delegates microphone access to the iframe. Defaults to `false`. |
 
 ## Platform-backend token contract
 

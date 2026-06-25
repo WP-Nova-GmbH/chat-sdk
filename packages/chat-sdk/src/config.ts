@@ -53,6 +53,8 @@ export interface ResolvedConfig {
     hasFirstPaintLauncherColor: boolean;
     /** Per-surface safe-value selector allowlist (default-deny; empty by default). */
     safeValueSelectors: string[];
+    /** Whether the embedded iframe may expose voice mode and request microphone access. */
+    voiceModeEnabled: boolean;
     protocolVersion: number;
 }
 
@@ -75,6 +77,10 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
     const baseUrl = (config.baseUrl || DEFAULT_BASE_URL).replace(/\/$/, "");
     const url = new URL(EMBED_PATH, `${baseUrl}/`);
     url.searchParams.set("surface", config.publicSurfaceId);
+    const voiceModeEnabled = config.voiceMode === true;
+    if (voiceModeEnabled) {
+        url.searchParams.set("voice", "1");
+    }
     const triggerColor = config.triggerColor || config.accent || DEFAULT_ACCENT;
     const hasFirstPaintLauncherColor = Boolean(config.triggerColor || config.accent);
 
@@ -93,6 +99,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
         safeValueSelectors: Array.isArray(config.safeValueSelectors)
             ? config.safeValueSelectors.filter((s) => typeof s === "string" && s.trim())
             : [],
+        voiceModeEnabled,
         protocolVersion: config.protocolVersion ?? PROTOCOL_VERSION,
     };
 }

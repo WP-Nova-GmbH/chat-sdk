@@ -33,6 +33,7 @@ const CONFIG = {
     triggerIconColor: "light",
     hasFirstPaintLauncherColor: true,
     safeValueSelectors: [],
+    voiceModeEnabled: false,
     protocolVersion: 1,
 } satisfies ResolvedConfig;
 

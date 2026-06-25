@@ -513,6 +513,12 @@ export interface SdkConfig {
      * Default-deny: omit this and no field values are captured unless attributed.
      */
     safeValueSelectors?: string[];
+    /**
+     * Enables embedded voice mode and delegates microphone permission to the
+     * Nova-hosted iframe. Defaults to false, so embeds do not receive microphone
+     * eligibility unless the host opts in.
+     */
+    voiceMode?: boolean;
     /** Protocol version the SDK speaks (defaults to PROTOCOL_VERSION). */
     protocolVersion?: number;
 }

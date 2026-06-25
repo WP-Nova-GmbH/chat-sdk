@@ -12,8 +12,44 @@ const ORIGINALS = {
     location: Object.getOwnPropertyDescriptor(globalThis, "location"),
 };
 
+class FakeElement {
+    hidden = false;
+    src = "";
+    private readonly attributes = new Map<string, string>();
+    private readonly listeners = new Map<string, Array<() => void>>();
+
+    setAttribute(name: string, value = ""): void {
+        this.attributes.set(name, value);
+    }
+
+    getAttribute(name: string): string | undefined {
+        return this.attributes.get(name);
+    }
+
+    addEventListener(name: string, listener: () => void): void {
+        const existing = this.listeners.get(name) ?? [];
+        existing.push(listener);
+        this.listeners.set(name, existing);
+    }
+}
+
+class FakeShadowRoot {
+    innerHTML = "";
+    private readonly elements = new Map<string, FakeElement>();
+
+    getElementById(id: string): FakeElement {
+        const existing = this.elements.get(id);
+        if (existing) return existing;
+
+        const next = new FakeElement();
+        this.elements.set(id, next);
+        return next;
+    }
+}
+
 class FakeHTMLElement {
     isConnected = false;
+    shadowRoot?: FakeShadowRoot;
     private readonly attributes = new Set<string>();
     readonly style = {
         setProperty: (_name: string, _value: string) => undefined,
@@ -30,6 +66,11 @@ class FakeHTMLElement {
 
     hasAttribute(name: string): boolean {
         return this.attributes.has(name);
+    }
+
+    attachShadow(): FakeShadowRoot {
+        this.shadowRoot = new FakeShadowRoot();
+        return this.shadowRoot;
     }
 }
 
@@ -72,6 +113,7 @@ function resolvedConfig(overrides: Partial<ResolvedConfig> = {}): ResolvedConfig
         triggerIconColor: "light",
         hasFirstPaintLauncherColor: true,
         safeValueSelectors: [],
+        voiceModeEnabled: false,
         protocolVersion: 1,
         ...overrides,
     };
@@ -128,6 +170,7 @@ test("a development-mode token grant badges the launcher", async () => {
         triggerColor: "#111111",
         triggerIconColor: "light",
         safeValueSelectors: [],
+        voiceModeEnabled: false,
         protocolVersion: 1,
     };
 
@@ -175,6 +218,7 @@ test("a production token grant leaves the launcher unbadged", async () => {
         triggerColor: "#111111",
         triggerIconColor: "light",
         safeValueSelectors: [],
+        voiceModeEnabled: false,
         protocolVersion: 1,
     };
 
@@ -221,6 +265,7 @@ test("unavailable token response is terminal and does not schedule a retry", asy
         triggerColor: "#111111",
         triggerIconColor: "light",
         safeValueSelectors: [],
+        voiceModeEnabled: false,
         protocolVersion: 1,
     };
 
@@ -271,6 +316,7 @@ test("token transport errors schedule a cooldown retry", async () => {
         triggerColor: "#111111",
         triggerIconColor: "light",
         safeValueSelectors: [],
+        voiceModeEnabled: false,
         protocolVersion: 1,
     };
 
@@ -329,6 +375,7 @@ test("token transport errors are forwarded to a ready iframe", async () => {
         triggerColor: "#111111",
         triggerIconColor: "light",
         safeValueSelectors: [],
+        voiceModeEnabled: false,
         protocolVersion: 1,
     };
     element.iframeReady = true;
@@ -399,6 +446,33 @@ test("stale token responses after frame reset are ignored", async () => {
     assert.equal(element.lastToken, undefined);
 });
 
+test("render omits microphone delegation unless voice mode is enabled", () => {
+    const element = makeElement() as {
+        shadowRoot?: { innerHTML: string };
+        render: (config: ResolvedConfig) => void;
+    };
+
+    element.render(resolvedConfig());
+
+    assert.equal(element.shadowRoot?.innerHTML.includes('allow="microphone"'), false);
+});
+
+test("render delegates microphone access when voice mode is enabled", () => {
+    const element = makeElement() as {
+        shadowRoot?: { innerHTML: string };
+        render: (config: ResolvedConfig) => void;
+    };
+
+    element.render(
+        resolvedConfig({
+            iframeSrc: "https://chat.wp-nova.ai/embed/chat?surface=surf_1&voice=1",
+            voiceModeEnabled: true,
+        }),
+    );
+
+    assert.equal(element.shadowRoot?.innerHTML.includes('allow="microphone"'), true);
+});
+
 test("config changes that target a different iframe reset bridge and buffered auth", () => {
     let stopped = false;
     const element = makeElement() as {
@@ -411,6 +485,7 @@ test("config changes that target a different iframe reset bridge and buffered au
             tokenEndpoint: string;
             baseUrl?: string;
             accent?: string;
+            voiceMode?: boolean;
         }) => void;
     };
     element.resolved = resolvedConfig();
@@ -434,6 +509,41 @@ test("config changes that target a different iframe reset bridge and buffered au
     assert.equal(element.lastToken, undefined);
     assert.equal(element.lastUnavailable, undefined);
     assert.equal(element.resolved?.iframeSrc.includes("surface=surf_2"), true);
+});
+
+test("config changes that toggle voice mode reset the iframe", () => {
+    let stopped = false;
+    const element = makeElement() as {
+        resolved?: ResolvedConfig;
+        bridge?: { stop: () => void };
+        lastToken?: string;
+        setConfig: (config: {
+            publicSurfaceId: string;
+            tokenEndpoint: string;
+            baseUrl?: string;
+            voiceMode?: boolean;
+        }) => void;
+    };
+    element.resolved = resolvedConfig();
+    element.bridge = {
+        stop: () => {
+            stopped = true;
+        },
+    };
+    element.lastToken = "old-token";
+
+    element.setConfig({
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token",
+        baseUrl: "https://chat.wp-nova.ai",
+        voiceMode: true,
+    });
+
+    assert.equal(stopped, true);
+    assert.equal(element.bridge, undefined);
+    assert.equal(element.lastToken, undefined);
+    assert.equal(element.resolved?.voiceModeEnabled, true);
+    assert.equal(new URL(element.resolved?.iframeSrc ?? "").searchParams.get("voice"), "1");
 });
 
 test("READY protocol range must include the SDK protocol", () => {
