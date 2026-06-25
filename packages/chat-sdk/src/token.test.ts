@@ -86,3 +86,48 @@ test("token fetch timeout returns a typed transport error", async () => {
         restoreGlobals();
     }
 });
+
+function installGrantGlobals(body: Record<string, unknown>): void {
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { origin: "https://app.example" },
+    });
+    Object.defineProperty(globalThis, "AbortSignal", {
+        configurable: true,
+        value: { timeout: () => new AbortController().signal },
+    });
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => ({ ok: true, status: 200, json: async () => body }),
+    });
+}
+
+test("a development surface grant carries the development-mode flag", async () => {
+    __resetTokenCooldownForTests();
+    installGrantGlobals({ access_token: "tok", expires_in: 900, developmentMode: true });
+
+    try {
+        const result = await fetchToken(CONFIG);
+
+        assert.equal(result.kind, "granted");
+        assert.equal(result.kind === "granted" && result.developmentMode, true);
+    } finally {
+        __resetTokenCooldownForTests();
+        restoreGlobals();
+    }
+});
+
+test("a production surface grant does not flag development mode", async () => {
+    __resetTokenCooldownForTests();
+    installGrantGlobals({ access_token: "tok", expires_in: 900 });
+
+    try {
+        const result = await fetchToken(CONFIG);
+
+        assert.equal(result.kind, "granted");
+        assert.equal(result.kind === "granted" && result.developmentMode === true, false);
+    } finally {
+        __resetTokenCooldownForTests();
+        restoreGlobals();
+    }
+});

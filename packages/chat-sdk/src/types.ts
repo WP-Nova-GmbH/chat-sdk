@@ -434,6 +434,12 @@ export interface TokenGrantResponse {
     expires_in: number;
     /** Trusted first-paint surface display settings from Nova, if passed through. */
     displaySettings?: SurfaceDisplaySettings | null;
+    /**
+     * True when the surface is in development origin mode. The SDK marks the
+     * launcher with a development badge so test embeds are unmistakable. Absent
+     * (treated as false) for production surfaces.
+     */
+    developmentMode?: boolean;
     unavailable?: false;
 }
 
@@ -458,6 +464,8 @@ export type TokenResult =
           token: string;
           expiresIn: number;
           displaySettings?: SurfaceDisplaySettings | null;
+          /** True when the surface is in development origin mode (badge the launcher). */
+          developmentMode?: boolean;
       }
     | { kind: "unavailable"; email: string; message: string }
     | { kind: "error"; message: string };

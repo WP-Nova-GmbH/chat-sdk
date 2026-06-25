@@ -110,6 +110,100 @@ test("launcher stays hidden while first-paint theme is pending", () => {
     assert.equal(element.launcher.hidden, false);
 });
 
+test("a development-mode token grant badges the launcher", async () => {
+    __resetTokenCooldownForTests();
+    const element = makeElement() as {
+        resolved: Record<string, unknown>;
+        acquireToken: () => Promise<void>;
+        hasAttribute: (name: string) => boolean;
+    };
+    element.resolved = {
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token",
+        baseUrl: "https://chat.wp-nova.ai",
+        iframeOrigin: "https://chat.wp-nova.ai",
+        iframeSrc: "https://chat.wp-nova.ai/embed/chat",
+        title: "Assistant",
+        accent: "#111",
+        triggerColor: "#111111",
+        triggerIconColor: "light",
+        safeValueSelectors: [],
+        protocolVersion: 1,
+    };
+
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => ({
+            ok: true,
+            status: 200,
+            json: async () => ({ access_token: "tok", expires_in: 900, developmentMode: true }),
+        }),
+    });
+    Object.defineProperty(globalThis, "setTimeout", {
+        configurable: true,
+        value: () => 1,
+    });
+    Object.defineProperty(globalThis, "clearTimeout", {
+        configurable: true,
+        value: () => undefined,
+    });
+
+    try {
+        await element.acquireToken();
+
+        assert.equal(element.hasAttribute("data-wpn-dev"), true);
+    } finally {
+        __resetTokenCooldownForTests();
+    }
+});
+
+test("a production token grant leaves the launcher unbadged", async () => {
+    __resetTokenCooldownForTests();
+    const element = makeElement() as {
+        resolved: Record<string, unknown>;
+        acquireToken: () => Promise<void>;
+        hasAttribute: (name: string) => boolean;
+    };
+    element.resolved = {
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token",
+        baseUrl: "https://chat.wp-nova.ai",
+        iframeOrigin: "https://chat.wp-nova.ai",
+        iframeSrc: "https://chat.wp-nova.ai/embed/chat",
+        title: "Assistant",
+        accent: "#111",
+        triggerColor: "#111111",
+        triggerIconColor: "light",
+        safeValueSelectors: [],
+        protocolVersion: 1,
+    };
+
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => ({
+            ok: true,
+            status: 200,
+            json: async () => ({ access_token: "tok", expires_in: 900 }),
+        }),
+    });
+    Object.defineProperty(globalThis, "setTimeout", {
+        configurable: true,
+        value: () => 1,
+    });
+    Object.defineProperty(globalThis, "clearTimeout", {
+        configurable: true,
+        value: () => undefined,
+    });
+
+    try {
+        await element.acquireToken();
+
+        assert.equal(element.hasAttribute("data-wpn-dev"), false);
+    } finally {
+        __resetTokenCooldownForTests();
+    }
+});
+
 test("unavailable token response is terminal and does not schedule a retry", async () => {
     const scheduledDelays: number[] = [];
     const element = makeElement() as {

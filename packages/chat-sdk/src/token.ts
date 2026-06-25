@@ -128,6 +128,16 @@ function readDisplaySettings(body: TokenEndpointResponse): SurfaceDisplaySetting
     return Object.keys(displaySettings).length > 0 ? displaySettings : null;
 }
 
+/**
+ * Read the trusted development-mode flag from the token grant. Accepts the
+ * camelCase wire field plus a snake_case alias so a customer proxy that
+ * re-serializes the body either way still marks the launcher.
+ */
+function readDevelopmentMode(body: TokenEndpointResponse): boolean {
+    const raw = body as { developmentMode?: unknown; development_mode?: unknown };
+    return raw.developmentMode === true || raw.development_mode === true;
+}
+
 /** Map a well-formed tokenEndpoint body onto the typed `TokenResult`. */
 function interpret(body: TokenEndpointResponse): TokenResult {
     if (body && body.unavailable === true) {
@@ -143,6 +153,7 @@ function interpret(body: TokenEndpointResponse): TokenResult {
             token: body.access_token,
             expiresIn: typeof body.expires_in === "number" ? body.expires_in : 0,
             displaySettings: readDisplaySettings(body),
+            developmentMode: readDevelopmentMode(body),
         };
     }
     return {

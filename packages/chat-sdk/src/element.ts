@@ -77,6 +77,7 @@ export class WpNovaChatElement extends HTMLElement {
     private errorRetryTimer?: ReturnType<typeof setTimeout>;
     private booting = false;
     private launcherThemeReady = false;
+    private developmentMode = false;
     private tokenRequestId = 0;
 
     static get observedAttributes(): string[] {
@@ -154,6 +155,8 @@ export class WpNovaChatElement extends HTMLElement {
         this.lastDisplaySettings = undefined;
         this.lastUnavailable = undefined;
         this.lastAuthError = undefined;
+        this.developmentMode = false;
+        this.removeAttribute("data-wpn-dev");
         this.remove();
     }
 
@@ -195,6 +198,8 @@ export class WpNovaChatElement extends HTMLElement {
         this.lastDisplaySettings = undefined;
         this.lastUnavailable = undefined;
         this.lastAuthError = undefined;
+        this.developmentMode = false;
+        this.removeAttribute("data-wpn-dev");
     }
 
     /**
@@ -219,7 +224,7 @@ export class WpNovaChatElement extends HTMLElement {
             "<style>",
             // `all:initial` resets inherited host styles but NOT custom properties,
             // so the accent token survives for the color-mix shadows below.
-            `:host{all:initial;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};}`,
+            `:host{all:initial;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-dev:#e8a91d;}`,
             "*{box-sizing:border-box;}",
             // --- launcher: 60px accent circle, two-layer shadow ----------------
             "#launcher{position:fixed;right:24px;bottom:24px;width:60px;height:60px;border:0;",
@@ -238,6 +243,21 @@ export class WpNovaChatElement extends HTMLElement {
             "#launcher .ic-chev{display:none;}",
             ":host([open]) #launcher .ic-chat{display:none;}",
             ":host([open]) #launcher .ic-chev{display:grid;}",
+            // --- development badge: amber ring + DEV pill on dev-mode surfaces --
+            // Driven by the trusted token grant; makes a test embed unmistakable
+            // without touching the launcher's own accent color or icon.
+            "#launcher .dev-badge{display:none;}",
+            // The ring is the launcher's own positioned ::after (auto z-index), so
+            // the pill (z-index:1) paints on top and the ring passes behind it.
+            ":host([data-wpn-dev]) #launcher::after{content:'';position:absolute;inset:-5px;",
+            "border-radius:50%;border:3px solid var(--wpn-dev);pointer-events:none;}",
+            ":host([data-wpn-dev]) #launcher .dev-badge{display:block;position:absolute;z-index:1;",
+            "top:-1px;right:-20px;padding:2px 7px;border-radius:999px;",
+            "background:var(--wpn-dev);color:#3a2a00;",
+            "border:1px solid color-mix(in oklab,var(--wpn-dev) 62%,black);",
+            "font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;",
+            "font-size:9px;font-weight:800;line-height:1;letter-spacing:.08em;",
+            "box-shadow:0 2px 4px rgba(22,18,42,.28);pointer-events:none;white-space:nowrap;}",
             // --- panel: frameless 384×640 rounded sheet ------------------------
             "#panel{position:fixed;right:24px;bottom:100px;width:384px;height:640px;",
             "max-width:calc(100vw - 40px);max-height:calc(100vh - 124px);background:#fff;",
@@ -255,6 +275,7 @@ export class WpNovaChatElement extends HTMLElement {
             `<button id="launcher" part="launcher" type="button" aria-label="Open assistant"${launcherHiddenAttribute}>`,
             `  <span class="ic ic-chat">${LAUNCHER_CHAT_SVG}</span>`,
             `  <span class="ic ic-chev">${LAUNCHER_CHEVRON_SVG}</span>`,
+            '  <span class="dev-badge" aria-hidden="true">DEV</span>',
             "</button>",
             `<div id="panel" role="dialog" aria-modal="false" aria-label="${escapeAttr(title)}" hidden>`,
             `  <iframe id="frame" title="${escapeAttr(title)}"></iframe>`,
@@ -266,6 +287,7 @@ export class WpNovaChatElement extends HTMLElement {
         this.panel = shadow.getElementById("panel") ?? undefined;
         this.launcher = (shadow.getElementById("launcher") as HTMLButtonElement) ?? undefined;
         this.syncLauncherThemeVisibility();
+        this.syncDevelopmentMode();
 
         this.launcher?.addEventListener("click", () => this.toggle());
         if (this.hasAttribute("open")) this.setOpen(true);
@@ -275,8 +297,35 @@ export class WpNovaChatElement extends HTMLElement {
 
     private setOpen(isOpen: boolean): void {
         if (this.panel) this.panel.hidden = !isOpen;
-        // Reflect the open state on the launcher for assistive tech.
-        this.launcher?.setAttribute("aria-label", isOpen ? "Close assistant" : "Open assistant");
+        this.updateLauncherLabel();
+    }
+
+    /** Reflect open + development state on the launcher's accessible name. */
+    private updateLauncherLabel(): void {
+        const base = this.hasAttribute("open") ? "Close assistant" : "Open assistant";
+        this.launcher?.setAttribute(
+            "aria-label",
+            this.developmentMode ? `${base} (development surface)` : base,
+        );
+    }
+
+    /**
+     * Mark the launcher as a development-mode surface: an amber ring + "DEV" pill
+     * make a test embed unmistakable. Driven by the trusted token grant, so it
+     * appears once the embedded session is established — it never overrides the
+     * surface's own accent color or launcher icon.
+     */
+    private setDevelopmentMode(developmentMode: boolean): void {
+        if (this.developmentMode === developmentMode) return;
+        this.developmentMode = developmentMode;
+        this.syncDevelopmentMode();
+    }
+
+    /** Reflect `developmentMode` onto the host attribute the badge CSS keys off. */
+    private syncDevelopmentMode(): void {
+        if (this.developmentMode) this.setAttribute("data-wpn-dev", "");
+        else this.removeAttribute("data-wpn-dev");
+        this.updateLauncherLabel();
     }
 
     /** Construct the bridge + register the registry-change → REGISTER_TOOLS hook. */
@@ -410,6 +459,7 @@ export class WpNovaChatElement extends HTMLElement {
                 triggerIconColor: this.lastDisplaySettings?.triggerIconColor,
                 reveal: true,
             });
+            this.setDevelopmentMode(result.developmentMode === true);
             if (this.iframeReady)
                 this.bridge?.sendAuthToken(result.token, this.lastDisplaySettings);
             this.armRefresh(result.expiresIn);
