@@ -15,6 +15,7 @@
         "build": "turbo run build",
         "check-types": "turbo run check-types",
         "dev": "npm --workspace @wp-nova/chat-sdk-docs run dev",
+        "dev:examples": "turbo run dev --filter=@wp-nova/chat-sdk-example-angular --filter=@wp-nova/chat-sdk-example-react",
         "format": "biome format --write .",
         "lint": "turbo run lint",
         "lint:fix": "biome check --formatter-enabled=false --write .",
