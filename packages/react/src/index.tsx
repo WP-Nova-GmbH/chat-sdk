@@ -2,6 +2,7 @@ import type { SdkConfig, ToolHandler } from "@wp-nova/sdk";
 import {
     createContext,
     type PropsWithChildren,
+    useCallback,
     useContext,
     useEffect,
     useMemo,
@@ -37,26 +38,32 @@ async function loadSdk(): Promise<SdkModule> {
 }
 
 function useSdkApi(): NovaChatApi {
+    const operationQueue = useRef<Promise<void>>(Promise.resolve());
+    const runQueued = useCallback((operation: (sdk: SdkModule) => void) => {
+        const next = operationQueue.current.then(async () => {
+            const sdk = await loadSdk();
+            operation(sdk);
+        });
+        operationQueue.current = next.catch(() => undefined);
+        return next;
+    }, []);
+
     return useMemo(
         () => ({
-            async init(config) {
-                const sdk = await loadSdk();
-                sdk.init(config);
+            init(config) {
+                return runQueued((sdk) => sdk.init(config));
             },
-            async registerToolHandler(name, handler) {
-                const sdk = await loadSdk();
-                sdk.registerToolHandler(name, handler);
+            registerToolHandler(name, handler) {
+                return runQueued((sdk) => sdk.registerToolHandler(name, handler));
             },
-            async unregisterToolHandler(name) {
-                const sdk = await loadSdk();
-                sdk.unregisterToolHandler(name);
+            unregisterToolHandler(name) {
+                return runQueued((sdk) => sdk.unregisterToolHandler(name));
             },
-            async destroy() {
-                const sdk = await loadSdk();
-                sdk.destroy();
+            destroy() {
+                return runQueued((sdk) => sdk.destroy());
             },
         }),
-        [],
+        [runQueued],
     );
 }
 
