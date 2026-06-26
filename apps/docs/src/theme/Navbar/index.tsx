@@ -8,12 +8,12 @@ import {
 } from "@docusaurus/plugin-content-docs/client";
 import { useLocation } from "@docusaurus/router";
 import { useColorMode } from "@docusaurus/theme-common";
-import { useAlternatePageUtils } from "@docusaurus/theme-common/internal";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NovaWordmark } from "../../components/NovaWordmark";
 import { getSearchIndex } from "../../data/searchIndex";
+import { getLocalizedDocsPath, normalizeDocsPath, stripBaseUrl } from "./localePaths";
 
 const localeLabels: Record<string, string> = {
     en: "English",
@@ -100,23 +100,6 @@ const navbarLabels = {
         themeToggle: "Activer ou désactiver le mode sombre",
     },
 } satisfies Record<string, Record<string, string>>;
-
-function stripBaseUrl(pathname: string, baseUrl: string): string {
-    const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-    const basePath = normalizedBaseUrl.replace(/\/$/, "");
-
-    if (normalizedBaseUrl === "/") return pathname || "/";
-    if (pathname === basePath || pathname === normalizedBaseUrl) return "/";
-    if (pathname.startsWith(normalizedBaseUrl))
-        return `/${pathname.slice(normalizedBaseUrl.length)}` || "/";
-
-    return pathname || "/";
-}
-
-function normalizeDocsPath(pathname: string): string {
-    const withoutTrailingSlash = pathname.replace(/\/$/, "");
-    return withoutTrailingSlash || "/";
-}
 
 function getVersionMainDoc(version: GlobalVersion | undefined): GlobalDoc | undefined {
     if (!version) return undefined;
@@ -234,7 +217,6 @@ function SearchBox({
 export default function Navbar() {
     const { i18n } = useDocusaurusContext();
     const location = useLocation();
-    const alternatePageUtils = useAlternatePageUtils();
     const { colorMode, setColorMode } = useColorMode();
     const [menuOpen, setMenuOpen] = useState(false);
     const versions = useVersions(undefined);
@@ -257,8 +239,20 @@ export default function Navbar() {
         const targetDoc = getVersionTargetDoc(version, activeDocContext);
         return `${targetDoc?.path ?? "/"}${location.search}${location.hash}`;
     };
-    const getLocaleHref = (locale: string) =>
-        `${alternatePageUtils.createUrl({ locale, fullyQualified: false })}${location.search}${location.hash}`;
+    const currentCanonicalDocPath =
+        activeDocContext.activeDoc?.path ??
+        (activeVersion ? getVersionTargetDoc(activeVersion, activeDocContext)?.path : undefined) ??
+        location.pathname;
+    const getLocaleHref = (locale: string) => {
+        const targetLocaleBaseUrl = i18n.localeConfigs[locale]?.baseUrl ?? "/";
+        const localizedPath = getLocalizedDocsPath({
+            currentLocaleBaseUrl,
+            pathname: currentCanonicalDocPath,
+            targetLocaleBaseUrl,
+        });
+
+        return `${localizedPath}${location.search}${location.hash}`;
+    };
     const activeApi = location.pathname.includes("api-reference");
 
     return (

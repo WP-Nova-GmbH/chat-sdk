@@ -6,7 +6,8 @@
         "build": "docusaurus build",
         "check-types": "tsc --noEmit",
         "clear": "docusaurus clear",
-        "dev": "docusaurus start --host 0.0.0.0",
+        "dev": "node ../../scripts/dev-docs-i18n.mjs",
+        "dev:locale": "docusaurus start --host 0.0.0.0",
         "lint": "biome check --formatter-enabled=false docusaurus.config.ts sidebars.ts src docs",
         "serve": "docusaurus serve --host 0.0.0.0",
         "test": "vitest run --passWithNoTests"
