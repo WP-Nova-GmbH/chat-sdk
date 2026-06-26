@@ -14,7 +14,7 @@
 //     (the POC's `resolve(null)` ambiguity is fixed here).
 
 /** Current bridge protocol version. Bumped on any breaking wire change. */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 /** Sender tag for frames originating in the SDK (host page → iframe). */
 export const SDK_SOURCE = "wp-nova-ext" as const;
@@ -185,6 +185,24 @@ export interface ElementHandle {
 // ---------------------------------------------------------------------------
 
 /**
+ * A model-callable tool declared by the host SDK integration. This is the
+ * browser-to-iframe wire shape; public SDK registration uses `inputSchema` and
+ * the SDK translates it to this `args_schema` field before posting.
+ */
+export interface ClientToolSpec {
+    /** Unique tool name. Use lowercase letters, numbers, and underscores. */
+    name: string;
+    /** Agent-facing instruction for when and how to call the tool. */
+    description: string;
+    /** JSON Schema object for tool arguments. */
+    args_schema: Record<string, unknown>;
+    /** True when the handler changes page state or customer data. */
+    mutating: boolean;
+    /** Required confirmation copy for mutating tools. */
+    confirmationCopy?: string;
+}
+
+/**
  * A client tool the agent asked to run in the host page — either a built-in
  * navigation action or an integrator-declared tool. `mutating` is decided
  * SERVER-SIDE and is authoritative; the SDK never classifies mutations.
@@ -225,8 +243,24 @@ export interface SurfaceDisplaySettings {
     triggerIconColor?: string;
 }
 
-/** A handler the integrator registers for one of the surface's declared tools. */
+/** A handler the integrator registers for an SDK-declared tool. */
 export type ToolHandler = (args: Record<string, unknown>) => unknown | Promise<unknown>;
+
+/** Public SDK definition for one model-callable host-page tool. */
+export interface ToolDefinition {
+    /** Unique tool name. Use lowercase letters, numbers, and underscores. */
+    name: string;
+    /** Agent-facing instruction for when and how to call the tool. */
+    description: string;
+    /** JSON Schema object for tool arguments. */
+    inputSchema: Record<string, unknown>;
+    /** True when the handler changes page state or customer data. */
+    mutating: boolean;
+    /** Required confirmation copy for mutating tools. */
+    confirmationCopy?: string;
+    /** Executes inside the host app when the agent calls this tool. */
+    handler: ToolHandler;
+}
 
 // ---------------------------------------------------------------------------
 // Wire frames — SDK → iframe (source = "wp-nova-ext")
@@ -291,12 +325,12 @@ export interface ClientToolErrorFrame extends FrameBase {
     snapshot?: PageContext;
 }
 
-/** Hand the iframe the set of integrator tool names the SDK has handlers for. */
+/** Hand the iframe the model-callable tools declared by the SDK integration. */
 export interface RegisterToolsFrame extends FrameBase {
     source: SdkSource;
     type: "REGISTER_TOOLS";
-    /** Names of tools the host currently has a registered handler for. */
-    tools: string[];
+    /** SDK-declared tool specs. Handler-only legacy registrations are excluded. */
+    tools: ClientToolSpec[];
 }
 
 /**

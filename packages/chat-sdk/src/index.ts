@@ -4,7 +4,9 @@ export {
     init,
     installGlobal,
     type QueuedWpNova,
+    registerTool,
     registerToolHandler,
+    unregisterTool,
     unregisterToolHandler,
     WpNova,
 } from "./controller.js";

@@ -357,8 +357,8 @@ export class WpNovaChatElement extends HTMLElement {
                     return false;
                 }
                 this.iframeReady = true;
-                // Push the latest token (if any) and the current handler set; if the
-                // session resolved to the unavailable-user state, forward that instead.
+                // Push the latest token (if any) and the current SDK-declared tools;
+                // if the session resolved to the unavailable-user state, forward that instead.
                 if (this.lastToken) bridge.sendAuthToken(this.lastToken, this.lastDisplaySettings);
                 else if (this.lastUnavailable)
                     bridge.sendUnavailable(
@@ -366,14 +366,14 @@ export class WpNovaChatElement extends HTMLElement {
                         this.lastUnavailable.message,
                     );
                 else if (this.lastAuthError) bridge.sendAuthError(this.lastAuthError);
-                bridge.sendRegisterTools(this.registry.names());
+                bridge.sendRegisterTools(this.registry.advertisedTools());
                 return true;
             },
         });
         bridge.setIframeWindow(this.iframe?.contentWindow ?? null);
         // Re-send REGISTER_TOOLS whenever the registry changes.
-        this.registry.setOnChange((names) => {
-            if (this.iframeReady) bridge.sendRegisterTools(names);
+        this.registry.setOnChange((tools) => {
+            if (this.iframeReady) bridge.sendRegisterTools(tools);
         });
         this.bridge = bridge;
         // contentWindow may not exist until the iframe has navigated; re-bind on load.

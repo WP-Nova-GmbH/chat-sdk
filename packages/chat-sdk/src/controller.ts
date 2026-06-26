@@ -1,11 +1,13 @@
 import { resolveConfig } from "./config.js";
 import { defineElement, ELEMENT_TAG, type WpNovaChatElement } from "./element.js";
 import { ToolRegistry } from "./tools.js";
-import type { SdkConfig, ToolHandler } from "./types.js";
+import type { SdkConfig, ToolDefinition, ToolHandler } from "./types.js";
 
 /** Commands the queued `WpNova(...)` dispatcher accepts. */
 export type Command =
     | ["init", SdkConfig]
+    | ["registerTool", ToolDefinition]
+    | ["unregisterTool", string]
     | ["registerToolHandler", string, ToolHandler]
     | ["unregisterToolHandler", string]
     | ["destroy"]
@@ -33,11 +35,17 @@ class SdkController {
             case "init":
                 this.init(rest[0] as SdkConfig);
                 break;
+            case "registerTool":
+                this.registry.register(rest[0] as ToolDefinition);
+                break;
+            case "unregisterTool":
+                this.registry.unregister(rest[0] as string);
+                break;
             case "registerToolHandler":
-                this.registry.register(rest[0] as string, rest[1] as ToolHandler);
+                this.registry.registerHandler(rest[0] as string, rest[1] as ToolHandler);
                 break;
             case "unregisterToolHandler":
-                this.registry.unregister(rest[0] as string);
+                this.registry.unregisterHandler(rest[0] as string);
                 break;
             case "destroy":
                 this.destroy();
@@ -48,21 +56,27 @@ class SdkController {
     };
 
     private init(config: SdkConfig): void {
-        assertBrowserRuntime();
-        resolveConfig(config);
-        defineElement();
+        try {
+            assertBrowserRuntime();
+            resolveConfig(config);
+            defineElement();
 
-        if (!this.element) {
-            const existing = document.querySelector(ELEMENT_TAG) as WpNovaChatElement | null;
-            const element = existing ?? (document.createElement(ELEMENT_TAG) as WpNovaChatElement);
-            element.setRegistry(this.registry);
-            if (!existing) this.mountInto(element, config.mount);
-            element.setConfig(config);
-            this.element = element;
-            return;
+            if (!this.element) {
+                const existing = document.querySelector(ELEMENT_TAG) as WpNovaChatElement | null;
+                const element =
+                    existing ?? (document.createElement(ELEMENT_TAG) as WpNovaChatElement);
+                element.setRegistry(this.registry);
+                if (!existing) this.mountInto(element, config.mount);
+                element.setConfig(config);
+                this.element = element;
+                return;
+            }
+
+            this.element.setConfig(config);
+        } catch (error) {
+            console.error(`[wp-nova] chat launcher was not mounted: ${formatErrorMessage(error)}`);
+            throw error;
         }
-
-        this.element.setConfig(config);
     }
 
     private destroy(): void {
@@ -89,6 +103,10 @@ function assertBrowserRuntime(): void {
     }
 }
 
+function formatErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
 function getController(): SdkController {
     const globalScope = globalThis as unknown as Record<string, SdkController | undefined>;
     let controller = globalScope[GLOBAL_KEY];
@@ -99,7 +117,7 @@ function getController(): SdkController {
     return controller;
 }
 
-/** The public callable: `WpNova("init", ...)` / `WpNova("registerToolHandler", ...)`. */
+/** The public callable: `WpNova("init", ...)` / `WpNova("registerTool", ...)`. */
 export function WpNova(...args: Command): void {
     getController().dispatch(...args);
 }
@@ -109,10 +127,20 @@ export function init(config: SdkConfig): void {
     WpNova("init", config);
 }
 
+export function registerTool(tool: ToolDefinition): void {
+    WpNova("registerTool", tool);
+}
+
+export function unregisterTool(name: string): void {
+    WpNova("unregisterTool", name);
+}
+
+/** @deprecated Use registerTool so the agent receives the tool spec and handler together. */
 export function registerToolHandler(name: string, handler: ToolHandler): void {
     WpNova("registerToolHandler", name, handler);
 }
 
+/** @deprecated Use unregisterTool for SDK-declared tools. */
 export function unregisterToolHandler(name: string): void {
     WpNova("unregisterToolHandler", name);
 }

@@ -22,6 +22,7 @@ import {
     type BridgeErrorCode,
     type ClientToolCall,
     type ClientToolResult,
+    type ClientToolSpec,
     EMBED_SOURCE,
     type EmbedFrame,
     type PageContext,
@@ -175,8 +176,8 @@ export class Bridge {
         });
     }
 
-    /** Tell the iframe which integrator tool handlers the host has registered. */
-    sendRegisterTools(tools: string[]): void {
+    /** Tell the iframe which SDK-declared tools the host has registered. */
+    sendRegisterTools(tools: ClientToolSpec[]): void {
         this.post({
             source: SDK_SOURCE,
             protocolVersion: this.config.protocolVersion,
