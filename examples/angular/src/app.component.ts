@@ -30,6 +30,14 @@ interface LogEvent {
     time: string;
 }
 
+interface SupportTicket {
+    id: string;
+    title: string;
+    priority: "low" | "normal" | "high";
+    bookingId: string;
+    url: string;
+}
+
 interface SdkSettings {
     publicSurfaceId: string;
     baseUrl: string;
@@ -90,6 +98,16 @@ const initialTasks: ConciergeTask[] = [
         owner: "Samir",
         due: "Tomorrow 10:30",
         done: false,
+    },
+];
+
+const initialTickets: SupportTicket[] = [
+    {
+        id: "TCK-2041",
+        title: "Anniversary arrival package follow-up",
+        priority: "normal",
+        bookingId: "HF-204",
+        url: "https://example.test/tickets/TCK-2041",
     },
 ];
 
@@ -241,6 +259,31 @@ const initialTasks: ConciergeTask[] = [
                     </div>
                 </section>
 
+                <section class="ticket-panel" aria-labelledby="tickets-heading">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">SDK page tool</p>
+                            <h2 id="tickets-heading">Service tickets</h2>
+                        </div>
+                        <button type="button" (click)="createTestTicket()">Create test ticket</button>
+                    </div>
+                    <div class="ticket-list" data-ai-context="supportTickets">
+                        @for (ticket of tickets; track ticket.id) {
+                            <article class="ticket-card">
+                                <div>
+                                    <p class="stay-id">{{ ticket.id }}</p>
+                                    <h3>{{ ticket.title }}</h3>
+                                    <p>{{ ticket.bookingId }}</p>
+                                </div>
+                                <span [class]="'priority ' + ticket.priority">
+                                    {{ ticket.priority }}
+                                </span>
+                                <a [href]="ticket.url">{{ ticket.url }}</a>
+                            </article>
+                        }
+                    </div>
+                </section>
+
                 <section class="journal-panel" aria-labelledby="journal-heading">
                     <div class="section-heading">
                         <div>
@@ -266,6 +309,7 @@ const initialTasks: ConciergeTask[] = [
 export class AppComponent {
     stays = [...initialStays];
     tasks = [...initialTasks];
+    tickets = [...initialTickets];
     activeStayId = defaultStay.id;
     guestSearch = "";
     arrivalNote = "Offer warm cider at check-in and confirm ferry arrival time.";
@@ -341,6 +385,23 @@ export class AppComponent {
             mutating: false,
             handler: () => this.snapshot(),
         },
+        {
+            name: "create_ticket",
+            description:
+                "Creates a service ticket for the active guest booking and returns its link.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    title: { type: "string" },
+                    priority: { type: "string", enum: ["low", "normal", "high"] },
+                    bookingId: { type: "string" },
+                },
+                required: ["title"],
+            },
+            mutating: true,
+            confirmationCopy: "Create this service ticket?",
+            handler: (args) => this.createTicketTool(args),
+        },
     ];
 
     get activeStay(): Stay {
@@ -397,6 +458,16 @@ export class AppComponent {
         this.addEvent("button", "First concierge task completed.");
     }
 
+    createTestTicket(): void {
+        const ticket = createTicket(
+            `Manual follow-up for ${this.activeStay.id}`,
+            "normal",
+            this.activeStay.id,
+        );
+        this.tickets = [ticket, ...this.tickets];
+        this.addEvent("button", `Created ${ticket.id}.`);
+    }
+
     statusClass(status: StayStatus): string {
         return status.toLowerCase().replace(" ", "-");
     }
@@ -446,11 +517,25 @@ export class AppComponent {
         return { ok: true, message };
     }
 
+    private createTicketTool(args: Record<string, unknown>): Record<string, unknown> {
+        const bookingId = String(args.bookingId ?? this.activeStay.id);
+        const ticket = createTicket(
+            String(args.title ?? `Follow up with ${bookingId}`),
+            readTicketPriority(args.priority),
+            bookingId,
+        );
+
+        this.tickets = [ticket, ...this.tickets];
+        this.addEvent("tool", `Created ticket ${ticket.id}.`);
+        return { ok: true, ticketId: ticket.id, ticketUrl: ticket.url, ticket };
+    }
+
     private snapshot(): Record<string, unknown> {
         return {
             activeStay: this.activeStay,
             visibleStays: this.visibleStays,
             tasks: this.tasks,
+            tickets: this.tickets,
             banner: this.banner,
             guestSearch: this.guestSearch,
         };
@@ -513,6 +598,26 @@ function readStayStatus(value: unknown): StayStatus {
         return value;
     }
     return "Follow up";
+}
+
+function readTicketPriority(value: unknown): SupportTicket["priority"] {
+    if (value === "low" || value === "normal" || value === "high") return value;
+    return "normal";
+}
+
+function createTicket(
+    title: string,
+    priority: SupportTicket["priority"],
+    bookingId: string,
+): SupportTicket {
+    const id = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
+    return {
+        id,
+        title,
+        priority,
+        bookingId,
+        url: `https://example.test/tickets/${id}`,
+    };
 }
 
 function createTask(label: string, owner: string): ConciergeTask {

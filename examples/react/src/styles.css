@@ -163,6 +163,7 @@ dd {
 .manifest-panel,
 .active-panel,
 .crew-panel,
+.ticket-panel,
 .event-panel {
     border: 1px solid #d5ddda;
     background: #ffffff;
@@ -170,6 +171,7 @@ dd {
 
 .manifest-panel,
 .crew-panel,
+.ticket-panel,
 .event-panel {
     padding: 1rem;
 }
@@ -182,6 +184,7 @@ dd {
 }
 
 .crew-panel,
+.ticket-panel,
 .event-panel {
     grid-column: 1 / -1;
 }
@@ -205,7 +208,8 @@ dd {
 }
 
 .manifest-card,
-.task-card {
+.task-card,
+.ticket-card {
     display: grid;
     gap: 0.9rem;
     border: 1px solid #d5ddda;
@@ -219,13 +223,15 @@ dd {
 }
 
 .manifest-card h3,
-.task-card h3 {
+.task-card h3,
+.ticket-card h3 {
     margin: 0;
     font-size: 1rem;
 }
 
 .manifest-card p,
 .task-card p,
+.ticket-card p,
 .active-customer {
     margin: 0;
     color: #52615d;
@@ -282,9 +288,50 @@ dd {
     gap: 0.85rem;
 }
 
+.ticket-list {
+    display: grid;
+    gap: 0.65rem;
+}
+
 .task-card {
     grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
+}
+
+.ticket-card {
+    grid-template-columns: minmax(0, 1fr) auto minmax(12rem, 0.5fr);
+    align-items: center;
+}
+
+.ticket-card a {
+    color: #0d5e61;
+    font-size: 0.85rem;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.priority {
+    border-radius: 999px;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-align: center;
+    text-transform: capitalize;
+}
+
+.priority.low {
+    background: #d8f0dd;
+    color: #1a6b34;
+}
+
+.priority.normal {
+    background: #e5ebe9;
+    color: #46524f;
+}
+
+.priority.high {
+    background: #ffd9d2;
+    color: #a33b25;
 }
 
 .event-list {
@@ -330,7 +377,8 @@ dd {
 
     .dashboard,
     .manifest-grid,
-    .task-list {
+    .task-list,
+    .ticket-card {
         grid-template-columns: 1fr;
     }
 }
@@ -347,7 +395,8 @@ dd {
     }
 
     .event-list li,
-    .task-card {
+    .task-card,
+    .ticket-card {
         grid-template-columns: 1fr;
     }
 }

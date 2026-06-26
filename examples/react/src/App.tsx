@@ -30,6 +30,14 @@ interface LogEvent {
     time: string;
 }
 
+interface SupportTicket {
+    id: string;
+    title: string;
+    priority: "low" | "normal" | "high";
+    manifestId: string;
+    url: string;
+}
+
 interface SdkSettings {
     publicSurfaceId: string;
     baseUrl: string;
@@ -104,9 +112,20 @@ const initialCrewTasks: CrewTask[] = [
     },
 ];
 
+const initialTickets: SupportTicket[] = [
+    {
+        id: "TCK-1041",
+        title: "Customs seal mismatch needs review",
+        priority: "high",
+        manifestId: "MN-4107",
+        url: "https://example.test/tickets/TCK-1041",
+    },
+];
+
 export function App() {
     const [shipments, setShipments] = useState(initialShipments);
     const [crewTasks, setCrewTasks] = useState(initialCrewTasks);
+    const [tickets, setTickets] = useState(initialTickets);
     const [activeManifestId, setActiveManifestId] = useState(defaultShipment.id);
     const [filter, setFilter] = useState("");
     const [crewNote, setCrewNote] = useState("Stage an inspector at North Gate 4.");
@@ -254,9 +273,42 @@ export function App() {
                     activeManifest: activeShipment,
                     visibleShipments,
                     crewTasks,
+                    tickets,
                     banner,
                     filter,
                 }),
+            },
+            {
+                name: "create_ticket",
+                description:
+                    "Creates a support ticket for the active freight manifest and returns its link.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        title: { type: "string" },
+                        priority: { type: "string", enum: ["low", "normal", "high"] },
+                        manifestId: { type: "string" },
+                    },
+                    required: ["title"],
+                },
+                mutating: true,
+                confirmationCopy: "Create this support ticket?",
+                handler: (args) => {
+                    const manifestId = String(args.manifestId ?? activeShipment.id);
+                    const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
+                    const ticketUrl = `https://example.test/tickets/${ticketId}`;
+                    const ticket: SupportTicket = {
+                        id: ticketId,
+                        title: String(args.title ?? `Review manifest ${manifestId}`),
+                        priority: readTicketPriority(args.priority),
+                        manifestId,
+                        url: ticketUrl,
+                    };
+
+                    setTickets((current) => [ticket, ...current]);
+                    recordEvent(setEvents, "tool", `Created ticket ${ticket.id}.`);
+                    return { ok: true, ticketId, ticketUrl, ticket };
+                },
             },
         ],
         [
@@ -267,6 +319,7 @@ export function App() {
             crewTasks,
             filter,
             shipments,
+            tickets,
             visibleShipments,
         ],
     );
@@ -476,6 +529,44 @@ export function App() {
                         </div>
                     </section>
 
+                    <section className="ticket-panel" aria-labelledby="tickets-heading">
+                        <div className="section-heading">
+                            <div>
+                                <p className="eyebrow">SDK page tool</p>
+                                <h2 id="tickets-heading">Support tickets</h2>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const ticket = createTicket(
+                                        `Manual review for ${activeShipment.id}`,
+                                        "normal",
+                                        activeShipment.id,
+                                    );
+                                    setTickets((current) => [ticket, ...current]);
+                                    recordEvent(setEvents, "button", `Created ${ticket.id}.`);
+                                }}
+                            >
+                                Create test ticket
+                            </button>
+                        </div>
+                        <div className="ticket-list" data-ai-context="supportTickets">
+                            {tickets.map((ticket) => (
+                                <article className="ticket-card" key={ticket.id}>
+                                    <div>
+                                        <p className="manifest-id">{ticket.id}</p>
+                                        <h3>{ticket.title}</h3>
+                                        <p>{ticket.manifestId}</p>
+                                    </div>
+                                    <span className={`priority ${ticket.priority}`}>
+                                        {ticket.priority}
+                                    </span>
+                                    <a href={ticket.url}>{ticket.url}</a>
+                                </article>
+                            ))}
+                        </div>
+                    </section>
+
                     <section className="event-panel" aria-labelledby="events-heading">
                         <div className="section-heading">
                             <div>
@@ -536,6 +627,26 @@ function readManifestStatus(value: unknown): ManifestStatus {
         return value;
     }
     return "Hold";
+}
+
+function readTicketPriority(value: unknown): SupportTicket["priority"] {
+    if (value === "low" || value === "normal" || value === "high") return value;
+    return "normal";
+}
+
+function createTicket(
+    title: string,
+    priority: SupportTicket["priority"],
+    manifestId: string,
+): SupportTicket {
+    const id = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
+    return {
+        id,
+        title,
+        priority,
+        manifestId,
+        url: `https://example.test/tickets/${id}`,
+    };
 }
 
 function statusClass(status: ManifestStatus): string {
