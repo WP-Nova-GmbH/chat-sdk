@@ -92,6 +92,11 @@ export class WpNovaChatElement extends HTMLElement {
         }
         this.resolved = next;
         this.launcherThemeReady = next.hasFirstPaintLauncherColor;
+        this.applyLauncherTheme({
+            triggerColor: next.triggerColor,
+            triggerIconColor: next.triggerIconColor,
+            reveal: false,
+        });
         if (this.shadowReady) {
             if (!this.launcherThemeReady) {
                 this.syncLauncherThemeVisibility();
@@ -339,7 +344,7 @@ export class WpNovaChatElement extends HTMLElement {
             // The iframe-owned header's ⌄ control closes the SDK-owned panel.
             onMinimize: () => this.close(),
             onSurfaceTheme: (theme) => {
-                this.applyLauncherTheme({ ...theme, reveal: true });
+                this.applySurfaceLauncherTheme({ ...theme, reveal: true });
             },
             onReady: (minVersion, maxVersion) => {
                 if (!this.isProtocolCompatible(config, minVersion, maxVersion)) {
@@ -409,6 +414,27 @@ export class WpNovaChatElement extends HTMLElement {
         }
     }
 
+    /**
+     * Surface display settings are trusted, but host-supplied launcher colors are
+     * authoritative for the SDK-owned launcher. Use surface colors only when the
+     * host did not configure a first-paint launcher color.
+     */
+    private applySurfaceLauncherTheme(theme: {
+        accent?: string | null;
+        triggerColor?: string | null;
+        triggerIconColor?: string | null;
+        reveal?: boolean;
+    }): void {
+        if (this.resolved?.hasFirstPaintLauncherColor) {
+            if (theme.reveal) {
+                this.revealLauncherTheme();
+            }
+            return;
+        }
+
+        this.applyLauncherTheme(theme);
+    }
+
     private syncLauncherThemeVisibility(): void {
         if (this.launcherThemeReady) this.removeAttribute("launcher-theme-pending");
         else this.setAttribute("launcher-theme-pending", "");
@@ -454,7 +480,7 @@ export class WpNovaChatElement extends HTMLElement {
             this.lastDisplaySettings = result.displaySettings ?? null;
             this.lastUnavailable = undefined;
             this.lastAuthError = undefined;
-            this.applyLauncherTheme({
+            this.applySurfaceLauncherTheme({
                 accent: this.lastDisplaySettings?.accent,
                 triggerColor: this.lastDisplaySettings?.triggerColor,
                 triggerIconColor: this.lastDisplaySettings?.triggerIconColor,
