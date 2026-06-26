@@ -1,14 +1,33 @@
-import { defineConfig, type Plugin } from "vite";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { fileURLToPath } from "node:url";
+import { type ConfigEnv, defineConfig, loadEnv, type Plugin } from "vite";
 
-const DEFAULT_NOVA_API_URL = "http://localhost:8400";
-const DEFAULT_TEST_EMAIL = "react-operator@example.com";
+const EXAMPLE_ROOT = fileURLToPath(new URL(".", import.meta.url));
 
-export default defineConfig({
-    plugins: [novaTokenProxyPlugin("react-example")],
+interface ExampleEnv {
+    integrationSecret: string;
+    tokenBaseUrl: string;
+    testEmail: string;
+}
+
+export default defineConfig((configEnv) => {
+    const env = readExampleEnv(configEnv);
+
+    return {
+        plugins: [novaTokenProxyPlugin("react-example", env)],
+    };
 });
 
-function novaTokenProxyPlugin(exampleName: string): Plugin {
+function readExampleEnv({ mode }: ConfigEnv): ExampleEnv {
+    const env = loadEnv(mode, EXAMPLE_ROOT, "");
+    return {
+        integrationSecret: readString(env.NOVA_INTEGRATION_SECRET),
+        tokenBaseUrl: trimTrailingSlash(readString(env.NOVA_TOKEN_BASE_URL)),
+        testEmail: readString(env.NOVA_TEST_EMAIL),
+    };
+}
+
+function novaTokenProxyPlugin(exampleName: string, env: ExampleEnv): Plugin {
     return {
         name: "nova-token-dev-proxy",
         configureServer(server) {
@@ -18,10 +37,13 @@ function novaTokenProxyPlugin(exampleName: string): Plugin {
                     return;
                 }
 
-                const integrationSecret = process.env.NOVA_INTEGRATION_SECRET;
-                if (!integrationSecret) {
+                const missingEnv = missingProxyEnv(env);
+                if (missingEnv.length > 0) {
                     sendJson(response, 500, {
-                        error: "NOVA_INTEGRATION_SECRET is not configured for this dev server.",
+                        error: `Nova token proxy is missing required .env values: ${missingEnv.join(
+                            ", ",
+                        )}.`,
+                        detail: "Copy examples/react/.env.example to examples/react/.env and fill them in, or set the variables before starting Vite.",
                     });
                     return;
                 }
@@ -29,28 +51,26 @@ function novaTokenProxyPlugin(exampleName: string): Plugin {
                 const body = await readJsonBody(request);
                 const publicSurfaceId = readString(body.publicSurfaceId);
                 const origin = readString(body.origin) || originForRequest(request);
-                const email = process.env.NOVA_TEST_EMAIL || DEFAULT_TEST_EMAIL;
 
                 if (!publicSurfaceId) {
                     sendJson(response, 400, { error: "publicSurfaceId is required." });
                     return;
                 }
 
-                const novaApiUrl = trimTrailingSlash(process.env.NOVA_API_URL || DEFAULT_NOVA_API_URL);
-                let upstream;
+                let upstream: Response;
                 try {
-                    upstream = await fetch(`${novaApiUrl}/embed/session`, {
+                    upstream = await fetch(`${env.tokenBaseUrl}/embed/session`, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
-                            Authorization: `Bearer ${integrationSecret}`,
+                            Authorization: `Bearer ${env.integrationSecret}`,
                             Origin: origin,
                         },
                         body: JSON.stringify({
-                            email,
+                            email: env.testEmail,
                             publicSurfaceId,
                             origin,
-                            externalUserId: `${exampleName}:${email}`,
+                            externalUserId: `${exampleName}:${env.testEmail}`,
                         }),
                     });
                 } catch (error) {
@@ -70,6 +90,14 @@ function novaTokenProxyPlugin(exampleName: string): Plugin {
             });
         },
     };
+}
+
+function missingProxyEnv(env: ExampleEnv): string[] {
+    const missing: string[] = [];
+    if (!env.tokenBaseUrl) missing.push("NOVA_TOKEN_BASE_URL");
+    if (!env.integrationSecret) missing.push("NOVA_INTEGRATION_SECRET");
+    if (!env.testEmail) missing.push("NOVA_TEST_EMAIL");
+    return missing;
 }
 
 async function readJsonBody(request: IncomingMessage): Promise<Record<string, unknown>> {

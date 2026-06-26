@@ -1,5 +1,5 @@
 import { Component } from "@angular/core";
-import { NovaChatComponent, type SdkConfig, type ToolHandler } from "@wp-nova/sdk-angular";
+import { NovaChatComponent, type SdkConfig, type ToolDefinition } from "@wp-nova/sdk-angular";
 
 type StayStatus = "Inquiry" | "Reserved" | "In house" | "Follow up";
 
@@ -273,13 +273,75 @@ export class AppComponent {
     events: LogEvent[] = [createEvent("system", "Angular concierge example loaded.")];
     settings = readInitialSettings();
     sdkConfig = buildSdkConfig(this.settings);
-    tools: Record<string, ToolHandler> = {
-        select_booking: (args) => this.selectBookingTool(args),
-        change_booking_status: (args) => this.changeBookingStatusTool(args),
-        add_concierge_task: (args) => this.addConciergeTaskTool(args),
-        show_guest_banner: (args) => this.showGuestBannerTool(args),
-        get_concierge_snapshot: () => this.snapshot(),
-    };
+    tools: ToolDefinition[] = [
+        {
+            name: "select_booking",
+            description: "Selects a booking on the concierge board and returns the stay details.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    stayId: { type: "string" },
+                    bookingId: { type: "string" },
+                },
+            },
+            mutating: false,
+            handler: (args) => this.selectBookingTool(args),
+        },
+        {
+            name: "change_booking_status",
+            description: "Changes the status for a guest booking on the concierge board.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    stayId: { type: "string" },
+                    bookingId: { type: "string" },
+                    status: {
+                        type: "string",
+                        enum: ["Inquiry", "Reserved", "In house", "Follow up"],
+                    },
+                },
+                required: ["status"],
+            },
+            mutating: true,
+            confirmationCopy: "Change this booking status?",
+            handler: (args) => this.changeBookingStatusTool(args),
+        },
+        {
+            name: "add_concierge_task",
+            description: "Adds a concierge service task for the current guest or booking.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    label: { type: "string" },
+                    task: { type: "string" },
+                    owner: { type: "string" },
+                },
+                required: ["label"],
+            },
+            mutating: true,
+            confirmationCopy: "Add this concierge task?",
+            handler: (args) => this.addConciergeTaskTool(args),
+        },
+        {
+            name: "show_guest_banner",
+            description: "Updates the visible concierge banner with a guest service note.",
+            inputSchema: {
+                type: "object",
+                properties: { message: { type: "string" } },
+                required: ["message"],
+            },
+            mutating: true,
+            confirmationCopy: "Show this guest banner?",
+            handler: (args) => this.showGuestBannerTool(args),
+        },
+        {
+            name: "get_concierge_snapshot",
+            description: "Returns current concierge data visible in the Angular example app.",
+            inputSchema: { type: "object", properties: {} },
+            mutating: false,
+            handler: () => this.snapshot(),
+        },
+    ];
 
     get activeStay(): Stay {
         return this.stays.find((stay) => stay.id === this.activeStayId) ?? defaultStay;
@@ -329,7 +391,9 @@ export class AppComponent {
     }
 
     completeFirstTask(): void {
-        this.tasks = this.tasks.map((task, index) => (index === 0 ? { ...task, done: true } : task));
+        this.tasks = this.tasks.map((task, index) =>
+            index === 0 ? { ...task, done: true } : task,
+        );
         this.addEvent("button", "First concierge task completed.");
     }
 
@@ -401,14 +465,9 @@ function readInitialSettings(): SdkSettings {
     const query = new URLSearchParams(window.location.search);
 
     return {
-        publicSurfaceId:
-            query.get("surface") ||
-            import.meta.env.VITE_NOVA_PUBLIC_SURFACE_ID ||
-            "",
+        publicSurfaceId: query.get("surface") || import.meta.env.VITE_NOVA_PUBLIC_SURFACE_ID || "",
         baseUrl:
-            query.get("baseUrl") ||
-            import.meta.env.VITE_NOVA_BASE_URL ||
-            "http://localhost:5173",
+            query.get("baseUrl") || import.meta.env.VITE_NOVA_BASE_URL || "http://localhost:5173",
         tokenEndpoint:
             query.get("tokenEndpoint") ||
             import.meta.env.VITE_NOVA_TOKEN_ENDPOINT ||
@@ -427,6 +486,7 @@ function buildSdkConfig(settings: SdkSettings): SdkConfig {
         triggerColor: "#276b55",
         triggerIconColor: "light",
         safeValueSelectors: parseSelectorList(settings.safeValueSelectors),
+        voiceMode: true,
     };
 }
 

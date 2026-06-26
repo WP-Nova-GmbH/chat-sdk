@@ -7,7 +7,8 @@ import {
     type OnInit,
     type SimpleChanges,
 } from "@angular/core";
-import type { SdkConfig, ToolHandler } from "@wp-nova/sdk";
+import type { SdkConfig, ToolDefinition } from "@wp-nova/sdk";
+import { disabledConfigMessage } from "./nova-chat.diagnostics";
 import { NovaChatService } from "./nova-chat.service";
 
 @Component({
@@ -17,11 +18,12 @@ import { NovaChatService } from "./nova-chat.service";
 })
 export class NovaChatComponent implements OnInit, OnChanges, OnDestroy {
     @Input() config?: SdkConfig;
-    @Input() tools?: Record<string, ToolHandler>;
+    @Input() tools?: readonly ToolDefinition[];
     @Input() enabled = true;
 
     private readonly nova = inject(NovaChatService);
     private toolNames: string[] = [];
+    private lastDisabledMessage?: string;
 
     ngOnInit(): void {
         this.sync();
@@ -38,7 +40,7 @@ export class NovaChatComponent implements OnInit, OnChanges, OnDestroy {
 
     private unregisterTools(): void {
         for (const name of this.toolNames) {
-            this.nova.unregisterToolHandler(name);
+            this.nova.unregisterTool(name);
         }
         this.toolNames = [];
     }
@@ -47,15 +49,20 @@ export class NovaChatComponent implements OnInit, OnChanges, OnDestroy {
         this.unregisterTools();
 
         if (!this.enabled) {
+            const message = disabledConfigMessage(this.config);
+            if (message && this.lastDisabledMessage !== message) {
+                this.lastDisabledMessage = message;
+                console.error(message);
+            }
             this.nova.destroy();
             return;
         }
+        this.lastDisabledMessage = undefined;
         if (this.config) this.nova.init(this.config);
 
-        this.toolNames = Object.keys(this.tools ?? {});
-        for (const name of this.toolNames) {
-            const handler = this.tools?.[name];
-            if (handler) this.nova.registerToolHandler(name, handler);
+        this.toolNames = (this.tools ?? []).map((tool) => tool.name);
+        for (const tool of this.tools ?? []) {
+            this.nova.registerTool(tool);
         }
     }
 }

@@ -1,4 +1,4 @@
-import { NovaChatProvider, type NovaToolMap } from "@wp-nova/sdk-react";
+import { NovaChatProvider, type NovaToolDefinition } from "@wp-nova/sdk-react";
 import { useMemo, useState } from "react";
 
 type ManifestStatus = "On time" | "Hold" | "Delayed" | "Released";
@@ -136,70 +136,139 @@ export function App() {
             triggerColor: "#f0a202",
             triggerIconColor: "dark",
             safeValueSelectors: parseSelectorList(settings.safeValueSelectors),
+            voiceMode: true,
         }),
         [settings],
     );
 
-    const tools = useMemo<NovaToolMap>(
-        () => ({
-            focus_manifest: (args) => {
-                const requestedId = String(args.manifestId ?? activeManifestId);
-                const shipment = shipments.find((candidate) => candidate.id === requestedId);
-                if (!shipment) return { ok: false, reason: "Manifest not found." };
+    const tools = useMemo<NovaToolDefinition[]>(
+        () => [
+            {
+                name: "focus_manifest",
+                description: "Focuses the freight board on a specific manifest and returns it.",
+                inputSchema: {
+                    type: "object",
+                    properties: { manifestId: { type: "string" } },
+                    required: ["manifestId"],
+                },
+                mutating: false,
+                handler: (args) => {
+                    const requestedId = String(args.manifestId ?? activeManifestId);
+                    const shipment = shipments.find((candidate) => candidate.id === requestedId);
+                    if (!shipment) return { ok: false, reason: "Manifest not found." };
 
-                setActiveManifestId(shipment.id);
-                recordEvent(setEvents, "tool", `Focused manifest ${shipment.id}.`);
-                return { ok: true, shipment };
+                    setActiveManifestId(shipment.id);
+                    recordEvent(setEvents, "tool", `Focused manifest ${shipment.id}.`);
+                    return { ok: true, shipment };
+                },
             },
-            update_manifest_status: (args) => {
-                const requestedId = String(args.manifestId ?? activeManifestId);
-                const status = readManifestStatus(args.status);
-                let updated: Shipment | undefined;
+            {
+                name: "update_manifest_status",
+                description: "Changes the status of a freight manifest on the operations board.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        manifestId: { type: "string" },
+                        status: {
+                            type: "string",
+                            enum: ["On time", "Hold", "Delayed", "Released"],
+                        },
+                    },
+                    required: ["manifestId", "status"],
+                },
+                mutating: true,
+                confirmationCopy: "Change this manifest status?",
+                handler: (args) => {
+                    const requestedId = String(args.manifestId ?? activeManifestId);
+                    const status = readManifestStatus(args.status);
+                    let updated: Shipment | undefined;
 
-                setShipments((current) =>
-                    current.map((shipment) => {
-                        if (shipment.id !== requestedId) return shipment;
-                        updated = { ...shipment, status };
-                        return updated;
-                    }),
-                );
+                    setShipments((current) =>
+                        current.map((shipment) => {
+                            if (shipment.id !== requestedId) return shipment;
+                            updated = { ...shipment, status };
+                            return updated;
+                        }),
+                    );
 
-                if (!updated) return { ok: false, reason: "Manifest not found." };
+                    if (!updated) return { ok: false, reason: "Manifest not found." };
 
-                setActiveManifestId(updated.id);
-                recordEvent(setEvents, "tool", `${updated.id} status changed to ${status}.`);
-                return { ok: true, shipment: updated };
+                    setActiveManifestId(updated.id);
+                    recordEvent(setEvents, "tool", `${updated.id} status changed to ${status}.`);
+                    return { ok: true, shipment: updated };
+                },
             },
-            dispatch_yard_crew: (args) => {
-                const yard = String(args.yard ?? activeShipment.gate);
-                const assignment = String(args.assignment ?? crewNote);
-                const task: CrewTask = {
-                    id: `CREW-${Math.floor(100 + Math.random() * 800)}`,
-                    team: String(args.team ?? "Rapid Response"),
-                    assignment,
-                    yard,
-                    status: "Queued",
-                };
+            {
+                name: "dispatch_yard_crew",
+                description: "Creates a new yard crew task for the selected shipment or gate.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        yard: { type: "string" },
+                        assignment: { type: "string" },
+                        team: { type: "string" },
+                    },
+                    required: ["assignment"],
+                },
+                mutating: true,
+                confirmationCopy: "Dispatch this yard crew?",
+                handler: (args) => {
+                    const yard = String(args.yard ?? activeShipment.gate);
+                    const assignment = String(args.assignment ?? crewNote);
+                    const task: CrewTask = {
+                        id: `CREW-${Math.floor(100 + Math.random() * 800)}`,
+                        team: String(args.team ?? "Rapid Response"),
+                        assignment,
+                        yard,
+                        status: "Queued",
+                    };
 
-                setCrewTasks((current) => [task, ...current]);
-                recordEvent(setEvents, "tool", `${task.team} dispatched to ${yard}.`);
-                return { ok: true, task };
+                    setCrewTasks((current) => [task, ...current]);
+                    recordEvent(setEvents, "tool", `${task.team} dispatched to ${yard}.`);
+                    return { ok: true, task };
+                },
             },
-            post_control_note: (args) => {
-                const message = String(args.message ?? "Control note received.");
-                setBanner(message);
-                recordEvent(setEvents, "tool", `Banner updated: ${message}`);
-                return { ok: true, message };
+            {
+                name: "post_control_note",
+                description: "Updates the visible operations banner with a control room note.",
+                inputSchema: {
+                    type: "object",
+                    properties: { message: { type: "string" } },
+                    required: ["message"],
+                },
+                mutating: true,
+                confirmationCopy: "Post this control note?",
+                handler: (args) => {
+                    const message = String(args.message ?? "Control note received.");
+                    setBanner(message);
+                    recordEvent(setEvents, "tool", `Banner updated: ${message}`);
+                    return { ok: true, message };
+                },
             },
-            get_control_snapshot: () => ({
-                activeManifest: activeShipment,
-                visibleShipments,
-                crewTasks,
-                banner,
-                filter,
-            }),
-        }),
-        [activeManifestId, activeShipment, banner, crewNote, crewTasks, filter, shipments, visibleShipments],
+            {
+                name: "get_control_snapshot",
+                description: "Returns current rail operations data visible in the example app.",
+                inputSchema: { type: "object", properties: {} },
+                mutating: false,
+                handler: () => ({
+                    activeManifest: activeShipment,
+                    visibleShipments,
+                    crewTasks,
+                    banner,
+                    filter,
+                }),
+            },
+        ],
+        [
+            activeManifestId,
+            activeShipment,
+            banner,
+            crewNote,
+            crewTasks,
+            filter,
+            shipments,
+            visibleShipments,
+        ],
     );
 
     const enabled = Boolean(settings.publicSurfaceId.trim());
@@ -295,7 +364,9 @@ export function App() {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => updateShipmentStatus(shipment.id, "Hold")}
+                                            onClick={() =>
+                                                updateShipmentStatus(shipment.id, "Hold")
+                                            }
                                         >
                                             Hold
                                         </button>
@@ -442,11 +513,9 @@ function readInitialSettings(): SdkSettings {
     const query = new URLSearchParams(window.location.search);
 
     return {
-        publicSurfaceId:
-            query.get("surface") ||
-            import.meta.env.VITE_NOVA_PUBLIC_SURFACE_ID ||
-            "",
-        baseUrl: query.get("baseUrl") || import.meta.env.VITE_NOVA_BASE_URL || "http://localhost:5173",
+        publicSurfaceId: query.get("surface") || import.meta.env.VITE_NOVA_PUBLIC_SURFACE_ID || "",
+        baseUrl:
+            query.get("baseUrl") || import.meta.env.VITE_NOVA_BASE_URL || "http://localhost:5173",
         tokenEndpoint:
             query.get("tokenEndpoint") ||
             import.meta.env.VITE_NOVA_TOKEN_ENDPOINT ||
