@@ -19,9 +19,9 @@ Le snippet en file d’attente permet d’enregistrer des outils avant que le fi
     };
     var j = d.createElement(s);
     j.async = 1;
-    j.src = "https://chat.wp-nova.ai/sdk/1.0.0/sdk.js";
+    j.src = "https://chat.wp-nova.ai/sdk/<version>/sdk.js";
     j.crossOrigin = "anonymous";
-    j.integrity = "sha384-<published hash>";
+    j.integrity = "sha384-<published hash for this version>";
     d.head.appendChild(j);
   })(window, document, "script");
 

@@ -77,7 +77,6 @@ a {
     color: var(--primary);
 }
 
-
 .announcementBar_node_modules-\@docusaurus-theme-classic-lib-theme-AnnouncementBar-styles-module,
 div[class*="announcementBar"] {
     font-family: "Outfit", system-ui, sans-serif;
@@ -213,7 +212,9 @@ html[data-theme="dark"] .nova-wordmark--mono {
     border-radius: 4px;
     background: var(--surface);
     color: var(--fg-muted);
-    font: 11px "JetBrains Mono", monospace;
+    font:
+        11px "JetBrains Mono",
+        monospace;
 }
 
 .nova-search__panel {
@@ -285,13 +286,23 @@ html[data-theme="dark"] .nova-wordmark--mono {
     background: transparent;
     color: var(--fg);
     cursor: pointer;
-    font: 500 14px "Outfit", sans-serif;
+    font:
+        500 14px "Outfit",
+        sans-serif;
 }
 
 .nova-theme-toggle {
     width: 34px;
     padding: 0;
     justify-content: center;
+}
+
+.nova-dropdown__button--static {
+    cursor: default;
+}
+
+.nova-dropdown__button--static:hover {
+    background: transparent;
 }
 
 .nova-theme-toggle span {
@@ -301,7 +312,9 @@ html[data-theme="dark"] .nova-wordmark--mono {
     width: 18px;
     height: 18px;
     margin: -9px 0 0 -9px;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease;
 }
 
 html[data-theme="light"] .nova-theme-toggle__sun {
@@ -557,7 +570,9 @@ div[class*="docMainContainer"] {
     left: 0;
     color: var(--primary);
     content: counter(li, decimal-leading-zero);
-    font: 12px "JetBrains Mono", monospace;
+    font:
+        12px "JetBrains Mono",
+        monospace;
 }
 
 .theme-code-block {
@@ -646,7 +661,9 @@ div[class*="docMainContainer"] {
 .nova-callout__eyebrow {
     margin-bottom: 7px;
     color: var(--primary);
-    font: 500 11px "JetBrains Mono", monospace;
+    font:
+        500 11px "JetBrains Mono",
+        monospace;
     letter-spacing: 0.1em;
     text-transform: uppercase;
 }
@@ -673,7 +690,11 @@ div[class*="docMainContainer"] {
     border-radius: 7px;
     cursor: pointer;
     font-family: "Outfit", sans-serif;
-    transition: background 0.14s, border-color 0.14s, color 0.14s, transform 0.14s;
+    transition:
+        background 0.14s,
+        border-color 0.14s,
+        color 0.14s,
+        transform 0.14s;
 }
 
 .nova-button:active {
@@ -727,12 +748,16 @@ div[class*="docMainContainer"] {
     border-radius: 9px;
     background: #141422;
     color: #eae6de;
-    font: 12px "JetBrains Mono", monospace;
+    font:
+        12px "JetBrains Mono",
+        monospace;
     letter-spacing: 0.04em;
     opacity: 0;
     pointer-events: none;
     transform: translateX(-50%) translateY(20px);
-    transition: opacity 0.2s, transform 0.2s;
+    transition:
+        opacity 0.2s,
+        transform 0.2s;
 }
 
 .nova-toast--visible {
@@ -811,7 +836,9 @@ div[class*="docMainContainer"] {
     padding-top: 22px;
     border-top: 1px solid rgba(234, 230, 222, 0.1);
     color: #75758a;
-    font: 11.5px "JetBrains Mono", monospace;
+    font:
+        11.5px "JetBrains Mono",
+        monospace;
 }
 
 @media (max-width: 1200px) {

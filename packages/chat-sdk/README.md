@@ -16,7 +16,7 @@ dependency-free executor.
 ### Script tag (CDN)
 
 Drop the install snippet on any page. Calls made before the SDK finishes loading
-are buffered and replayed in order, so `registerToolHandler` calls placed before
+are buffered and replayed in order, so `registerTool` calls placed before
 `init` are preserved.
 
 The CDN serves the SDK from `chat.wp-nova.ai` on two channels:
@@ -38,20 +38,34 @@ admin install snippet.
   (function (w, d, s) {
     w.WpNova = w.WpNova || function () { (w.WpNova.q = w.WpNova.q || []).push(arguments); };
     var j = d.createElement(s); j.async = 1;
-    j.src = "https://chat.wp-nova.ai/sdk/1.0.0/sdk.js"; // immutable, pinned
+    j.src = "https://chat.wp-nova.ai/sdk/<version>/sdk.js"; // immutable, pinned
     j.crossOrigin = "anonymous";
     j.integrity = "sha384-<published hash for this version>"; // SRI (required)
     d.head.appendChild(j);
   })(window, document, "script");
 
-  // Register integrator tool handlers (optional; may run before init).
-  WpNova("registerToolHandler", "create_ticket", function (args) {
-    return myApp.createTicket(args);
+  // Register SDK-defined page tools (optional; may run before init).
+  WpNova("registerTool", {
+    name: "create_ticket",
+    description: "Creates a support ticket from the current customer context.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        priority: { type: "string", enum: ["low", "normal", "high"] }
+      },
+      required: ["title"]
+    },
+    mutating: true,
+    confirmationCopy: "Create this ticket?",
+    handler: function (args) {
+      return myApp.createTicket(args);
+    }
   });
 
   // Boot the chat.
   WpNova("init", {
-    publicSurfaceId: "srf_live_…",   // non-secret, SDK-facing surface handle
+    publicSurfaceId: "surf_…",       // non-secret, SDK-facing surface handle
     tokenEndpoint: "/api/nova-token", // YOUR backend endpoint (see below)
   });
 </script>
@@ -78,8 +92,15 @@ npm install @wp-nova/sdk
 ```ts
 import { WpNova } from "@wp-nova/sdk";
 
-WpNova("init", { publicSurfaceId: "srf_live_…", tokenEndpoint: "/api/nova-token" });
-WpNova("registerToolHandler", "create_ticket", async (args) => myApp.createTicket(args));
+WpNova("init", { publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
+WpNova("registerTool", {
+  name: "create_ticket",
+  description: "Creates a support ticket from the current customer context.",
+  inputSchema: { type: "object", properties: { title: { type: "string" } }, required: ["title"] },
+  mutating: true,
+  confirmationCopy: "Create this ticket?",
+  handler: async (args) => myApp.createTicket(args),
+});
 ```
 
 ## Init config
@@ -141,26 +162,41 @@ is always the re-mint path.
 
 ## Integrator tools
 
-The set of tools the agent *can* call is declared **server-side** on the Embedded
-Chat Surface — the browser cannot inject new agent tools. The SDK supplies matching
-execution callbacks:
+The set of page tools the agent *can* call is declared by your SDK integration.
+Nova admin only controls whether SDK-defined page tools are allowed on the
+surface. Define the tool contract and handler together:
 
 ```ts
-WpNova("registerToolHandler", "create_ticket", async (args) => {
+WpNova("registerTool", {
+  name: "create_ticket",
+  description: "Creates a support ticket from the current customer context.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      title: { type: "string" },
+      priority: { type: "string", enum: ["low", "normal", "high"] },
+    },
+    required: ["title"],
+  },
+  mutating: true,
+  confirmationCopy: "Create this ticket?",
+  handler: async (args) => {
   const ticket = await myApp.createTicket(args);
-  return { ticketId: ticket.id, url: ticket.url };
+    return { ok: true, ticketId: ticket.id, ticketUrl: ticket.url };
+  },
 });
 ```
 
-- Handlers may be registered **before or after** `init` (the queued snippet
+- Tools may be registered **before or after** `init` (the queued snippet
   buffers early calls).
-- The SDK tells the iframe which handlers exist via `REGISTER_TOOLS` on `READY`
+- The SDK tells the iframe which tool specs exist via `REGISTER_TOOLS` on `READY`
   and whenever the registry changes.
 - A tool request for a name with no registered handler returns a typed
   `no_handler` error rather than hanging — the agent is told the tool isn't wired.
-- **Mutating** tools are classified **server-side** and gated by an explicit
-  confirmation in the iframe; the SDK only ever executes an approved request. The
-  SDK performs no client-side mutation classification.
+- **Mutating** tools require `confirmationCopy` and are gated by an explicit
+  confirmation in the iframe before the SDK executes the handler.
+- `registerToolHandler(name, handler)` remains available for execution-only
+  compatibility, but handler-only registrations are not advertised to the agent.
 
 ## Mount lifecycle (SPA-safe)
 
@@ -184,7 +220,7 @@ replay.
 
 ### Field-value policy — default-deny
 
-Field **values** (`input` / `textarea` / `contenteditable`) are **omitted by
+Field **values** (`input` / `select` / `textarea` / `contenteditable`) are **omitted by
 default**. A value is captured only when it **opts in** *and* passes every
 sensitivity check:
 
@@ -196,7 +232,9 @@ sensitivity check:
   matches `card|cc|cvv|cvc|ssn|secret|token|password|account|iban|routing|pin`.
 
 Field **labels** are always captured (so the agent knows the field exists); only
-the value is gated.
+the value is gated. When a visible field has a value that is withheld, the
+snapshot includes metadata in `omittedValues` with the field handle, label/type,
+and reason (`not_opted_in` or `sensitive`) — never the hidden value itself.
 
 ### Excluding regions
 
@@ -226,6 +264,7 @@ re-issued handles:
 | `set_filter` | Set a search/filter field value (fires `input`/`change`). |
 | `scroll_to` | Scroll a handle into view. |
 | `highlight` | Scroll to and briefly outline a handle. |
+| `refresh_context` | Return a fresh page snapshot without changing the page. |
 
 For same-origin URL/link navigation, the SDK first dispatches a cancelable
 `wp-nova:navigate` event with `{ url }`. SPA routers can handle the route and

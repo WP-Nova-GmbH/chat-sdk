@@ -1,6 +1,6 @@
 export interface SearchEntry {
     title: string;
-    href: string;
+    docId: string;
     section: string;
     description: string;
 }
@@ -9,207 +9,224 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
     en: [
         {
             title: "Overview",
-            href: "/",
+            docId: "overview",
             section: "Getting started",
-            description: "How the SDK mounts the Nova-hosted iframe and bridges page context."
+            description: "How the SDK mounts the Nova-hosted iframe and bridges page context.",
         },
         {
             title: "Quickstart",
-            href: "/quickstart",
+            docId: "quickstart",
             section: "Getting started",
-            description: "Install by script tag or npm and initialize WpNova."
+            description:
+                "End-to-end surface setup, backend token endpoint, SDK install, tools, and smoke tests.",
         },
         {
             title: "Configuration",
-            href: "/configuration",
+            docId: "configuration",
             section: "Guides",
-            description: "SdkConfig fields including publicSurfaceId, tokenEndpoint, baseUrl, and theming."
+            description:
+                "SdkConfig fields, token endpoint request shape, lifecycle, and destroy behavior.",
         },
         {
             title: "Giving the agent DOM access",
-            href: "/dom-access",
+            docId: "dom-access",
             section: "Guides",
-            description: "Register tool handlers and expose safe page snapshots."
+            description:
+                "Visible Page Snapshots, safe field values, built-in page actions, and page tools.",
         },
         {
             title: "Events",
-            href: "/events",
+            docId: "events",
             section: "Guides",
-            description: "Bridge lifecycle, token refresh, READY, AUTH_EXPIRED, and tool frames."
+            description:
+                "Bridge lifecycle, token refresh, unavailable users, auth errors, and tool frames.",
         },
         {
             title: "Theming",
-            href: "/theming",
+            docId: "theming",
             section: "Guides",
-            description: "Launcher colors, trigger icons, first paint, and surface display settings."
+            description:
+                "Launcher colors, trigger icons, first paint, and surface display settings.",
         },
         {
             title: "Security and permissions",
-            href: "/security",
+            docId: "security",
             section: "Reference",
-            description: "Token endpoint responsibilities, origin checks, field-value policy, and CSP guidance."
+            description:
+                "Backend trust boundary, origin checks, user resolution, tool permissions, and CSP.",
         },
         {
             title: "API reference",
-            href: "/api-reference",
+            docId: "api-reference",
             section: "Reference",
-            description: "WpNova commands, helpers, SdkConfig, and ToolHandler types."
+            description: "WpNova commands, helpers, SdkConfig, and ToolHandler types.",
         },
         {
             title: "React",
-            href: "/react",
+            docId: "react",
             section: "Reference",
-            description: "Use @wp-nova/sdk-react in React 18 and 19 applications."
+            description: "Use @wp-nova/sdk-react in React 18 and 19 applications.",
         },
         {
             title: "Angular",
-            href: "/angular",
+            docId: "angular",
             section: "Reference",
-            description: "Use @wp-nova/sdk-angular services, providers, and standalone component."
+            description: "Use @wp-nova/sdk-angular services, providers, and standalone component.",
         },
         {
             title: "Release and CDN",
-            href: "/release-cdn",
+            docId: "release-cdn",
             section: "Reference",
-            description: "Build artifacts, SRI, immutable URLs, and the rolling v1 channel."
-        }
+            description: "Build artifacts, SRI, immutable URLs, and the rolling v1 channel.",
+        },
     ],
     de: [
         {
             title: "Übersicht",
-            href: "/",
+            docId: "overview",
             section: "Einstieg",
-            description: "Wie das SDK das von Nova gehostete iframe mountet und Seitenkontext bridged."
+            description:
+                "Wie das SDK das von Nova gehostete iframe mountet und Seitenkontext bridged.",
         },
         {
             title: "Schnellstart",
-            href: "/quickstart",
+            docId: "quickstart",
             section: "Einstieg",
-            description: "Per Script-Tag oder npm installieren und WpNova initialisieren."
+            description: "Per Script-Tag oder npm installieren und WpNova initialisieren.",
         },
         {
             title: "Konfiguration",
-            href: "/configuration",
+            docId: "configuration",
             section: "Anleitungen",
-            description: "SdkConfig-Felder wie publicSurfaceId, tokenEndpoint, baseUrl und Theming."
+            description:
+                "SdkConfig-Felder wie publicSurfaceId, tokenEndpoint, baseUrl und Theming.",
         },
         {
             title: "Dem Agenten DOM-Zugriff geben",
-            href: "/dom-access",
+            docId: "dom-access",
             section: "Anleitungen",
-            description: "Tool-Handler registrieren und sichere Seiten-Snapshots bereitstellen."
+            description: "Tool-Handler registrieren und sichere Seiten-Snapshots bereitstellen.",
         },
         {
             title: "Ereignisse",
-            href: "/events",
+            docId: "events",
             section: "Anleitungen",
-            description: "Bridge-Lifecycle, Token-Erneuerung, READY, AUTH_EXPIRED und Tool-Frames."
+            description: "Bridge-Lifecycle, Token-Erneuerung, READY, AUTH_EXPIRED und Tool-Frames.",
         },
         {
             title: "Design-Anpassung",
-            href: "/theming",
+            docId: "theming",
             section: "Anleitungen",
-            description: "Launcher-Farben, Trigger-Icons, erster Render und Surface-Anzeigeeinstellungen."
+            description:
+                "Launcher-Farben, Trigger-Icons, erster Render und Surface-Anzeigeeinstellungen.",
         },
         {
             title: "Sicherheit und Berechtigungen",
-            href: "/security",
+            docId: "security",
             section: "Referenz",
-            description: "Token-Endpoint-Pflichten, Origin-Prüfungen, Feldwerte-Policy und CSP-Hinweise."
+            description:
+                "Token-Endpoint-Pflichten, Origin-Prüfungen, Feldwerte-Policy und CSP-Hinweise.",
         },
         {
             title: "API-Referenz",
-            href: "/api-reference",
+            docId: "api-reference",
             section: "Referenz",
-            description: "WpNova-Befehle, Helper, SdkConfig und ToolHandler-Typen."
+            description: "WpNova-Befehle, Helper, SdkConfig und ToolHandler-Typen.",
         },
         {
             title: "React",
-            href: "/react",
+            docId: "react",
             section: "Referenz",
-            description: "@wp-nova/sdk-react in React-18- und React-19-Anwendungen verwenden."
+            description: "@wp-nova/sdk-react in React-18- und React-19-Anwendungen verwenden.",
         },
         {
             title: "Angular",
-            href: "/angular",
+            docId: "angular",
             section: "Referenz",
-            description: "@wp-nova/sdk-angular Services, Provider und Standalone-Komponente verwenden."
+            description:
+                "@wp-nova/sdk-angular Services, Provider und Standalone-Komponente verwenden.",
         },
         {
             title: "Versionierung und CDN",
-            href: "/release-cdn",
+            docId: "release-cdn",
             section: "Referenz",
-            description: "Build-Artefakte, SRI, unveränderliche URLs und der Rolling-v1-Channel."
-        }
+            description: "Build-Artefakte, SRI, unveränderliche URLs und der Rolling-v1-Channel.",
+        },
     ],
     fr: [
         {
             title: "Vue d'ensemble",
-            href: "/",
+            docId: "overview",
             section: "Premiers pas",
-            description: "Comment le SDK monte l'iframe hébergée par Nova et bridge le contexte de page."
+            description:
+                "Comment le SDK monte l'iframe hébergée par Nova et bridge le contexte de page.",
         },
         {
             title: "Démarrage rapide",
-            href: "/quickstart",
+            docId: "quickstart",
             section: "Premiers pas",
-            description: "Installer par balise script ou npm et initialiser WpNova."
+            description: "Installer par balise script ou npm et initialiser WpNova.",
         },
         {
             title: "Configuration",
-            href: "/configuration",
+            docId: "configuration",
             section: "Guides",
-            description: "Champs SdkConfig, dont publicSurfaceId, tokenEndpoint, baseUrl et theming."
+            description:
+                "Champs SdkConfig, dont publicSurfaceId, tokenEndpoint, baseUrl et theming.",
         },
         {
             title: "Donner à l'agent l'accès au DOM",
-            href: "/dom-access",
+            docId: "dom-access",
             section: "Guides",
-            description: "Enregistrer des handlers d'outils et exposer des instantanés sûrs."
+            description: "Enregistrer des handlers d'outils et exposer des instantanés sûrs.",
         },
         {
             title: "Événements",
-            href: "/events",
+            docId: "events",
             section: "Guides",
-            description: "Cycle de vie du bridge, renouvellement de token, READY, AUTH_EXPIRED et frames d'outils."
+            description:
+                "Cycle de vie du bridge, renouvellement de token, READY, AUTH_EXPIRED et frames d'outils.",
         },
         {
             title: "Personnalisation visuelle",
-            href: "/theming",
+            docId: "theming",
             section: "Guides",
-            description: "Couleurs du lanceur, icônes de déclenchement, premier rendu et affichage de surface."
+            description:
+                "Couleurs du lanceur, icônes de déclenchement, premier rendu et affichage de surface.",
         },
         {
             title: "Sécurité et permissions",
-            href: "/security",
+            docId: "security",
             section: "Référence",
-            description: "Responsabilités de l'endpoint de token, contrôles d'origine, valeurs de champs et CSP."
+            description:
+                "Responsabilités de l'endpoint de token, contrôles d'origine, valeurs de champs et CSP.",
         },
         {
             title: "Référence API",
-            href: "/api-reference",
+            docId: "api-reference",
             section: "Référence",
-            description: "Commandes WpNova, helpers, SdkConfig et types ToolHandler."
+            description: "Commandes WpNova, helpers, SdkConfig et types ToolHandler.",
         },
         {
             title: "React",
-            href: "/react",
+            docId: "react",
             section: "Référence",
-            description: "Utiliser @wp-nova/sdk-react dans les applications React 18 et 19."
+            description: "Utiliser @wp-nova/sdk-react dans les applications React 18 et 19.",
         },
         {
             title: "Angular",
-            href: "/angular",
+            docId: "angular",
             section: "Référence",
-            description: "Utiliser les services, providers et le composant standalone @wp-nova/sdk-angular."
+            description:
+                "Utiliser les services, providers et le composant standalone @wp-nova/sdk-angular.",
         },
         {
             title: "Publication et CDN",
-            href: "/release-cdn",
+            docId: "release-cdn",
             section: "Référence",
-            description: "Artefacts de build, SRI, URL immuables et canal rolling v1."
-        }
-    ]
+            description: "Artefacts de build, SRI, URL immuables et canal rolling v1.",
+        },
+    ],
 };
 
 export function getSearchIndex(locale: string): SearchEntry[] {

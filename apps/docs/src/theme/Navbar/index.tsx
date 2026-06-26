@@ -1,4 +1,11 @@
 import Link from "@docusaurus/Link";
+import {
+    type GlobalDoc,
+    type GlobalVersion,
+    useActiveDocContext,
+    useDocsPreferredVersion,
+    useVersions,
+} from "@docusaurus/plugin-content-docs/client";
 import { useLocation } from "@docusaurus/router";
 import { useColorMode } from "@docusaurus/theme-common";
 import { useAlternatePageUtils } from "@docusaurus/theme-common/internal";
@@ -11,59 +18,63 @@ import { getSearchIndex } from "../../data/searchIndex";
 const localeLabels: Record<string, string> = {
     en: "English",
     de: "Deutsch",
-    fr: "Français"
+    fr: "Français",
 };
 
 const mobileLinksByLocale = {
     en: [
-        { label: "Overview", to: "/" },
-        { label: "Quickstart", to: "/quickstart" },
-        { label: "Configuration", to: "/configuration" },
-        { label: "DOM access", to: "/dom-access" },
-        { label: "Events", to: "/events" },
-        { label: "Theming", to: "/theming" },
-        { label: "Security", to: "/security" },
-        { label: "API", to: "/api-reference" },
-        { label: "React", to: "/react" },
-        { label: "Angular", to: "/angular" },
-        { label: "Release", to: "/release-cdn" }
+        { label: "Overview", docId: "overview" },
+        { label: "Quickstart", docId: "quickstart" },
+        { label: "Configuration", docId: "configuration" },
+        { label: "DOM access", docId: "dom-access" },
+        { label: "Events", docId: "events" },
+        { label: "Theming", docId: "theming" },
+        { label: "Security", docId: "security" },
+        { label: "API", docId: "api-reference" },
+        { label: "React", docId: "react" },
+        { label: "Angular", docId: "angular" },
+        { label: "Release", docId: "release-cdn" },
     ],
     de: [
-        { label: "Übersicht", to: "/" },
-        { label: "Schnellstart", to: "/quickstart" },
-        { label: "Konfiguration", to: "/configuration" },
-        { label: "DOM-Zugriff", to: "/dom-access" },
-        { label: "Ereignisse", to: "/events" },
-        { label: "Design", to: "/theming" },
-        { label: "Sicherheit", to: "/security" },
-        { label: "API", to: "/api-reference" },
-        { label: "React", to: "/react" },
-        { label: "Angular", to: "/angular" },
-        { label: "Versionen", to: "/release-cdn" }
+        { label: "Übersicht", docId: "overview" },
+        { label: "Schnellstart", docId: "quickstart" },
+        { label: "Konfiguration", docId: "configuration" },
+        { label: "DOM-Zugriff", docId: "dom-access" },
+        { label: "Ereignisse", docId: "events" },
+        { label: "Design", docId: "theming" },
+        { label: "Sicherheit", docId: "security" },
+        { label: "API", docId: "api-reference" },
+        { label: "React", docId: "react" },
+        { label: "Angular", docId: "angular" },
+        { label: "Versionen", docId: "release-cdn" },
     ],
     fr: [
-        { label: "Vue d'ensemble", to: "/" },
-        { label: "Démarrage", to: "/quickstart" },
-        { label: "Configuration", to: "/configuration" },
-        { label: "Accès DOM", to: "/dom-access" },
-        { label: "Événements", to: "/events" },
-        { label: "Apparence", to: "/theming" },
-        { label: "Sécurité", to: "/security" },
-        { label: "API", to: "/api-reference" },
-        { label: "React", to: "/react" },
-        { label: "Angular", to: "/angular" },
-        { label: "Publication", to: "/release-cdn" }
-    ]
-} satisfies Record<string, Array<{ label: string; to: string }>>;
+        { label: "Vue d'ensemble", docId: "overview" },
+        { label: "Démarrage", docId: "quickstart" },
+        { label: "Configuration", docId: "configuration" },
+        { label: "Accès DOM", docId: "dom-access" },
+        { label: "Événements", docId: "events" },
+        { label: "Apparence", docId: "theming" },
+        { label: "Sécurité", docId: "security" },
+        { label: "API", docId: "api-reference" },
+        { label: "React", docId: "react" },
+        { label: "Angular", docId: "angular" },
+        { label: "Publication", docId: "release-cdn" },
+    ],
+} satisfies Record<string, Array<{ docId: string; label: string }>>;
 
 const searchLabels: Record<string, { ariaLabel: string; empty: string; placeholder: string }> = {
     en: { ariaLabel: "Search documentation", empty: "No results found", placeholder: "Search" },
-    de: { ariaLabel: "Dokumentation durchsuchen", empty: "Keine Ergebnisse gefunden", placeholder: "Suchen" },
+    de: {
+        ariaLabel: "Dokumentation durchsuchen",
+        empty: "Keine Ergebnisse gefunden",
+        placeholder: "Suchen",
+    },
     fr: {
         ariaLabel: "Rechercher dans la documentation",
         empty: "Aucun résultat trouvé",
-        placeholder: "Rechercher"
-    }
+        placeholder: "Rechercher",
+    },
 };
 
 const navbarLabels = {
@@ -73,7 +84,6 @@ const navbarLabels = {
         mobileNav: "Mobile",
         primaryNav: "Primary",
         themeToggle: "Toggle dark mode",
-        versionCurrent: "v1.0 latest"
     },
     de: {
         docs: "Dokumentation",
@@ -81,7 +91,6 @@ const navbarLabels = {
         mobileNav: "Mobile Navigation",
         primaryNav: "Hauptnavigation",
         themeToggle: "Dunkelmodus umschalten",
-        versionCurrent: "v1.0 aktuell"
     },
     fr: {
         docs: "Documentation",
@@ -89,8 +98,7 @@ const navbarLabels = {
         mobileNav: "Navigation mobile",
         primaryNav: "Navigation principale",
         themeToggle: "Activer ou désactiver le mode sombre",
-        versionCurrent: "v1.0 actuel"
-    }
+    },
 } satisfies Record<string, Record<string, string>>;
 
 function stripBaseUrl(pathname: string, baseUrl: string): string {
@@ -99,7 +107,8 @@ function stripBaseUrl(pathname: string, baseUrl: string): string {
 
     if (normalizedBaseUrl === "/") return pathname || "/";
     if (pathname === basePath || pathname === normalizedBaseUrl) return "/";
-    if (pathname.startsWith(normalizedBaseUrl)) return `/${pathname.slice(normalizedBaseUrl.length)}` || "/";
+    if (pathname.startsWith(normalizedBaseUrl))
+        return `/${pathname.slice(normalizedBaseUrl.length)}` || "/";
 
     return pathname || "/";
 }
@@ -109,7 +118,35 @@ function normalizeDocsPath(pathname: string): string {
     return withoutTrailingSlash || "/";
 }
 
-function SearchBox({ locale }: { locale: string }) {
+function getVersionMainDoc(version: GlobalVersion | undefined): GlobalDoc | undefined {
+    if (!version) return undefined;
+    return version.docs.find((doc) => doc.id === version.mainDocId) ?? version.docs[0];
+}
+
+function getVersionDocPath(version: GlobalVersion | undefined, docId: string): string {
+    return (
+        version?.docs.find((doc) => doc.id === docId)?.path ??
+        getVersionMainDoc(version)?.path ??
+        "/"
+    );
+}
+
+function getVersionTargetDoc(
+    version: GlobalVersion,
+    activeDocContext: ReturnType<typeof useActiveDocContext>,
+) {
+    if (!activeDocContext.activeDoc) return getVersionMainDoc(version);
+
+    return activeDocContext.alternateDocVersions[version.name] ?? getVersionMainDoc(version);
+}
+
+function SearchBox({
+    getDocPath,
+    locale,
+}: {
+    getDocPath: (docId: string) => string;
+    locale: string;
+}) {
     const [query, setQuery] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
     const normalizedQuery = query.trim().toLowerCase();
@@ -177,13 +214,17 @@ function SearchBox({ locale }: { locale: string }) {
                 {hasEmptySearch ? (
                     <p className="nova-search__empty">{labels.empty}</p>
                 ) : (
-                    results.map((entry) => (
-                        <Link className="nova-search__item" key={entry.href} to={entry.href}>
-                            <span>{entry.section}</span>
-                            <strong>{entry.title}</strong>
-                            <small>{entry.description}</small>
-                        </Link>
-                    ))
+                    results.map((entry) => {
+                        const href = getDocPath(entry.docId);
+
+                        return (
+                            <Link className="nova-search__item" key={entry.docId} to={href}>
+                                <span>{entry.section}</span>
+                                <strong>{entry.title}</strong>
+                                <small>{entry.description}</small>
+                            </Link>
+                        );
+                    })
                 )}
             </div>
         </div>
@@ -196,11 +237,26 @@ export default function Navbar() {
     const alternatePageUtils = useAlternatePageUtils();
     const { colorMode, setColorMode } = useColorMode();
     const [menuOpen, setMenuOpen] = useState(false);
+    const versions = useVersions(undefined);
+    const activeDocContext = useActiveDocContext(undefined);
+    const { savePreferredVersionName } = useDocsPreferredVersion(undefined);
     const currentLocale = i18n.currentLocale;
     const currentLocaleBaseUrl = i18n.localeConfigs[currentLocale]?.baseUrl ?? "/";
-    const currentDocsPath = normalizeDocsPath(stripBaseUrl(location.pathname, currentLocaleBaseUrl));
+    const currentDocsPath = normalizeDocsPath(
+        stripBaseUrl(location.pathname, currentLocaleBaseUrl),
+    );
     const mobileLinks = mobileLinksByLocale[currentLocale] ?? mobileLinksByLocale.en;
     const labels = navbarLabels[currentLocale] ?? navbarLabels.en;
+    const latestVersion = versions.find((version) => version.isLast) ?? versions[0];
+    const activeVersion = activeDocContext.activeVersion ?? latestVersion;
+    const versionButtonLabel = activeVersion?.label ?? latestVersion?.label ?? "Docs";
+    const getDocPath = (docId: string) => getVersionDocPath(activeVersion, docId);
+    const getComparableDocsPath = (pathname: string) =>
+        normalizeDocsPath(stripBaseUrl(pathname, currentLocaleBaseUrl));
+    const getVersionHref = (version: GlobalVersion) => {
+        const targetDoc = getVersionTargetDoc(version, activeDocContext);
+        return `${targetDoc?.path ?? "/"}${location.search}${location.hash}`;
+    };
     const getLocaleHref = (locale: string) =>
         `${alternatePageUtils.createUrl({ locale, fullyQualified: false })}${location.search}${location.hash}`;
     const activeApi = location.pathname.includes("api-reference");
@@ -224,31 +280,51 @@ export default function Navbar() {
                 <span>Chat SDK</span>
             </Link>
             <nav className="nova-navbar__links" aria-label={labels.primaryNav}>
-                <Link className="nova-navbar__link nova-navbar__link--active" to="/">
+                <Link
+                    className="nova-navbar__link nova-navbar__link--active"
+                    to={getDocPath("overview")}
+                >
                     {labels.docs}
                 </Link>
                 <Link
                     className={clsx("nova-navbar__link", activeApi && "nova-navbar__link--active")}
-                    to="/api-reference"
+                    to={getDocPath("api-reference")}
                 >
                     API
                 </Link>
             </nav>
             <div className="nova-navbar__spacer" />
-            <SearchBox locale={currentLocale} />
-            <div className="nova-dropdown">
-                <button className="nova-dropdown__button" type="button">
-                    v1.0
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="m6 9 6 6 6-6" />
-                    </svg>
-                </button>
-                <div className="nova-dropdown__menu">
-                    <span className="nova-dropdown__item nova-dropdown__item--active">
-                        {labels.versionCurrent}
-                    </span>
+            <SearchBox getDocPath={getDocPath} locale={currentLocale} />
+            {versions.length <= 1 ? (
+                <span className="nova-dropdown__button nova-dropdown__button--static">
+                    {versionButtonLabel}
+                </span>
+            ) : (
+                <div className="nova-dropdown">
+                    <button className="nova-dropdown__button" type="button">
+                        {versionButtonLabel}
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="m6 9 6 6 6-6" />
+                        </svg>
+                    </button>
+                    <div className="nova-dropdown__menu">
+                        {versions.map((version) => (
+                            <Link
+                                className={clsx(
+                                    "nova-dropdown__item",
+                                    version.name === activeVersion?.name &&
+                                        "nova-dropdown__item--active",
+                                )}
+                                key={version.name}
+                                to={getVersionHref(version)}
+                                onClick={() => savePreferredVersionName(version.name)}
+                            >
+                                {version.label}
+                            </Link>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
             <div className="nova-dropdown">
                 <button className="nova-dropdown__button" type="button">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -299,20 +375,44 @@ export default function Navbar() {
                 id="nova-mobile-menu"
             >
                 <nav className="nova-mobile-menu__links" aria-label={labels.mobileNav}>
-                    {mobileLinks.map((link) => (
+                    {mobileLinks.map((link) => {
+                        const href = getDocPath(link.docId);
+
+                        return (
+                            <Link
+                                className={clsx(
+                                    "nova-mobile-menu__link",
+                                    currentDocsPath === getComparableDocsPath(href) &&
+                                        "nova-mobile-menu__link--active",
+                                )}
+                                key={link.docId}
+                                to={href}
+                                onClick={() => setMenuOpen(false)}
+                            >
+                                {link.label}
+                            </Link>
+                        );
+                    })}
+                </nav>
+                <div className="nova-mobile-menu__meta">
+                    {versions.map((version) => (
                         <Link
                             className={clsx(
-                                "nova-mobile-menu__link",
-                                currentDocsPath === link.to && "nova-mobile-menu__link--active",
+                                "nova-mobile-menu__chip",
+                                version.name === activeVersion?.name &&
+                                    "nova-mobile-menu__chip--active",
                             )}
-                            key={link.to}
-                            to={link.to}
-                            onClick={() => setMenuOpen(false)}
+                            key={version.name}
+                            to={getVersionHref(version)}
+                            onClick={() => {
+                                savePreferredVersionName(version.name);
+                                setMenuOpen(false);
+                            }}
                         >
-                            {link.label}
+                            {version.label}
                         </Link>
                     ))}
-                </nav>
+                </div>
                 <div className="nova-mobile-menu__meta">
                     {i18n.locales.map((locale) => (
                         <a

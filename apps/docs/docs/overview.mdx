@@ -15,15 +15,28 @@ import { ImplementationPromptCallout } from "@site/src/components/Implementation
 
 ## Overview
 
-The Nova Chat SDK is the browser package that mounts a Nova-hosted chat iframe inside a customer-owned page. It is intentionally thin: the SDK owns the launcher, the iframe container, the token handoff, and the `postMessage` bridge. The iframe owns the conversation UI and talks to Nova services with a short-lived embedded-session token.
+The Nova Chat SDK is the browser package that mounts a Nova-hosted chat iframe inside a customer-owned page. It is intentionally thin: the SDK owns the launcher, iframe container, token handoff, page snapshot capture, and the `postMessage` bridge. The iframe owns the conversation UI and talks to Nova services with a short-lived embedded-session token.
 
 The browser never receives an integration secret. Your app exposes a `tokenEndpoint` that authenticates the current user, calls Nova's `POST /embed/session` from the server, and returns the embedded-session response to the SDK.
 
-The SDK bridge handles three host-page capabilities:
+The integration has three parts:
 
-- Page snapshots that summarize visible text, links, controls, labels, selection, and safe field values.
-- Built-in navigation actions against stable element handles from the latest snapshot.
-- Integrator tools registered by your app with `registerToolHandler`.
+| Part | Owner | Responsibility |
+| --- | --- | --- |
+| Browser SDK | You install Nova's package | Mounts the launcher and iframe, captures visible page context, executes approved page actions, and registers SDK-defined page tools. |
+| Your backend | You | Authenticates your user and exchanges the surface integration secret for an embedded-session token. |
+| Embedded Chat Surface | Nova admin | Stores allowed origins, display settings, page-reading/navigation permissions, and whether SDK-defined page tools are allowed. |
+
+## What the Agent Can Use
+
+The bridge exposes capabilities only when the surface allows them:
+
+- **Page snapshots:** visible text, links, controls, labels, selection, structured metadata, safe field values, and stable element handles.
+- **Built-in page actions:** navigation and page interaction tools that act on handles from the latest snapshot.
+- **Integrator-defined tools:** customer app actions defined and implemented in the browser with `registerTool`.
+
+The browser sends SDK-declared tool specs to Nova each turn. Nova validates them
+server-side and ignores them when the surface disables Page Tools.
 
 ## Packages
 
@@ -35,8 +48,15 @@ The SDK bridge handles three host-page capabilities:
 
 ## Runtime Model
 
-1. The customer page loads `@wp-nova/sdk` by script tag or npm.
-2. The page calls `WpNova("init", { publicSurfaceId, tokenEndpoint })`.
-3. The SDK mounts `<wp-nova-chat>`, points its iframe at `<baseUrl>/embed/chat?surface=<publicSurfaceId>`, and fetches a token from the customer backend.
-4. The iframe sends bridge requests such as `REQUEST_SNAPSHOT` or `CLIENT_TOOL_REQUEST`.
-5. The SDK replies only after strict origin and source checks.
+1. A Nova admin creates an Embedded Chat Surface and gives you a public surface id (`surf_...`) plus a one-time integration secret.
+2. Your backend stores the integration secret and exposes a customer-owned `tokenEndpoint`.
+3. The host page loads the SDK and calls `WpNova("init", { publicSurfaceId, tokenEndpoint })`.
+4. The SDK mounts `<wp-nova-chat>`, points its iframe at `<baseUrl>/embed/chat?surface=<publicSurfaceId>`, and fetches a token from your backend.
+5. Your backend calls Nova `POST /embed/session` with the integration secret, the authenticated user's email, the public surface id, and the host origin.
+6. The SDK forwards the token to the iframe, or forwards the unavailable-user response when the email does not match an active Nova tenant user.
+7. During chat, the iframe sends bridge requests such as `REQUEST_SNAPSHOT`, `AUTH_EXPIRED`, or `CLIENT_TOOL_REQUEST`.
+8. The SDK replies only after strict origin and source checks, and captures a fresh page snapshot after tool execution.
+
+## Start Here
+
+Use the [Quickstart](./quickstart.md) for an end-to-end install path. It covers surface setup, the backend token endpoint, script-tag and npm installs, page tools, DOM privacy annotations, and the smoke tests that confirm the integration is ready for production.

@@ -1,18 +1,18 @@
 {
-  "version.label": {
-    "message": "Actuel",
-    "description": "The label for version current"
-  },
-  "sidebar.sdkSidebar.category.Getting started": {
-    "message": "Premiers pas",
-    "description": "The label for category Getting started in sidebar sdkSidebar"
-  },
-  "sidebar.sdkSidebar.category.Guides": {
-    "message": "Guides",
-    "description": "The label for category Guides in sidebar sdkSidebar"
-  },
-  "sidebar.sdkSidebar.category.Reference": {
-    "message": "Référence",
-    "description": "The label for category Reference in sidebar sdkSidebar"
-  }
+    "version.label": {
+        "message": "v1.0 actuel",
+        "description": "The label for version current"
+    },
+    "sidebar.sdkSidebar.category.Getting started": {
+        "message": "Premiers pas",
+        "description": "The label for category Getting started in sidebar sdkSidebar"
+    },
+    "sidebar.sdkSidebar.category.Guides": {
+        "message": "Guides",
+        "description": "The label for category Guides in sidebar sdkSidebar"
+    },
+    "sidebar.sdkSidebar.category.Reference": {
+        "message": "Référence",
+        "description": "The label for category Reference in sidebar sdkSidebar"
+    }
 }

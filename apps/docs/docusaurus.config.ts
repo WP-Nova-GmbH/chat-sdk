@@ -1,21 +1,26 @@
 import type { Options as ClassicOptions } from "@docusaurus/preset-classic";
 import type { Config } from "@docusaurus/types";
 import { themes as prismThemes } from "prism-react-renderer";
+import {
+    currentDocsRelease,
+    getDocsReleasePath,
+    historicalDocsReleases,
+} from "./src/data/docsReleaseMetadata";
 
 const lightCodeTheme = {
     ...prismThemes.nightOwl,
     plain: {
         ...prismThemes.nightOwl.plain,
-        backgroundColor: "#16161F"
-    }
+        backgroundColor: "#16161F",
+    },
 };
 
 const darkCodeTheme = {
     ...prismThemes.nightOwl,
     plain: {
         ...prismThemes.nightOwl.plain,
-        backgroundColor: "#0D0D18"
-    }
+        backgroundColor: "#0D0D18",
+    },
 };
 
 const config: Config = {
@@ -34,12 +39,12 @@ const config: Config = {
         localeConfigs: {
             en: { label: "English" },
             de: { label: "Deutsch" },
-            fr: { label: "Français" }
-        }
+            fr: { label: "Français" },
+        },
     },
     markdown: {
         format: "detect",
-        hooks: { onBrokenMarkdownLinks: "warn" }
+        hooks: { onBrokenMarkdownLinks: "warn" },
     },
     presets: [
         [
@@ -48,23 +53,40 @@ const config: Config = {
                 docs: {
                     routeBasePath: "/",
                     sidebarPath: "./sidebars.ts",
+                    lastVersion: "current",
+                    versions: {
+                        current: {
+                            label: currentDocsRelease.label,
+                            banner: "none",
+                        },
+                        ...Object.fromEntries(
+                            historicalDocsReleases.map((release) => [
+                                release.versionName,
+                                {
+                                    label: release.label,
+                                    path: getDocsReleasePath(release),
+                                    banner: "none",
+                                },
+                            ]),
+                        ),
+                    },
                     breadcrumbs: true,
                     showLastUpdateAuthor: false,
                     showLastUpdateTime: false,
-                    editUrl: undefined
+                    editUrl: undefined,
                 },
                 blog: false,
                 pages: false,
                 theme: {
-                    customCss: "./src/css/custom.css"
-                }
-            } satisfies ClassicOptions
-        ]
+                    customCss: "./src/css/custom.css",
+                },
+            } satisfies ClassicOptions,
+        ],
     ],
     themeConfig: {
         colorMode: {
             defaultMode: "light",
-            respectPrefersColorScheme: false
+            respectPrefersColorScheme: false,
         },
         announcementBar: {
             id: "nova-chat-sdk-v1",
@@ -72,17 +94,17 @@ const config: Config = {
                 'Nova Chat SDK v1.0 is now generally available&nbsp;&nbsp;<a href="/quickstart">Get started -></a>',
             backgroundColor: "#7E54E4",
             textColor: "#FFFFFF",
-            isCloseable: true
+            isCloseable: true,
         },
         navbar: {
-            hideOnScroll: false
+            hideOnScroll: false,
         },
         prism: {
             theme: lightCodeTheme,
             darkTheme: darkCodeTheme,
-            defaultLanguage: "typescript"
-        }
-    }
+            defaultLanguage: "typescript",
+        },
+    },
 };
 
 export default config;
