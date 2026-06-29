@@ -1,0 +1,26 @@
+{
+    "name": "nova-chat-sdk-release-example-angular",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Standalone Angular host app that consumes the released @wp-nova/chat-sdk and the @wp-nova/chat-sdk-angular wrapper, following the Angular integration docs.",
+    "scripts": {
+        "dev": "vite --host 127.0.0.1 --port 4322",
+        "build": "tsc -p tsconfig.json --noEmit && vite build",
+        "preview": "vite preview --host 127.0.0.1 --port 4322"
+    },
+    "dependencies": {
+        "@angular/common": "^20.3.0",
+        "@angular/compiler": "^20.3.0",
+        "@angular/core": "^20.3.0",
+        "@angular/platform-browser": "^20.3.0",
+        "@wp-nova/chat-sdk": "^1.0.0",
+        "@wp-nova/chat-sdk-angular": "file:./vendor/wp-nova-chat-sdk-angular-1.0.0.tgz",
+        "rxjs": "^7.8.1",
+        "tslib": "^2.8.1"
+    },
+    "devDependencies": {
+        "typescript": "^5.8.2",
+        "vite": "^8.1.0"
+    }
+}
