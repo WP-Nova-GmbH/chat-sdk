@@ -1,5 +1,5 @@
 import { ENVIRONMENT_INITIALIZER, type EnvironmentProviders, inject, makeEnvironmentProviders } from "@angular/core";
-import type { SdkConfig } from "@wp-nova/sdk";
+import type { SdkConfig } from "@wp-nova/chat-sdk";
 import { NovaChatService } from "./nova-chat.service";
 import { NOVA_CHAT_CONFIG } from "./nova-chat.tokens";
 

@@ -4,7 +4,7 @@
     "commit": false,
     "fixed": [],
     "linked": [
-        ["@wp-nova/sdk", "@wp-nova/sdk-react", "@wp-nova/sdk-angular"]
+        ["@wp-nova/chat-sdk", "@wp-nova/chat-sdk-react", "@wp-nova/chat-sdk-angular"]
     ],
     "access": "public",
     "baseBranch": "main",

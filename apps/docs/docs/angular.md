@@ -3,10 +3,10 @@ id: angular
 title: Angular
 ---
 
-`@wp-nova/sdk-angular` provides an Angular service, environment provider, and standalone component around the core SDK.
+`@wp-nova/chat-sdk-angular` provides an Angular service, environment provider, and standalone component around the core SDK.
 
 ```bash
-npm install @wp-nova/sdk @wp-nova/sdk-angular
+npm install @wp-nova/chat-sdk @wp-nova/chat-sdk-angular
 ```
 
 ## Provider Setup
@@ -15,7 +15,7 @@ Register the SDK config during bootstrap:
 
 ```ts
 import { ApplicationConfig } from "@angular/core";
-import { provideNovaChat } from "@wp-nova/sdk-angular";
+import { provideNovaChat } from "@wp-nova/chat-sdk-angular";
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -36,7 +36,7 @@ Import the standalone mount component once near the app root:
 
 ```ts
 import { Component, inject } from "@angular/core";
-import { NovaChatComponent, type ToolDefinition } from "@wp-nova/sdk-angular";
+import { NovaChatComponent, type ToolDefinition } from "@wp-nova/chat-sdk-angular";
 
 @Component({
   standalone: true,
@@ -81,7 +81,7 @@ Use `NovaChatService` when registration belongs in a service or feature initiali
 
 ```ts
 import { Injectable, inject } from "@angular/core";
-import { NovaChatService } from "@wp-nova/sdk-angular";
+import { NovaChatService } from "@wp-nova/chat-sdk-angular";
 
 @Injectable({ providedIn: "root" })
 export class CustomerToolRegistration {

@@ -167,11 +167,11 @@ Use the immutable, version-pinned URL with Subresource Integrity for production.
 ### npm
 
 ```bash
-npm install @wp-nova/sdk
+npm install @wp-nova/chat-sdk
 ```
 
 ```ts
-import { init } from "@wp-nova/sdk";
+import { init } from "@wp-nova/chat-sdk";
 
 init({
   publicSurfaceId: "surf_...",
@@ -187,7 +187,7 @@ Define page tools in the SDK integration. Nova admin only controls whether
 SDK-defined page tools are allowed for the surface.
 
 ```ts
-import { registerTool } from "@wp-nova/sdk";
+import { registerTool } from "@wp-nova/chat-sdk";
 
 registerTool({
   name: "create_ticket",
@@ -273,7 +273,7 @@ For local end-to-end review, Nova's internal test app follows the same pattern:
 
 ```bash
 cd ~/Dev/chat-sdk
-npm --workspace @wp-nova/sdk run build
+npm --workspace @wp-nova/chat-sdk run build
 
 cd ~/Dev/nova-ark
 NOVA_API_URL=http://localhost:8400 \

@@ -10,7 +10,7 @@ Nova kann auf der Host-Seite kein beliebiges JavaScript ausführen. Es kann nur 
 ### Tool-Handler registrieren
 
 ```ts
-import { registerToolHandler, unregisterToolHandler } from "@wp-nova/sdk";
+import { registerToolHandler, unregisterToolHandler } from "@wp-nova/chat-sdk";
 
 registerToolHandler("set_customer_status", async (args) => {
   const customerId = String(args.customerId);

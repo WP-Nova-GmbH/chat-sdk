@@ -7,7 +7,7 @@ import {
     type OnInit,
     type SimpleChanges,
 } from "@angular/core";
-import type { SdkConfig, ToolDefinition } from "@wp-nova/sdk";
+import type { SdkConfig, ToolDefinition } from "@wp-nova/chat-sdk";
 import { disabledConfigMessage } from "./nova-chat.diagnostics";
 import { NovaChatService } from "./nova-chat.service";
 

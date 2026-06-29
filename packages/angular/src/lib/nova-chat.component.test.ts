@@ -1,5 +1,5 @@
 import { Injector, runInInjectionContext, SimpleChange, type SimpleChanges } from "@angular/core";
-import type { ToolDefinition } from "@wp-nova/sdk";
+import type { ToolDefinition } from "@wp-nova/chat-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NovaChatComponent } from "./nova-chat.component";
 import { NovaChatService } from "./nova-chat.service";

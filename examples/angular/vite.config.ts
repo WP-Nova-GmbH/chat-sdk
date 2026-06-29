@@ -17,7 +17,7 @@ export default defineConfig((configEnv) => {
         plugins: [novaTokenProxyPlugin("angular-example", env)],
         resolve: {
             alias: {
-                "@wp-nova/sdk-angular": fileURLToPath(
+                "@wp-nova/chat-sdk-angular": fileURLToPath(
                     new URL(
                         "../../packages/angular/dist/fesm2022/wp-nova-sdk-angular.mjs",
                         import.meta.url,

@@ -65,13 +65,13 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             title: "React",
             docId: "react",
             section: "Reference",
-            description: "Use @wp-nova/sdk-react in React 18 and 19 applications.",
+            description: "Use @wp-nova/chat-sdk-react in React 18 and 19 applications.",
         },
         {
             title: "Angular",
             docId: "angular",
             section: "Reference",
-            description: "Use @wp-nova/sdk-angular services, providers, and standalone component.",
+            description: "Use @wp-nova/chat-sdk-angular services, providers, and standalone component.",
         },
         {
             title: "Release and CDN",
@@ -137,14 +137,14 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             title: "React",
             docId: "react",
             section: "Referenz",
-            description: "@wp-nova/sdk-react in React-18- und React-19-Anwendungen verwenden.",
+            description: "@wp-nova/chat-sdk-react in React-18- und React-19-Anwendungen verwenden.",
         },
         {
             title: "Angular",
             docId: "angular",
             section: "Referenz",
             description:
-                "@wp-nova/sdk-angular Services, Provider und Standalone-Komponente verwenden.",
+                "@wp-nova/chat-sdk-angular Services, Provider und Standalone-Komponente verwenden.",
         },
         {
             title: "Versionierung und CDN",
@@ -211,14 +211,14 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             title: "React",
             docId: "react",
             section: "Référence",
-            description: "Utiliser @wp-nova/sdk-react dans les applications React 18 et 19.",
+            description: "Utiliser @wp-nova/chat-sdk-react dans les applications React 18 et 19.",
         },
         {
             title: "Angular",
             docId: "angular",
             section: "Référence",
             description:
-                "Utiliser les services, providers et le composant standalone @wp-nova/sdk-angular.",
+                "Utiliser les services, providers et le composant standalone @wp-nova/chat-sdk-angular.",
         },
         {
             title: "Publication et CDN",

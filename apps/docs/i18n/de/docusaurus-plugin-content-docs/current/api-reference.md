@@ -24,7 +24,7 @@ import {
   defineElement,
   ELEMENT_TAG,
   WpNovaChatElement,
-} from "@wp-nova/sdk";
+} from "@wp-nova/chat-sdk";
 ```
 
 ### Typen

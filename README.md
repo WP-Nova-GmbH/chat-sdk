@@ -5,9 +5,9 @@ Monorepo for the Nova Chat SDK npm packages and Docusaurus documentation host.
 ## Workspaces
 
 - `apps/docs` - Docusaurus documentation site.
-- `packages/chat-sdk` - core browser SDK published as `@wp-nova/sdk`.
-- `packages/react` - React wrapper published as `@wp-nova/sdk-react`.
-- `packages/angular` - Angular wrapper published as `@wp-nova/sdk-angular`.
+- `packages/chat-sdk` - core browser SDK published as `@wp-nova/chat-sdk`.
+- `packages/react` - React wrapper published as `@wp-nova/chat-sdk-react`.
+- `packages/angular` - Angular wrapper published as `@wp-nova/chat-sdk-angular`.
 - `packages/typescript-config` - internal shared TypeScript presets.
 - `examples/*` - framework-specific integration examples.
 
@@ -26,9 +26,9 @@ npm test
 Build the SDK packages once, then start either example app:
 
 ```bash
-npm --workspace @wp-nova/sdk run build
-npm --workspace @wp-nova/sdk-react run build
-npm --workspace @wp-nova/sdk-angular run build
+npm --workspace @wp-nova/chat-sdk run build
+npm --workspace @wp-nova/chat-sdk-react run build
+npm --workspace @wp-nova/chat-sdk-angular run build
 ```
 
 React, on `http://127.0.0.1:4311`:

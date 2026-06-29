@@ -1,5 +1,5 @@
 import { Component } from "@angular/core";
-import { NovaChatComponent, type SdkConfig, type ToolDefinition } from "@wp-nova/sdk-angular";
+import { NovaChatComponent, type SdkConfig, type ToolDefinition } from "@wp-nova/chat-sdk-angular";
 
 type StayStatus = "Inquiry" | "Reserved" | "In house" | "Follow up";
 

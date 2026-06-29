@@ -47,9 +47,9 @@ jobs:
                   node <<'NODE'
                   const version = process.env.VERSION;
                   const manifests = [
-                    ["@wp-nova/sdk", "packages/chat-sdk/package.json"],
-                    ["@wp-nova/sdk-react", "packages/react/package.json"],
-                    ["@wp-nova/sdk-angular", "packages/angular/package.json"],
+                    ["@wp-nova/chat-sdk", "packages/chat-sdk/package.json"],
+                    ["@wp-nova/chat-sdk-react", "packages/react/package.json"],
+                    ["@wp-nova/chat-sdk-angular", "packages/angular/package.json"],
                   ];
                   for (const [name, manifestPath] of manifests) {
                     const manifest = require(`./${manifestPath}`);

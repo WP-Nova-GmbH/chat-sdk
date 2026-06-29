@@ -39,11 +39,11 @@ Le snippet en file d’attente permet d’enregistrer des outils avant que le fi
 ### npm
 
 ```bash
-npm install @wp-nova/sdk
+npm install @wp-nova/chat-sdk
 ```
 
 ```ts
-import { init, registerToolHandler } from "@wp-nova/sdk";
+import { init, registerToolHandler } from "@wp-nova/chat-sdk";
 
 registerToolHandler("create_ticket", async (args) => {
   return myApp.createTicket(args);

@@ -12,8 +12,8 @@
         "test": "vitest run --passWithNoTests"
     },
     "dependencies": {
-        "@wp-nova/sdk": "1.0.0",
-        "@wp-nova/sdk-react": "1.0.0",
+        "@wp-nova/chat-sdk": "1.0.0",
+        "@wp-nova/chat-sdk-react": "1.0.0",
         "react": "^19.1.0",
         "react-dom": "^19.1.0"
     },

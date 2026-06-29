@@ -1,5 +1,5 @@
-import type { SdkConfig, ToolDefinition } from "@wp-nova/sdk";
-import { destroy, init, registerTool, release, retain, unregisterTool } from "@wp-nova/sdk";
+import type { SdkConfig, ToolDefinition } from "@wp-nova/chat-sdk";
+import { destroy, init, registerTool, release, retain, unregisterTool } from "@wp-nova/chat-sdk";
 import { act, type ReactElement, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +14,7 @@ const h = vi.hoisted(() => ({
     state: { refs: 0, teardownCount: 0 },
 }));
 
-vi.mock("@wp-nova/sdk", () => {
+vi.mock("@wp-nova/chat-sdk", () => {
     const ensureElement = () => {
         if (!document.querySelector(h.ELEMENT_TAG)) {
             document.body.appendChild(document.createElement(h.ELEMENT_TAG));

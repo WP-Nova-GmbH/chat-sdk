@@ -1,4 +1,4 @@
-import { NovaChatProvider, type NovaToolDefinition } from "@wp-nova/sdk-react";
+import { NovaChatProvider, type NovaToolDefinition } from "@wp-nova/chat-sdk-react";
 import { useMemo, useState } from "react";
 
 type ManifestStatus = "On time" | "Hold" | "Delayed" | "Released";

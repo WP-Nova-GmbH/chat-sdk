@@ -7,5 +7,5 @@ export default defineConfig({
     dts: true,
     clean: true,
     sourcemap: false,
-    external: ["react", "@wp-nova/sdk"]
+    external: ["react", "@wp-nova/chat-sdk"]
 });

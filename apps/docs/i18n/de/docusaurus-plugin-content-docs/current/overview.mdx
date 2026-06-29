@@ -29,13 +29,13 @@ Die SDK-Bridge verarbeitet drei Fähigkeiten der Host-Seite:
 
 | Package | Zweck |
 | --- | --- |
-| `@wp-nova/sdk` | Framework-unabhängiges Browser-SDK und CDN-Artefakt. |
-| `@wp-nova/sdk-react` | React-Provider, Komponente und Hooks rund um das Core-SDK. |
-| `@wp-nova/sdk-angular` | Angular-Provider, Service und Standalone-Komponente rund um das Core-SDK. |
+| `@wp-nova/chat-sdk` | Framework-unabhängiges Browser-SDK und CDN-Artefakt. |
+| `@wp-nova/chat-sdk-react` | React-Provider, Komponente und Hooks rund um das Core-SDK. |
+| `@wp-nova/chat-sdk-angular` | Angular-Provider, Service und Standalone-Komponente rund um das Core-SDK. |
 
 ## Laufzeitmodell
 
-1. Die Kundenseite lädt `@wp-nova/sdk` per Script-Tag oder npm.
+1. Die Kundenseite lädt `@wp-nova/chat-sdk` per Script-Tag oder npm.
 2. Die Seite ruft `WpNova("init", { publicSurfaceId, tokenEndpoint })` auf.
 3. Das SDK mountet `<wp-nova-chat>`, zeigt das iframe auf `<baseUrl>/embed/chat?surface=<publicSurfaceId>` und holt ein Token vom Kunden-Backend.
 4. Das iframe sendet Bridge-Anfragen wie `REQUEST_SNAPSHOT` oder `CLIENT_TOOL_REQUEST`.

@@ -5,8 +5,8 @@
 // `class extends HTMLElement` and throws under Angular Universal / Node SSR (the
 // wrapper deliberately reaches the core only via a runtime dynamic import). Keep
 // these copies SSR-safe until the core exposes the diagnostics on an SSR-safe
-// subpath (e.g. `@wp-nova/sdk/diagnostics`) with no DOM evaluation.
-import type { SdkConfig } from "@wp-nova/sdk";
+// subpath (e.g. `@wp-nova/chat-sdk/diagnostics`) with no DOM evaluation.
+import type { SdkConfig } from "@wp-nova/chat-sdk";
 
 export function reportAngularOperationError(operation: string, error: unknown): void {
     const message = formatErrorMessage(error);

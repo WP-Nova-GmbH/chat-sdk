@@ -1,9 +1,9 @@
 import { Injectable, inject } from "@angular/core";
-import type { ToolDefinition, ToolHandler } from "@wp-nova/sdk";
+import type { ToolDefinition, ToolHandler } from "@wp-nova/chat-sdk";
 import { reportAngularOperationError } from "./nova-chat.diagnostics";
 import { NOVA_CHAT_CONFIG } from "./nova-chat.tokens";
 
-type SdkModule = typeof import("@wp-nova/sdk");
+type SdkModule = typeof import("@wp-nova/chat-sdk");
 
 @Injectable({ providedIn: "root" })
 export class NovaChatService {
@@ -75,7 +75,7 @@ export class NovaChatService {
     }
 
     private load(): Promise<SdkModule> {
-        this.sdk ??= import("@wp-nova/sdk");
+        this.sdk ??= import("@wp-nova/chat-sdk");
         return this.sdk;
     }
 }
