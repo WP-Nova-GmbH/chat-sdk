@@ -80,7 +80,11 @@ Always exclude:
 - Payment, card, CVC/CVV, SSN, token, secret, account, IBAN, routing, and PIN fields.
 - Any region marked with `data-wp-nova-ignore`.
 
-Only opt in values that are safe for the agent to read, such as case numbers, filters, visible record IDs, or public statuses.
+Opt a value in by adding the `data-wp-nova-include` attribute to the field, or by
+listing a matching selector in the `safeValueSelectors` config option. Even
+opted-in values still pass every sensitivity check. Only opt in values that are
+safe for the agent to read, such as case numbers, filters, visible record IDs, or
+public statuses.
 
 ## CSP and Framing
 
