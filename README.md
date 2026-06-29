@@ -9,7 +9,8 @@ Monorepo for the Nova Chat SDK npm packages and Docusaurus documentation host.
 - `packages/react` - React wrapper published as `@wp-nova/chat-sdk-react`.
 - `packages/angular` - Angular wrapper published as `@wp-nova/chat-sdk-angular`.
 - `packages/typescript-config` - internal shared TypeScript presets.
-- `examples/*` - framework-specific integration examples.
+- `examples/*` - framework-specific integration examples built against the local workspace source.
+- `release-examples/*` - standalone apps that consume the **published** packages from npm (outside the workspaces). See [`release-examples/README.md`](release-examples/README.md).
 
 ## Commands
 
