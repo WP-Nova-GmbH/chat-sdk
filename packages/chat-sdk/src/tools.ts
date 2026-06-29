@@ -126,13 +126,19 @@ export class ToolRegistry {
      * re-thrown unchanged so the bridge emits `stale_handle`. `safeSelectors` is
      * the per-surface safe-value allowlist threaded into the post-action capture.
      */
-    async run(call: ClientToolCall, safeSelectors: string[] = []): Promise<ClientToolResult> {
+    async run(
+        call: ClientToolCall,
+        safeSelectors: string[] = [],
+        signal?: AbortSignal,
+    ): Promise<ClientToolResult> {
         const handler = this.tools.get(call.name)?.handler ?? this.legacyHandlers.get(call.name);
         if (!handler) {
             throw new NoHandlerError(call.name);
         }
         try {
-            const result = await handler(call.args ?? {});
+            // Pass the abort signal so a cooperating mutating handler can stop if
+            // the bridge already timed the round-trip out.
+            const result = await handler(call.args ?? {}, { signal });
             return { result, snapshot: capturePageContext(safeSelectors) };
         } catch (cause) {
             if (cause instanceof StaleHandleError) throw cause;

@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Bridge } from "./bridge.js";
-import type { ResolvedConfig } from "./config.js";
+import { type ResolvedConfig, TIMEOUTS } from "./config.js";
 import type { EmbedFrame, SdkFrame } from "./types.js";
 import { EMBED_SOURCE, SDK_SOURCE } from "./types.js";
 
 const ORIGINAL_WINDOW = Object.getOwnPropertyDescriptor(globalThis, "window");
+const ORIGINAL_SET_TIMEOUT = Object.getOwnPropertyDescriptor(globalThis, "setTimeout");
 
 function restoreWindow(): void {
     if (ORIGINAL_WINDOW) {
@@ -14,6 +15,22 @@ function restoreWindow(): void {
         Reflect.deleteProperty(globalThis, "window");
     }
 }
+
+function installWindow(onListener: (cb: (event: MessageEvent) => void) => void): void {
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            addEventListener(_type: string, cb: (event: MessageEvent) => void) {
+                onListener(cb);
+            },
+            removeEventListener() {
+                onListener(() => undefined);
+            },
+        },
+    });
+}
+
+const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 test("client tool errors include a best-effort recovery snapshot", async () => {
     let listener: ((event: MessageEvent) => void) | undefined;
@@ -176,6 +193,168 @@ test("incompatible READY prevents later client tool execution", async () => {
         assert.deepEqual(posted, []);
     } finally {
         bridge.stop();
+        restoreWindow();
+    }
+});
+
+test("a re-issued approved call is de-duped by idempotency key", async () => {
+    let listener: ((event: MessageEvent) => void) | undefined;
+    const posted: SdkFrame[] = [];
+    let runs = 0;
+    const iframeWindow = {
+        postMessage(frame: SdkFrame) {
+            posted.push(frame);
+        },
+    } as unknown as Window;
+    installWindow((cb) => {
+        listener = cb;
+    });
+
+    const bridge = new Bridge(
+        { iframeOrigin: "https://chat.example", protocolVersion: 1 } as ResolvedConfig,
+        {
+            onSnapshotRequest: () => ({ url: "https://host.example" }),
+            onClientToolRequest: async () => {
+                runs++;
+                return { result: { ok: true } };
+            },
+            onAuthExpired: () => undefined,
+            onReady: () => undefined,
+        },
+    );
+
+    try {
+        bridge.setIframeWindow(iframeWindow);
+        bridge.start();
+        listener?.({
+            origin: "https://chat.example",
+            source: iframeWindow,
+            data: {
+                source: EMBED_SOURCE,
+                protocolVersion: 1,
+                type: "READY",
+                minProtocolVersion: 1,
+                maxProtocolVersion: 1,
+            } satisfies EmbedFrame,
+        } as MessageEvent);
+
+        const request = (correlationId: string): MessageEvent =>
+            ({
+                origin: "https://chat.example",
+                source: iframeWindow,
+                data: {
+                    source: EMBED_SOURCE,
+                    protocolVersion: 1,
+                    type: "CLIENT_TOOL_REQUEST",
+                    correlationId,
+                    call: { name: "create_ticket", args: {}, idempotencyKey: "idem-1" },
+                } satisfies EmbedFrame,
+            }) as MessageEvent;
+
+        // Same idempotency key, different correlationIds → the handler runs once.
+        listener?.(request("tool-1"));
+        listener?.(request("tool-2"));
+
+        await tick();
+
+        assert.equal(runs, 1);
+        const results = posted.filter((frame) => frame.type === "CLIENT_TOOL_RESULT");
+        assert.equal(results.length, 1);
+    } finally {
+        bridge.stop();
+        restoreWindow();
+    }
+});
+
+test("the round-trip timeout aborts a cooperating handler so it does not mutate", async () => {
+    let listener: ((event: MessageEvent) => void) | undefined;
+    const posted: SdkFrame[] = [];
+    let mutations = 0;
+    let resumeHandler: (() => void) | undefined;
+    let fireTimeout: (() => void) | undefined;
+    const iframeWindow = {
+        postMessage(frame: SdkFrame) {
+            posted.push(frame);
+        },
+    } as unknown as Window;
+    installWindow((cb) => {
+        listener = cb;
+    });
+
+    const realSetTimeout = globalThis.setTimeout;
+    Object.defineProperty(globalThis, "setTimeout", {
+        configurable: true,
+        value: (cb: () => void, ms?: number) => {
+            if (ms === TIMEOUTS.clientTool) {
+                fireTimeout = cb;
+                return 1;
+            }
+            return realSetTimeout(cb, ms);
+        },
+    });
+
+    const bridge = new Bridge(
+        { iframeOrigin: "https://chat.example", protocolVersion: 1 } as ResolvedConfig,
+        {
+            onSnapshotRequest: () => ({ url: "https://host.example" }),
+            onClientToolRequest: async (_call, signal) => {
+                await new Promise<void>((resolve) => {
+                    resumeHandler = resolve;
+                });
+                if (signal.aborted) return { result: { aborted: true } };
+                mutations++;
+                return { result: { ok: true } };
+            },
+            onAuthExpired: () => undefined,
+            onReady: () => undefined,
+        },
+    );
+
+    try {
+        bridge.setIframeWindow(iframeWindow);
+        bridge.start();
+        listener?.({
+            origin: "https://chat.example",
+            source: iframeWindow,
+            data: {
+                source: EMBED_SOURCE,
+                protocolVersion: 1,
+                type: "READY",
+                minProtocolVersion: 1,
+                maxProtocolVersion: 1,
+            } satisfies EmbedFrame,
+        } as MessageEvent);
+        listener?.({
+            origin: "https://chat.example",
+            source: iframeWindow,
+            data: {
+                source: EMBED_SOURCE,
+                protocolVersion: 1,
+                type: "CLIENT_TOOL_REQUEST",
+                correlationId: "tool-1",
+                call: { name: "delete_record", args: {} },
+            } satisfies EmbedFrame,
+        } as MessageEvent);
+
+        await tick();
+        assert.ok(fireTimeout, "expected the round-trip timeout to be scheduled");
+        // Fire the timeout: the signal is aborted and a timeout error is posted.
+        fireTimeout?.();
+        await tick();
+        // The slow handler now completes — but it must observe the abort and skip
+        // the mutation rather than running after the error was already posted.
+        resumeHandler?.();
+        await tick();
+
+        assert.equal(mutations, 0);
+        const error = posted.find((frame) => frame.type === "CLIENT_TOOL_ERROR");
+        assert.ok(error);
+        assert.equal(error?.type === "CLIENT_TOOL_ERROR" && error.code, "timeout");
+    } finally {
+        bridge.stop();
+        if (ORIGINAL_SET_TIMEOUT) {
+            Object.defineProperty(globalThis, "setTimeout", ORIGINAL_SET_TIMEOUT);
+        }
         restoreWindow();
     }
 });

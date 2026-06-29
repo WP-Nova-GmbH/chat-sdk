@@ -1,6 +1,7 @@
 import type { SdkConfig, ToolDefinition, ToolHandler } from "@wp-nova/sdk";
 import {
     createContext,
+    memo,
     type PropsWithChildren,
     useCallback,
     useContext,
@@ -32,6 +33,10 @@ export interface NovaChatApi {
     registerToolHandler: (name: string, handler: ToolHandler) => Promise<void>;
     /** @deprecated Use unregisterTool for SDK-declared tools. */
     unregisterToolHandler: (name: string) => Promise<void>;
+    /** Register a live mount of the shared chat element. Pairs with `release`. */
+    retain: () => Promise<void>;
+    /** Drop a live mount; the shared element tears down only at the last release. */
+    release: () => Promise<void>;
     destroy: () => Promise<void>;
 }
 
@@ -41,6 +46,13 @@ async function loadSdk(): Promise<SdkModule> {
     return import("@wp-nova/sdk");
 }
 
+// NOTE (A8): the core now exports `missingRequiredConfigFields`,
+// `formatErrorMessage`, `buildDisabledMessage` and `reportOperationError`. They are
+// NOT consumed here because a static import of `@wp-nova/sdk` pulls the core
+// package root, which eagerly evaluates `class extends HTMLElement` and throws
+// under Next.js / Node SSR (the wrapper deliberately reaches the core only via a
+// runtime dynamic import). These copies stay SSR-safe until the core exposes the
+// diagnostics on an SSR-safe subpath (e.g. `@wp-nova/sdk/diagnostics`).
 function formatErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
@@ -95,6 +107,12 @@ function useSdkApi(): NovaChatApi {
             unregisterToolHandler(name) {
                 return runQueued((sdk) => sdk.unregisterToolHandler(name));
             },
+            retain() {
+                return runQueued((sdk) => sdk.retain());
+            },
+            release() {
+                return runQueued((sdk) => sdk.release());
+            },
             destroy() {
                 return runQueued((sdk) => sdk.destroy());
             },
@@ -107,6 +125,19 @@ function toolNames(tools: readonly NovaToolDefinition[]): string[] {
     return tools.map((tool) => tool.name);
 }
 
+/** Serialize the tool fields whose change must re-emit REGISTER_TOOLS. */
+function toolsSignature(tools: readonly NovaToolDefinition[]): string {
+    return JSON.stringify(
+        tools.map((tool) => [
+            tool.name,
+            tool.description,
+            tool.inputSchema,
+            tool.mutating,
+            tool.confirmationCopy,
+        ]),
+    );
+}
+
 export function NovaChatProvider({
     children,
     config,
@@ -117,38 +148,72 @@ export function NovaChatProvider({
     const wasEnabled = useRef(false);
     const lastDisabledMessage = useRef<string | null>(null);
 
+    // Re-init only when a meaningful config field changes, not on every parent
+    // render that rebuilds the config object (R5). `mount` is compared by
+    // reference (it may be a live HTMLElement) instead of being serialized.
+    const configKey = JSON.stringify([
+        config.publicSurfaceId,
+        config.tokenEndpoint,
+        config.baseUrl,
+        config.title,
+        config.accent,
+        config.triggerColor,
+        config.triggerIconColor,
+        config.safeValueSelectors,
+        config.voiceMode,
+        config.protocolVersion,
+    ]);
+    // Intentionally re-derive only on the primitive configKey + mount identity,
+    // never on the per-render config object reference (that is the R5 bug).
+    // biome-ignore lint/correctness/useExhaustiveDependencies: configKey + mount identity are the intended triggers, not the per-render config reference (R5).
+    const stableConfig = useMemo(() => config, [configKey, config.mount]);
+
     useEffect(() => {
         if (!enabled) {
-            const message = disabledConfigMessage(config);
+            const message = disabledConfigMessage(stableConfig);
             if (message && lastDisabledMessage.current !== message) {
                 lastDisabledMessage.current = message;
                 console.error(message);
             }
             if (wasEnabled.current) {
                 wasEnabled.current = false;
-                void api.destroy().catch((error) => reportOperationError("destroy", error));
+                void api.release().catch((error) => reportOperationError("release", error));
             }
             return;
         }
         lastDisabledMessage.current = null;
-        wasEnabled.current = true;
-        void api.init(config).catch((error) => reportOperationError("init", error));
-    }, [api, config, enabled]);
+        if (!wasEnabled.current) {
+            wasEnabled.current = true;
+            void api.retain().catch((error) => reportOperationError("retain", error));
+        }
+        void api.init(stableConfig).catch((error) => reportOperationError("init", error));
+    }, [api, stableConfig, enabled]);
 
     useEffect(
         () => () => {
             if (wasEnabled.current) {
                 wasEnabled.current = false;
-                void api.destroy().catch((error) => reportOperationError("destroy", error));
+                void api.release().catch((error) => reportOperationError("release", error));
             }
         },
         [api],
     );
 
+    // Key the tools effect on serialized content (R20), not array identity, so an
+    // inline `tools={[…]}` of unchanged content does not churn REGISTER_TOOLS.
+    const toolsKey = useMemo(() => (tools ? toolsSignature(tools) : ""), [tools]);
+    const toolsRef = useRef(tools);
+    toolsRef.current = tools;
+
+    // toolsKey (serialized content) is the intended trigger; the latest tools are
+    // read from toolsRef so unchanged-content re-renders do not churn the registry.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: toolsKey is the intended trigger; the latest tools are read from toolsRef (R20).
     useEffect(() => {
-        if (!enabled || !tools) return;
-        const names = toolNames(tools);
-        for (const tool of tools) {
+        if (!enabled) return;
+        const current = toolsRef.current;
+        if (!current) return;
+        const names = toolNames(current);
+        for (const tool of current) {
             void api
                 .registerTool(tool)
                 .catch((error) => reportOperationError(`registerTool("${tool.name}")`, error));
@@ -160,14 +225,14 @@ export function NovaChatProvider({
                     .catch((error) => reportOperationError(`unregisterTool("${name}")`, error));
             }
         };
-    }, [api, enabled, tools]);
+    }, [api, enabled, toolsKey]);
 
     return <NovaChatContext.Provider value={api}>{children}</NovaChatContext.Provider>;
 }
 
-export function NovaChat({ enabled, tools, ...config }: NovaChatProps) {
+export const NovaChat = memo(function NovaChat({ enabled, tools, ...config }: NovaChatProps) {
     return <NovaChatProvider config={config} enabled={enabled} tools={tools} />;
-}
+});
 
 export function useNovaChat(): NovaChatApi {
     const context = useContext(NovaChatContext);
@@ -177,17 +242,24 @@ export function useNovaChat(): NovaChatApi {
 
 export function useNovaTool(tool: NovaToolDefinition) {
     const api = useNovaChat();
+    const toolKey = useMemo(() => toolsSignature([tool]), [tool]);
+    const toolRef = useRef(tool);
+    toolRef.current = tool;
 
+    // toolKey (serialized content) is the intended trigger; the latest tool is
+    // read from toolRef so unchanged-content re-renders do not re-register.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: toolKey is the intended trigger; the latest tool is read from toolRef (R20).
     useEffect(() => {
+        const current = toolRef.current;
         void api
-            .registerTool(tool)
-            .catch((error) => reportOperationError(`registerTool("${tool.name}")`, error));
+            .registerTool(current)
+            .catch((error) => reportOperationError(`registerTool("${current.name}")`, error));
         return () => {
             void api
-                .unregisterTool(tool.name)
-                .catch((error) => reportOperationError(`unregisterTool("${tool.name}")`, error));
+                .unregisterTool(current.name)
+                .catch((error) => reportOperationError(`unregisterTool("${current.name}")`, error));
         };
-    }, [api, tool]);
+    }, [api, toolKey]);
 }
 
 export type { SdkConfig, ToolDefinition, ToolHandler } from "@wp-nova/sdk";

@@ -10,7 +10,7 @@
         "access": "public"
     },
     "scripts": {
-        "build": "ng-packagr -p ng-package.json",
+        "build": "node ../../scripts/copy-license.mjs && ng-packagr -p ng-package.json",
         "check-types": "tsc -p tsconfig.lib.json --noEmit",
         "dev": "ng-packagr -p ng-package.json --watch",
         "lint": "biome check --formatter-enabled=false ./src --error-on-warnings",
@@ -27,10 +27,11 @@
     "devDependencies": {
         "@angular/compiler-cli": "^20.3.0",
         "@angular/core": "^20.3.0",
+        "@wp-nova/sdk": "1.0.0",
         "@wp-nova/typescript-config": "*",
+        "jsdom": "^29.1.1",
         "ng-packagr": "^20.3.0",
         "typescript": "5.8.2",
-        "vitest": "^4.0.18",
-        "@wp-nova/sdk": "1.0.0"
+        "vitest": "^4.0.18"
     }
 }

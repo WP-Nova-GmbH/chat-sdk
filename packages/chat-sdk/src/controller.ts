@@ -1,4 +1,5 @@
 import { resolveConfig } from "./config.js";
+import { formatErrorMessage } from "./diagnostics.js";
 import { defineElement, ELEMENT_TAG, type WpNovaChatElement } from "./element.js";
 import { ToolRegistry } from "./tools.js";
 import type { SdkConfig, ToolDefinition, ToolHandler } from "./types.js";
@@ -10,6 +11,8 @@ export type Command =
     | ["unregisterTool", string]
     | ["registerToolHandler", string, ToolHandler]
     | ["unregisterToolHandler", string]
+    | ["retain"]
+    | ["release"]
     | ["destroy"]
     | [string, ...unknown[]];
 
@@ -28,6 +31,8 @@ export interface QueuedWpNova {
 class SdkController {
     private readonly registry = new ToolRegistry();
     private element?: WpNovaChatElement;
+    /** Live mount count. The shared element is torn down only when it hits 0. */
+    private mountRefs = 0;
 
     dispatch = (...args: Command): void => {
         const [command, ...rest] = args;
@@ -47,6 +52,12 @@ class SdkController {
             case "unregisterToolHandler":
                 this.registry.unregisterHandler(rest[0] as string);
                 break;
+            case "retain":
+                this.retain();
+                break;
+            case "release":
+                this.release();
+                break;
             case "destroy":
                 this.destroy();
                 break;
@@ -54,6 +65,23 @@ class SdkController {
                 console.warn(`[wp-nova] unknown command: ${String(command)}`);
         }
     };
+
+    /**
+     * Register a live mount. Called once per mount lifecycle (NOT per `init`), so
+     * repeated re-inits never disturb the count. Pairs with `release`.
+     */
+    retain(): void {
+        this.mountRefs++;
+    }
+
+    /**
+     * Drop a live mount. The shared element is only destroyed once the last
+     * mount releases, so one wrapper unmounting never kills another's live chat.
+     */
+    release(): void {
+        if (this.mountRefs > 0) this.mountRefs--;
+        if (this.mountRefs === 0) this.destroy();
+    }
 
     private init(config: SdkConfig): void {
         try {
@@ -103,10 +131,6 @@ function assertBrowserRuntime(): void {
     }
 }
 
-function formatErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
-}
-
 function getController(): SdkController {
     const globalScope = globalThis as unknown as Record<string, SdkController | undefined>;
     let controller = globalScope[GLOBAL_KEY];
@@ -143,6 +167,22 @@ export function registerToolHandler(name: string, handler: ToolHandler): void {
 /** @deprecated Use unregisterTool for SDK-declared tools. */
 export function unregisterToolHandler(name: string): void {
     WpNova("unregisterToolHandler", name);
+}
+
+/**
+ * Register a live mount of the shared chat element. Frameworks call this once per
+ * mount lifecycle; pair every `retain()` with a `release()`.
+ */
+export function retain(): void {
+    WpNova("retain");
+}
+
+/**
+ * Drop a live mount. The shared element is torn down only when the last mount
+ * releases, so unmounting one instance never destroys another's live chat.
+ */
+export function release(): void {
+    WpNova("release");
 }
 
 export function destroy(): void {

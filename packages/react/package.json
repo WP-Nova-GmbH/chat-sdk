@@ -22,7 +22,7 @@
         }
     },
     "scripts": {
-        "build": "tsup",
+        "build": "node ../../scripts/copy-license.mjs && tsup",
         "check-types": "tsc --noEmit",
         "dev": "tsup --watch",
         "lint": "biome check --formatter-enabled=false ./src --error-on-warnings",
@@ -36,7 +36,11 @@
     },
     "devDependencies": {
         "@types/react": "^19.0.10",
+        "@types/react-dom": "^19.2.0",
         "@wp-nova/typescript-config": "*",
+        "jsdom": "^29.1.1",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
         "tsup": "^8.5.0",
         "typescript": "5.8.2",
         "vitest": "^4.0.18"

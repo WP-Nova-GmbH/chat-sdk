@@ -129,6 +129,21 @@ function stamp(el: Element): string {
     return id;
 }
 
+/**
+ * Remove every `data-wp-nova-h` stamp from the host DOM and reset the in-session
+ * handle store/counter. Called on element teardown/reset so the SDK's foreign
+ * attributes do not accumulate on the host page across its lifetime.
+ */
+export function clearHandleStamps(): void {
+    if (typeof document !== "undefined" && typeof document.querySelectorAll === "function") {
+        for (const el of Array.from(document.querySelectorAll(`[${HANDLE_ATTR}]`))) {
+            el.removeAttribute(HANDLE_ATTR);
+        }
+    }
+    handleStore = new Map<string, Element>();
+    handleCounter = 0;
+}
+
 // --- Visibility + sensitivity helpers ----------------------------------------
 
 /** True when the element (or an ancestor) is hidden, aria-hidden, or ignored. */
@@ -445,16 +460,34 @@ interface Candidate {
     el: Element;
 }
 
+/** Visible-text accumulation state, filled during the single collect() pass. */
+interface TextAccumulator {
+    parts: string[];
+    budget: number;
+    truncated: boolean;
+}
+
 /**
- * Walk the composed tree from `root`, descending into OPEN shadow roots, and
- * collect visible links and controls. Sets `sawPartial` when a region cannot be
- * read (closed shadow root / cross-origin iframe / canvas).
+ * Walk the composed tree from `root`, descending into OPEN shadow roots, and in a
+ * SINGLE pass collect visible links + controls AND accumulate the visible text
+ * the user can read (bounded by VISIBLE_TEXT_CAP, with the same default-deny
+ * field-value gate). Sets `state.partial` when a region cannot be read (closed
+ * shadow root / cross-origin iframe / canvas).
+ *
+ * `textReachable` tracks whether the current path is still on an unbroken visible,
+ * non-field-gated spine from the body. Text is accumulated only along that spine
+ * (matching the previous standalone text walk), while link/control collection —
+ * which descends through invisible regions to find visible descendants — is
+ * unaffected. Fusing the two walks halves the forced style/layout reads.
  */
 function collect(
     root: ParentNode,
     links: Candidate[],
     controls: Candidate[],
     state: { partial: boolean },
+    text: TextAccumulator,
+    safeSelectors: string[],
+    textReachable: boolean,
 ): void {
     const children = (root as Element).children ?? (root as Document).children;
     if (!children) return;
@@ -471,8 +504,9 @@ function collect(
         // Closed shadow root: the host element renders but its internals are
         // unreadable. (Open roots expose `.shadowRoot`; closed ones return null.)
         const shadow = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+        const visible = isVisible(el);
 
-        if (isVisible(el)) {
+        if (visible) {
             if (tag === "a" && el.getAttribute("href")) {
                 links.push({ el });
             } else if (CONTROL_TAGS.has(tag) || el.getAttribute("contenteditable") !== null) {
@@ -480,59 +514,35 @@ function collect(
             }
         }
 
+        // Visible-text accumulation along the visible / non-gated spine.
+        let childTextReachable = textReachable;
+        if (textReachable) {
+            if (text.budget <= 0) {
+                text.truncated = true;
+            } else if (!visible || tag === "script" || tag === "style" || tag === "noscript") {
+                childTextReachable = false;
+            } else if (isValueField(el) && !mayCaptureValue(el, safeSelectors)) {
+                // Default-deny field-value gate: omit typed text unless opted in.
+                childTextReachable = false;
+            } else {
+                // Direct text nodes only (avoids duplicating descendant text and
+                // prevents ignored descendants leaking via parent textContent).
+                const own = directText(el);
+                if (own) {
+                    const slice = own.slice(0, text.budget);
+                    text.parts.push(slice);
+                    text.budget -= slice.length;
+                    if (slice.length < own.length) text.truncated = true;
+                }
+            }
+        }
+
         // Descend into the light DOM and any OPEN shadow root.
-        collect(el, links, controls, state);
+        collect(el, links, controls, state, text, safeSelectors, childTextReachable);
         if (shadow) {
-            collect(shadow, links, controls, state);
+            collect(shadow, links, controls, state, text, safeSelectors, childTextReachable);
         }
     }
-}
-
-/** Capture visible text the user can read, composed across open shadow roots. */
-function captureVisibleText(
-    state: { partial: boolean },
-    safeSelectors: string[],
-): { text: string; truncated: boolean } {
-    const parts: string[] = [];
-    let budget = VISIBLE_TEXT_CAP;
-    let truncated = false;
-
-    const walk = (root: ParentNode): void => {
-        const children = (root as Element).children ?? (root as Document).children;
-        if (!children) return;
-        for (const el of Array.from(children)) {
-            if (budget <= 0) {
-                truncated = true;
-                return;
-            }
-            if (isExcludedSubtree(el) || !isVisible(el)) continue;
-            const tag = el.tagName.toLowerCase();
-            if (tag === "script" || tag === "style" || tag === "noscript") continue;
-            if (tag === "iframe" || tag === "canvas") {
-                state.partial = true;
-                continue;
-            }
-            // Take direct text nodes only (avoids duplicating descendant text
-            // and prevents ignored descendants from leaking via parent textContent).
-            // Apply the SAME default-deny field-value gate as the controls loop:
-            // contenteditable / form field typed text is OMITTED unless opted in.
-            const isFieldLike = isValueField(el);
-            if (isFieldLike && !mayCaptureValue(el, safeSelectors)) continue;
-            const own = directText(el);
-            if (own) {
-                const slice = own.slice(0, budget);
-                parts.push(slice);
-                budget -= slice.length;
-                if (slice.length < own.length) truncated = true;
-            }
-            const shadow = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
-            walk(el);
-            if (shadow) walk(shadow);
-        }
-    };
-
-    walk(document.body ?? document);
-    return { text: parts.join(" ").slice(0, VISIBLE_TEXT_CAP), truncated };
 }
 
 // --- Snapshot assembly -------------------------------------------------------
@@ -551,12 +561,19 @@ export function captureVisiblePageSnapshot(safeSelectors: string[] = []): Visibl
     const state = { partial: false };
     const linkCandidates: Candidate[] = [];
     const controlCandidates: Candidate[] = [];
-    collect(document.body ?? document, linkCandidates, controlCandidates, state);
-
-    const { text: visibleText, truncated: textTruncated } = captureVisibleText(
+    const text: TextAccumulator = { parts: [], budget: VISIBLE_TEXT_CAP, truncated: false };
+    collect(
+        document.body ?? document,
+        linkCandidates,
+        controlCandidates,
         state,
+        text,
         safeSelectors,
+        true,
     );
+
+    const visibleText = text.parts.join(" ").slice(0, VISIBLE_TEXT_CAP);
+    const textTruncated = text.truncated;
 
     const handles: ElementHandle[] = [];
     let truncated = textTruncated;

@@ -38,9 +38,11 @@ export interface BridgeHandlers {
     onSnapshotRequest: () => PageContext;
     /**
      * Run a client tool (navigation or integrator). Returns the result + a
-     * fresh snapshot, or throws a typed error (NoHandler/HandlerThrew/Stale).
+     * fresh snapshot, or throws a typed error (NoHandler/HandlerThrew/Stale). The
+     * `signal` aborts when the bridge times the round-trip out, so a cooperating
+     * mutating handler can stop instead of completing after the error was posted.
      */
-    onClientToolRequest: (call: ClientToolCall) => Promise<ClientToolResult>;
+    onClientToolRequest: (call: ClientToolCall, signal: AbortSignal) => Promise<ClientToolResult>;
     /** The embedded-session token expired; re-fetch + re-push AUTH_TOKEN. */
     onAuthExpired: () => void;
     /**
@@ -85,16 +87,32 @@ function toCodedError(err: unknown): CodedError {
     return { code: "handler_threw", message };
 }
 
-/** Run `op` against a per-type timeout; reject with a `timeout` CodedError. */
-function withTimeout<T>(op: Promise<T>, ms: number): Promise<T> {
+/**
+ * Distributive `Omit` so each member of the `SdkFrame` discriminated union keeps
+ * its own shape when the shared envelope fields are stripped.
+ */
+type FramePayload = SdkFrame extends infer F
+    ? F extends SdkFrame
+        ? Omit<F, "source" | "protocolVersion">
+        : never
+    : never;
+
+/**
+ * Run `run(signal)` against a per-type timeout. On timeout the signal is aborted
+ * BEFORE the promise rejects, so a cooperating handler can stop a side effect
+ * instead of completing after the bridge already posted a `timeout` error.
+ */
+function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
     return new Promise<T>((resolve, reject) => {
+        const controller = new AbortController();
         const timer = setTimeout(() => {
+            controller.abort();
             reject({
                 code: "timeout",
                 message: `bridge operation timed out after ${ms}ms`,
             });
         }, ms);
-        op.then(
+        run(controller.signal).then(
             (value) => {
                 clearTimeout(timer);
                 resolve(value);
@@ -107,6 +125,13 @@ function withTimeout<T>(op: Promise<T>, ms: number): Promise<T> {
     });
 }
 
+/**
+ * How long a handled tool-call key is remembered for de-duplication after it
+ * settles. Covers the window in which a timed-out (but still-running) approved
+ * call could be re-issued and run a second time.
+ */
+const TOOL_DEDUPE_RETENTION_MS = 30_000;
+
 /** The postMessage bridge. One instance per mounted iframe. */
 export class Bridge {
     private readonly config: ResolvedConfig;
@@ -115,6 +140,8 @@ export class Bridge {
     private iframeWindow: Window | null = null;
     private listening = false;
     private protocolAccepted = false;
+    /** Recently-handled tool-call keys, kept briefly to de-dupe re-issued calls. */
+    private readonly recentToolKeys = new Set<string>();
 
     constructor(config: ResolvedConfig, handlers: BridgeHandlers) {
         this.config = config;
@@ -146,44 +173,31 @@ export class Bridge {
 
     /** Push the embedded-session Bearer token to the iframe. */
     sendAuthToken(token: string, displaySettings?: SurfaceDisplaySettings | null): void {
-        this.post({
-            source: SDK_SOURCE,
-            protocolVersion: this.config.protocolVersion,
-            type: "AUTH_TOKEN",
-            token,
-            displaySettings,
-        });
+        this.send({ type: "AUTH_TOKEN", token, displaySettings });
     }
 
     /** Tell the iframe the asserted email is unavailable (no token issued, AC4). */
     sendUnavailable(email: string, message: string): void {
-        this.post({
-            source: SDK_SOURCE,
-            protocolVersion: this.config.protocolVersion,
-            type: "UNAVAILABLE",
-            email,
-            message,
-        });
+        this.send({ type: "UNAVAILABLE", email, message });
     }
 
     /** Tell the iframe token acquisition failed before a session token was issued. */
     sendAuthError(message: string): void {
-        this.post({
-            source: SDK_SOURCE,
-            protocolVersion: this.config.protocolVersion,
-            type: "AUTH_ERROR",
-            message,
-        });
+        this.send({ type: "AUTH_ERROR", message });
     }
 
     /** Tell the iframe which SDK-declared tools the host has registered. */
     sendRegisterTools(tools: ClientToolSpec[]): void {
+        this.send({ type: "REGISTER_TOOLS", tools });
+    }
+
+    /** Stamp the shared envelope (source + protocolVersion) and post the frame. */
+    private send(frame: FramePayload): void {
         this.post({
+            ...frame,
             source: SDK_SOURCE,
             protocolVersion: this.config.protocolVersion,
-            type: "REGISTER_TOOLS",
-            tools,
-        });
+        } as SdkFrame);
     }
 
     /** Post an SDK frame to the iframe at its validated origin (never "*"). */
@@ -248,9 +262,7 @@ export class Bridge {
         try {
             context = this.handlers.onSnapshotRequest();
         } catch (err) {
-            this.post({
-                source: SDK_SOURCE,
-                protocolVersion: this.config.protocolVersion,
+            this.send({
                 type: "SNAPSHOT_ERROR",
                 correlationId,
                 code: "capture_error",
@@ -258,29 +270,22 @@ export class Bridge {
             });
             return;
         }
-        this.post({
-            source: SDK_SOURCE,
-            protocolVersion: this.config.protocolVersion,
-            type: "SNAPSHOT_RESULT",
-            correlationId,
-            context,
-        });
+        this.send({ type: "SNAPSHOT_RESULT", correlationId, context });
     }
 
     /** Run a client tool against its timeout; reply with result or typed error. */
     private async handleClientTool(correlationId: string, call: ClientToolCall): Promise<void> {
+        // De-dupe re-issued approved calls: a slow mutating handler that finishes
+        // after a timeout must not run again when the same call is re-sent.
+        const dedupeKey = call.idempotencyKey ?? correlationId;
+        if (this.recentToolKeys.has(dedupeKey)) return;
+        this.recentToolKeys.add(dedupeKey);
         try {
             const result = await withTimeout(
-                this.handlers.onClientToolRequest(call),
+                (signal) => this.handlers.onClientToolRequest(call, signal),
                 TIMEOUTS.clientTool,
             );
-            this.post({
-                source: SDK_SOURCE,
-                protocolVersion: this.config.protocolVersion,
-                type: "CLIENT_TOOL_RESULT",
-                correlationId,
-                result,
-            });
+            this.send({ type: "CLIENT_TOOL_RESULT", correlationId, result });
         } catch (err) {
             const coded = toCodedError(err);
             let snapshot: PageContext | undefined;
@@ -289,15 +294,21 @@ export class Bridge {
             } catch {
                 snapshot = undefined;
             }
-            this.post({
-                source: SDK_SOURCE,
-                protocolVersion: this.config.protocolVersion,
+            this.send({
                 type: "CLIENT_TOOL_ERROR",
                 correlationId,
                 code: coded.code,
                 message: coded.message,
                 snapshot,
             });
+        } finally {
+            this.releaseToolKeyLater(dedupeKey);
         }
+    }
+
+    /** Forget a handled tool-call key after a short retention window. */
+    private releaseToolKeyLater(key: string): void {
+        const timer = setTimeout(() => this.recentToolKeys.delete(key), TOOL_DEDUPE_RETENTION_MS);
+        (timer as unknown as { unref?: () => void }).unref?.();
     }
 }

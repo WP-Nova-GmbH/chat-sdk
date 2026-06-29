@@ -9,3 +9,6 @@ coverage
 .env
 .env.*
 !.env.example
+
+# Generated per-package license copies (source of truth: root LICENSE)
+packages/*/LICENSE

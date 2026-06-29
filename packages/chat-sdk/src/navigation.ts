@@ -200,16 +200,112 @@ function navigateSameDocument(target: string): { mode: NavigationMode } {
 }
 
 /**
- * Returns a same-origin href for anchor-like elements. Null means the element is
- * not an anchor or would leave the origin, so the caller should keep its existing
- * click behavior.
+ * Tri-state classification of an action target:
+ *   - `none`        — not an anchor (or an anchor with no href); a genuine
+ *                     control the caller should click natively.
+ *   - `same-origin` — a same-origin anchor the caller navigates in-document.
+ *   - `cross-origin`— an anchor that would leave the origin; the caller MUST
+ *                     block it rather than perform a real top-level navigation.
  */
-function sameOriginAnchorHref(el: HTMLElement): string | null {
+type AnchorTarget =
+    | { kind: "none" }
+    | { kind: "same-origin"; href: string }
+    | { kind: "cross-origin" };
+
+function classifyAnchor(el: HTMLElement): AnchorTarget {
     if (el.tagName.toLowerCase() !== "a") {
-        return null;
+        return { kind: "none" };
     }
     const href = (el as HTMLAnchorElement).href || el.getAttribute("href") || "";
-    return href ? resolveSameOriginUrl(href) : null;
+    if (!href) {
+        return { kind: "none" };
+    }
+    const sameOrigin = resolveSameOriginUrl(href);
+    return sameOrigin ? { kind: "same-origin", href: sameOrigin } : { kind: "cross-origin" };
+}
+
+/**
+ * Thrown when an action targets a cross-origin anchor. The same-origin guard the
+ * explicit-`url` path enforces must also cover captured anchor handles, so the
+ * SDK never drives the host page off-origin via a click. Mapped by the bridge to
+ * a `CLIENT_TOOL_ERROR(code="handler_threw")` frame.
+ */
+export class BlockedNavigationError extends Error {
+    readonly code = "handler_threw" as const;
+    constructor(target?: string) {
+        super(
+            target
+                ? `blocked cross-origin navigation to ${target}`
+                : "blocked cross-origin navigation",
+        );
+        this.name = "BlockedNavigationError";
+    }
+}
+
+/**
+ * Thrown when a navigation action is asked to run after its round-trip was
+ * aborted (the bridge timed out). Mapped to a `timeout` error frame; in practice
+ * the result is discarded because the bridge already rejected.
+ */
+class AbortedActionError extends Error {
+    readonly code = "timeout" as const;
+    constructor() {
+        super("navigation action aborted before execution");
+        this.name = "AbortedActionError";
+    }
+}
+
+/** Refuse to perform a mutating action once the round-trip has been aborted. */
+function assertNotAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) throw new AbortedActionError();
+}
+
+/**
+ * Resolve a handle, scroll/highlight it, then either navigate in-document
+ * (same-origin anchor), block (cross-origin anchor), or click natively (genuine
+ * control). `verbKey` is the result field naming the acted-on handle.
+ */
+function clickOrNavigate(
+    el: HTMLElement,
+    handle: string,
+    verbKey: "clicked" | "opened",
+    signal?: AbortSignal,
+): Record<string, unknown> {
+    scrollAndHighlight(el);
+    const anchor = classifyAnchor(el);
+    if (anchor.kind === "cross-origin") {
+        throw new BlockedNavigationError();
+    }
+    if (anchor.kind === "same-origin") {
+        assertNotAborted(signal);
+        const navigation = navigateSameDocument(anchor.href);
+        return {
+            ok: true,
+            navigatedTo: anchor.href,
+            [verbKey]: handle,
+            navigation: navigation.mode,
+        };
+    }
+    assertNotAborted(signal);
+    el.click();
+    return { ok: true, [verbKey]: handle };
+}
+
+/**
+ * The `url`-arg shortcut shared by navigate / open_record: resolve + same-origin
+ * guard the agent-supplied URL and navigate in-document. Returns null when no
+ * `url` arg was supplied (the caller falls back to a handle).
+ */
+function urlShortcut(
+    args: Record<string, unknown>,
+    signal?: AbortSignal,
+): { target: string; navigation: NavigationMode } | null {
+    if (typeof args.url !== "string" || !args.url) return null;
+    const target = resolveSameOriginUrl(args.url);
+    if (!target) throw new StaleHandleError(args.url);
+    assertNotAborted(signal);
+    const navigation = navigateSameDocument(target);
+    return { target, navigation: navigation.mode };
 }
 
 /** Pull the target handle + its fingerprint out of the tool args. */
@@ -244,41 +340,32 @@ function scrollAndHighlight(el: HTMLElement): void {
 export async function executeNavigation(
     call: ClientToolCall,
     safeSelectors: string[] = [],
+    signal?: AbortSignal,
 ): Promise<ClientToolResult> {
     const args = call.args ?? {};
+    // The round-trip may already have been aborted (timeout) before this runs;
+    // never perform a side effect for a discarded request.
+    assertNotAborted(signal);
     let result: unknown;
 
     switch (call.name) {
         case "navigate": {
             // Either follow a captured link handle, or click a non-mutating
             // control that switches views. URL navigation is opt-in via `url`.
-            if (typeof args.url === "string" && args.url) {
-                // Same-origin guard: resolve against the current document and
-                // refuse anything that is not http(s) or leaves the origin. This
-                // blocks javascript:/data:/about: schemes and forced cross-origin
-                // navigation while keeping same-origin relative URLs working.
-                const target = resolveSameOriginUrl(args.url);
-                if (!target) throw new StaleHandleError(args.url);
-                const navigation = navigateSameDocument(target);
-                result = { ok: true, navigatedTo: target, navigation: navigation.mode };
+            // The same-origin guard blocks javascript:/data:/about: schemes and
+            // forced cross-origin navigation while keeping relative URLs working.
+            const shortcut = urlShortcut(args, signal);
+            if (shortcut) {
+                result = {
+                    ok: true,
+                    navigatedTo: shortcut.target,
+                    navigation: shortcut.navigation,
+                };
                 break;
             }
             const { handle, fingerprint } = targetHandle(args);
             const el = resolveHandle(handle, fingerprint);
-            scrollAndHighlight(el);
-            const target = sameOriginAnchorHref(el);
-            if (target) {
-                const navigation = navigateSameDocument(target);
-                result = {
-                    ok: true,
-                    navigatedTo: target,
-                    clicked: handle,
-                    navigation: navigation.mode,
-                };
-            } else {
-                el.click();
-                result = { ok: true, clicked: handle };
-            }
+            result = clickOrNavigate(el, handle, "clicked", signal);
             break;
         }
         case "refresh_context": {
@@ -288,53 +375,25 @@ export async function executeNavigation(
         case "click": {
             const { handle, fingerprint } = targetHandle(args);
             const el = resolveHandle(handle, fingerprint);
-            scrollAndHighlight(el);
-            const target = sameOriginAnchorHref(el);
-            if (target) {
-                const navigation = navigateSameDocument(target);
-                result = {
-                    ok: true,
-                    navigatedTo: target,
-                    clicked: handle,
-                    navigation: navigation.mode,
-                };
-            } else {
-                el.click();
-                result = { ok: true, clicked: handle };
-            }
+            result = clickOrNavigate(el, handle, "clicked", signal);
             break;
         }
         case "open_record": {
             // Open a record by durable URL when available, or by clicking its
             // captured link/row handle.
-            if (typeof args.url === "string" && args.url) {
-                const target = resolveSameOriginUrl(args.url);
-                if (!target) throw new StaleHandleError(args.url);
-                const navigation = navigateSameDocument(target);
+            const shortcut = urlShortcut(args, signal);
+            if (shortcut) {
                 result = {
                     ok: true,
-                    navigatedTo: target,
-                    openedUrl: target,
-                    navigation: navigation.mode,
+                    navigatedTo: shortcut.target,
+                    openedUrl: shortcut.target,
+                    navigation: shortcut.navigation,
                 };
                 break;
             }
             const { handle, fingerprint } = targetHandle(args);
             const el = resolveHandle(handle, fingerprint);
-            scrollAndHighlight(el);
-            const target = sameOriginAnchorHref(el);
-            if (target) {
-                const navigation = navigateSameDocument(target);
-                result = {
-                    ok: true,
-                    navigatedTo: target,
-                    opened: handle,
-                    navigation: navigation.mode,
-                };
-            } else {
-                el.click();
-                result = { ok: true, opened: handle };
-            }
+            result = clickOrNavigate(el, handle, "opened", signal);
             break;
         }
         case "set_filter": {
@@ -343,6 +402,7 @@ export async function executeNavigation(
             // upstream by the server `mutating` flag + iframe confirmation.)
             const { handle, fingerprint } = targetHandle(args);
             const el = resolveHandle(handle, fingerprint);
+            assertNotAborted(signal);
             const value = args.value == null ? "" : String(args.value);
             applyInputValue(el, value);
             result = { ok: true, filtered: handle, value };

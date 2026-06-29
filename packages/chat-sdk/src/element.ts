@@ -15,17 +15,12 @@
 // of re-creating them; the bridge's global message listener is started once.
 
 import { Bridge } from "./bridge.js";
-import { type ResolvedConfig, resolveConfig } from "./config.js";
+import { DEFAULT_ACCENT, type ResolvedConfig, resolveConfig } from "./config.js";
 import { executeNavigation, isNavigationAction } from "./navigation.js";
-import { capturePageContext } from "./snapshot.js";
+import { capturePageContext, clearHandleStamps } from "./snapshot.js";
 import { fetchToken } from "./token.js";
 import { ToolRegistry } from "./tools.js";
-import type {
-    ClientToolCall,
-    ClientToolResult,
-    SdkConfig,
-    SurfaceDisplaySettings,
-} from "./types.js";
+import type { ClientToolCall, ClientToolResult, SdkConfig, TokenResult } from "./types.js";
 
 /** Tag name of the custom element. */
 export const ELEMENT_TAG = "wp-nova-chat";
@@ -145,6 +140,16 @@ export class WpNovaChatElement extends HTMLElement {
 
     /** Explicit teardown used by framework wrappers and the public destroy command. */
     destroy(): void {
+        this.teardownFrame();
+        this.remove();
+    }
+
+    /**
+     * Tear down the iframe + bridge + timers + buffered auth and unstamp the host
+     * DOM. Shared by destroy() (which also detaches the element) and resetFrame()
+     * (which keeps the element so a fresh config can re-boot it).
+     */
+    private teardownFrame(): void {
         this.clearRefresh();
         this.clearErrorRetry();
         this.bridge?.stop();
@@ -156,13 +161,10 @@ export class WpNovaChatElement extends HTMLElement {
         this.iframeReady = false;
         this.booting = false;
         this.tokenRequestId++;
-        this.lastToken = undefined;
-        this.lastDisplaySettings = undefined;
-        this.lastUnavailable = undefined;
-        this.lastAuthError = undefined;
+        this.lastAuth = undefined;
         this.developmentMode = false;
         this.removeAttribute("data-wpn-dev");
-        this.remove();
+        clearHandleStamps();
     }
 
     /** Idempotent boot: render the shell once, wire the bridge, fetch the token. */
@@ -188,23 +190,7 @@ export class WpNovaChatElement extends HTMLElement {
     }
 
     private resetFrame(): void {
-        this.clearRefresh();
-        this.clearErrorRetry();
-        this.bridge?.stop();
-        this.bridge = undefined;
-        this.iframe = undefined;
-        this.panel = undefined;
-        this.launcher = undefined;
-        this.shadowReady = false;
-        this.iframeReady = false;
-        this.booting = false;
-        this.tokenRequestId++;
-        this.lastToken = undefined;
-        this.lastDisplaySettings = undefined;
-        this.lastUnavailable = undefined;
-        this.lastAuthError = undefined;
-        this.developmentMode = false;
-        this.removeAttribute("data-wpn-dev");
+        this.teardownFrame();
     }
 
     /**
@@ -220,7 +206,9 @@ export class WpNovaChatElement extends HTMLElement {
      */
     private render(config: ResolvedConfig): void {
         const shadow = this.shadowRoot ?? this.attachShadow({ mode: "open" });
-        const accent = config.triggerColor;
+        // Validate before interpolating into the shadow <style> so a host-supplied
+        // value cannot inject arbitrary CSS into the shadow root.
+        const accent = isHexColor(config.triggerColor) ? config.triggerColor.trim() : DEFAULT_ACCENT;
         const iconColor = resolveLauncherIconColor(config.triggerIconColor) ?? "#ffffff";
         const title = config.title;
         this.syncLauncherThemeVisibility();
@@ -339,7 +327,7 @@ export class WpNovaChatElement extends HTMLElement {
         const bridge = new Bridge(config, {
             // Capture is synchronous; a throw is mapped to a capture_error frame.
             onSnapshotRequest: () => capturePageContext(this.resolved?.safeValueSelectors ?? []),
-            onClientToolRequest: (call) => this.runClientTool(call),
+            onClientToolRequest: (call, signal) => this.runClientTool(call, signal),
             onAuthExpired: () => void this.acquireToken(),
             // The iframe-owned header's ⌄ control closes the SDK-owned panel.
             onMinimize: () => this.close(),
@@ -357,15 +345,9 @@ export class WpNovaChatElement extends HTMLElement {
                     return false;
                 }
                 this.iframeReady = true;
-                // Push the latest token (if any) and the current SDK-declared tools;
-                // if the session resolved to the unavailable-user state, forward that instead.
-                if (this.lastToken) bridge.sendAuthToken(this.lastToken, this.lastDisplaySettings);
-                else if (this.lastUnavailable)
-                    bridge.sendUnavailable(
-                        this.lastUnavailable.email,
-                        this.lastUnavailable.message,
-                    );
-                else if (this.lastAuthError) bridge.sendAuthError(this.lastAuthError);
+                // Push the buffered auth outcome (token / unavailable / error) and
+                // the current SDK-declared tools now that the iframe can receive them.
+                this.pushAuthState();
                 bridge.sendRegisterTools(this.registry.advertisedTools());
                 return true;
             },
@@ -449,18 +431,33 @@ export class WpNovaChatElement extends HTMLElement {
     }
 
     /** Dispatch a client tool to the navigation executor or the integrator registry. */
-    private runClientTool(call: ClientToolCall): Promise<ClientToolResult> {
+    private runClientTool(call: ClientToolCall, signal?: AbortSignal): Promise<ClientToolResult> {
         const safeSelectors = this.resolved?.safeValueSelectors ?? [];
         if (isNavigationAction(call.name)) {
-            return executeNavigation(call, safeSelectors);
+            return executeNavigation(call, safeSelectors, signal);
         }
-        return this.registry.run(call, safeSelectors);
+        return this.registry.run(call, safeSelectors, signal);
     }
 
-    private lastToken?: string;
-    private lastDisplaySettings?: SurfaceDisplaySettings | null;
-    private lastUnavailable?: { email: string; message: string };
-    private lastAuthError?: string;
+    /**
+     * The latest typed auth outcome (granted / unavailable / error), buffered so
+     * it can be (re-)pushed to the iframe on READY. A single field replaces the
+     * four mutually-exclusive token/displaySettings/unavailable/error mirrors.
+     */
+    private lastAuth?: TokenResult;
+
+    /** Push the buffered auth outcome to a ready iframe via the matching frame. */
+    private pushAuthState(): void {
+        const auth = this.lastAuth;
+        if (!auth || !this.iframeReady || !this.bridge) return;
+        if (auth.kind === "granted") {
+            this.bridge.sendAuthToken(auth.token, auth.displaySettings ?? null);
+        } else if (auth.kind === "unavailable") {
+            this.bridge.sendUnavailable(auth.email, auth.message);
+        } else {
+            this.bridge.sendAuthError(auth.message);
+        }
+    }
 
     /**
      * Fetch a token from the customer's tokenEndpoint and act on the typed
@@ -475,38 +472,26 @@ export class WpNovaChatElement extends HTMLElement {
         this.clearErrorRetry();
         const result = await fetchToken(config);
         if (requestId !== this.tokenRequestId || this.resolved !== config) return;
+        this.lastAuth = result;
         if (result.kind === "granted") {
-            this.lastToken = result.token;
-            this.lastDisplaySettings = result.displaySettings ?? null;
-            this.lastUnavailable = undefined;
-            this.lastAuthError = undefined;
             this.applySurfaceLauncherTheme({
-                accent: this.lastDisplaySettings?.accent,
-                triggerColor: this.lastDisplaySettings?.triggerColor,
-                triggerIconColor: this.lastDisplaySettings?.triggerIconColor,
+                accent: result.displaySettings?.accent,
+                triggerColor: result.displaySettings?.triggerColor,
+                triggerIconColor: result.displaySettings?.triggerIconColor,
                 reveal: true,
             });
             this.setDevelopmentMode(result.developmentMode === true);
-            if (this.iframeReady)
-                this.bridge?.sendAuthToken(result.token, this.lastDisplaySettings);
+            this.pushAuthState();
             this.armRefresh(result.expiresIn);
         } else if (result.kind === "unavailable") {
             // AC4: forward the unavailable-user state so the iframe renders it
             // (no token, no thread/message). Buffered until READY in onReady.
-            this.lastToken = undefined;
-            this.lastDisplaySettings = undefined;
-            this.lastUnavailable = { email: result.email, message: result.message };
-            this.lastAuthError = undefined;
             this.revealLauncherTheme();
             this.clearRefresh();
-            if (this.iframeReady) this.bridge?.sendUnavailable(result.email, result.message);
+            this.pushAuthState();
         } else {
-            this.lastToken = undefined;
-            this.lastDisplaySettings = undefined;
-            this.lastUnavailable = undefined;
-            this.lastAuthError = result.message;
             this.revealLauncherTheme();
-            if (this.iframeReady) this.bridge?.sendAuthError(result.message);
+            this.pushAuthState();
             this.armErrorRetry();
         }
     }
@@ -515,6 +500,10 @@ export class WpNovaChatElement extends HTMLElement {
     private armRefresh(expiresInSec: number): void {
         this.clearRefresh();
         this.clearErrorRetry();
+        // A non-positive / unknown TTL means "no proactive refresh" — otherwise the
+        // MIN_REFRESH_MS floor would tight-loop a re-mint every 5s. The session
+        // still re-fetches reactively on AUTH_EXPIRED.
+        if (!(expiresInSec > 0)) return;
         const ms = Math.max(MIN_REFRESH_MS, Math.floor(expiresInSec * 1000 * REFRESH_AT_FRACTION));
         this.refreshTimer = setTimeout(() => void this.acquireToken(), ms);
     }

@@ -9,7 +9,6 @@ type SdkModule = typeof import("@wp-nova/sdk");
 export class NovaChatService {
     private readonly config = inject(NOVA_CHAT_CONFIG, { optional: true });
     private sdk?: Promise<SdkModule>;
-    private registeredTools = new Set<string>();
 
     init(config = this.config): void {
         if (!config) {
@@ -24,14 +23,12 @@ export class NovaChatService {
     }
 
     registerTool(tool: ToolDefinition): void {
-        this.registeredTools.add(tool.name);
         void this.load()
             .then((sdk) => sdk.registerTool(tool))
             .catch((error) => reportAngularOperationError(`registerTool("${tool.name}")`, error));
     }
 
     unregisterTool(name: string): void {
-        this.registeredTools.delete(name);
         void this.load()
             .then((sdk) => sdk.unregisterTool(name))
             .catch((error) => reportAngularOperationError(`unregisterTool("${name}")`, error));
@@ -39,7 +36,6 @@ export class NovaChatService {
 
     /** @deprecated Use registerTool with the full tool definition. */
     registerToolHandler(name: string, handler: ToolHandler): void {
-        this.registeredTools.add(name);
         void this.load()
             .then((sdk) => sdk.registerToolHandler(name, handler))
             .catch((error) => reportAngularOperationError(`registerToolHandler("${name}")`, error));
@@ -47,7 +43,6 @@ export class NovaChatService {
 
     /** @deprecated Use unregisterTool for SDK-declared tools. */
     unregisterToolHandler(name: string): void {
-        this.registeredTools.delete(name);
         void this.load()
             .then((sdk) => sdk.unregisterToolHandler(name))
             .catch((error) =>
@@ -55,18 +50,28 @@ export class NovaChatService {
             );
     }
 
+    /**
+     * Register a live mount of the shared chat element. Pairs with `release`; the
+     * shared element is torn down only when the last mount releases, so one
+     * NovaChatComponent unmounting never destroys another's live chat.
+     */
+    retain(): void {
+        void this.load()
+            .then((sdk) => sdk.retain())
+            .catch((error) => reportAngularOperationError("retain", error));
+    }
+
+    /** Drop a live mount registered with `retain`. */
+    release(): void {
+        void this.load()
+            .then((sdk) => sdk.release())
+            .catch((error) => reportAngularOperationError("release", error));
+    }
+
     destroy(): void {
-        this.registeredTools.clear();
         void this.load()
             .then((sdk) => sdk.destroy())
             .catch((error) => reportAngularOperationError("destroy", error));
-    }
-
-    destroyRegisteredTools(): void {
-        for (const name of Array.from(this.registeredTools)) {
-            this.unregisterTool(name);
-            this.unregisterToolHandler(name);
-        }
     }
 
     private load(): Promise<SdkModule> {
