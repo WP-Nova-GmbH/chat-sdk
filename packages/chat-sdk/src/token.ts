@@ -21,10 +21,14 @@ const BACKOFF_BASE_MS = 500;
 /** Cooldown after exhausting retries so a hard failure can't tight-loop. */
 const COOLDOWN_MS = 30_000;
 
-let cooldownUntil = 0;
+/**
+ * Cooldown deadline per `tokenEndpoint`. Keying by endpoint keeps one surface's
+ * repeated failures from putting every other embed on the page into cooldown.
+ */
+const cooldownUntil = new Map<string, number>();
 
 export function __resetTokenCooldownForTests(): void {
-    cooldownUntil = 0;
+    cooldownUntil.clear();
 }
 
 function delay(ms: number): Promise<void> {
@@ -62,7 +66,7 @@ function tokenErrorMessage(err: unknown): string {
  */
 export async function fetchToken(config: ResolvedConfig): Promise<TokenResult> {
     const now = Date.now();
-    if (now < cooldownUntil) {
+    if (now < (cooldownUntil.get(config.tokenEndpoint) ?? 0)) {
         return {
             kind: "error",
             message: "token endpoint is in cooldown after repeated failures",
@@ -104,7 +108,7 @@ export async function fetchToken(config: ResolvedConfig): Promise<TokenResult> {
         }
     }
 
-    cooldownUntil = Date.now() + COOLDOWN_MS;
+    cooldownUntil.set(config.tokenEndpoint, Date.now() + COOLDOWN_MS);
     return { kind: "error", message: lastError };
 }
 

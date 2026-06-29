@@ -219,6 +219,12 @@ export interface ClientToolCall {
     mutating?: boolean;
     /** Confirmation copy shown by the iframe for a mutating tool. */
     confirmationCopy?: string;
+    /**
+     * Optional idempotency key. When the same approved call may be re-issued
+     * (e.g. after a timeout) the SDK de-dupes on this key so a mutating handler
+     * does not run twice. Falls back to the request correlationId when absent.
+     */
+    idempotencyKey?: string;
 }
 
 /** Result of running a client tool in the host page. */
@@ -243,8 +249,16 @@ export interface SurfaceDisplaySettings {
     triggerIconColor?: string;
 }
 
-/** A handler the integrator registers for an SDK-declared tool. */
-export type ToolHandler = (args: Record<string, unknown>) => unknown | Promise<unknown>;
+/**
+ * A handler the integrator registers for an SDK-declared tool. The optional
+ * second argument carries an `AbortSignal` the SDK aborts when the bridge times
+ * the round-trip out, so a cooperating handler can stop a mutating action; it is
+ * optional so existing one-argument handlers keep compiling.
+ */
+export type ToolHandler = (
+    args: Record<string, unknown>,
+    opts?: { signal?: AbortSignal },
+) => unknown | Promise<unknown>;
 
 /** Public SDK definition for one model-callable host-page tool. */
 export interface ToolDefinition {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { executeNavigation } from "./navigation.js";
+import { BlockedNavigationError, executeNavigation } from "./navigation.js";
 
 const ORIGINALS = {
     location: Object.getOwnPropertyDescriptor(globalThis, "location"),
@@ -10,6 +10,8 @@ const ORIGINALS = {
     requestAnimationFrame: Object.getOwnPropertyDescriptor(globalThis, "requestAnimationFrame"),
     PopStateEvent: Object.getOwnPropertyDescriptor(globalThis, "PopStateEvent"),
     CustomEvent: Object.getOwnPropertyDescriptor(globalThis, "CustomEvent"),
+    setTimeout: Object.getOwnPropertyDescriptor(globalThis, "setTimeout"),
+    clearTimeout: Object.getOwnPropertyDescriptor(globalThis, "clearTimeout"),
 };
 
 function restoreGlobal(name: keyof typeof ORIGINALS): void {
@@ -373,6 +375,126 @@ test("click executes a captured UI control natively", async () => {
     }
 });
 
+
+/** Build minimal browser globals exposing one element via the fingerprint query. */
+function installNavGlobals(target: Record<string, unknown>): void {
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: {
+            href: "https://app.example/customers",
+            pathname: "/customers",
+            origin: "https://app.example",
+            assign() {
+                throw new Error("location.assign must not be called for a blocked navigation");
+            },
+        },
+    });
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            innerHeight: 800,
+            innerWidth: 1200,
+            dispatchEvent() {
+                throw new Error("dispatchEvent must not be called for a blocked navigation");
+            },
+            getSelection: () => "",
+        },
+    });
+    Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: {
+            title: "Customers",
+            body: { children: [] },
+            children: [],
+            documentElement: { clientHeight: 800, clientWidth: 1200 },
+            querySelector: () => null,
+            querySelectorAll: (selector: string) =>
+                selector === "a, button, input, select, textarea, [role]" ? [target] : [],
+        },
+    });
+    Object.defineProperty(globalThis, "requestAnimationFrame", {
+        configurable: true,
+        value: (callback: FrameRequestCallback) => {
+            callback(0);
+            return 1;
+        },
+    });
+    // Stub the scroll-highlight reset timer so it cannot linger after the test.
+    Object.defineProperty(globalThis, "setTimeout", { configurable: true, value: () => 1 });
+    Object.defineProperty(globalThis, "clearTimeout", { configurable: true, value: () => undefined });
+}
+
+function crossOriginAnchor(clickedRef: { count: number }): Record<string, unknown> {
+    return {
+        tagName: "A",
+        href: "https://evil.example/phishing",
+        textContent: "External link",
+        style: { outline: "" },
+        getAttribute(name: string) {
+            if (name === "href") return "https://evil.example/phishing";
+            return null;
+        },
+        scrollIntoView() {
+            return undefined;
+        },
+        click() {
+            clickedRef.count += 1;
+        },
+    };
+}
+
+for (const verb of ["click", "navigate", "open_record"] as const) {
+    test(`${verb} blocks a cross-origin anchor handle instead of navigating`, async () => {
+        const clickedRef = { count: 0 };
+        installNavGlobals(crossOriginAnchor(clickedRef));
+        try {
+            await assert.rejects(
+                executeNavigation({
+                    name: verb,
+                    args: {
+                        handle: "stale-handle",
+                        fingerprint: { role: "link", name: "External link" },
+                    },
+                }),
+                BlockedNavigationError,
+            );
+            assert.equal(clickedRef.count, 0);
+        } finally {
+            restoreBrowserGlobals();
+        }
+    });
+}
+
+test("an aborted signal stops a navigation action before it clicks", async () => {
+    const clickedRef = { count: 0 };
+    installNavGlobals({
+        tagName: "BUTTON",
+        textContent: "Select",
+        style: { outline: "" },
+        getAttribute: () => null,
+        scrollIntoView: () => undefined,
+        click() {
+            clickedRef.count += 1;
+        },
+    });
+    const controller = new AbortController();
+    controller.abort();
+    try {
+        await assert.rejects(
+            executeNavigation(
+                {
+                    name: "click",
+                    args: { handle: "stale-handle", fingerprint: { role: "button", name: "Select" } },
+                },
+                [],
+                controller.signal,
+            ),
+        );
+        assert.equal(clickedRef.count, 0);
+    } finally {
+        restoreBrowserGlobals();
+    }
+});
 
 test("stale handle fallback resolves an anchor by implicit link role and exact name", async () => {
     const events: string[] = [];

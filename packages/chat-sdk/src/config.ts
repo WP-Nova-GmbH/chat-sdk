@@ -1,5 +1,6 @@
 // Config normalization + protocol tunables for the SDK.
 
+import { missingRequiredConfigFields } from "./diagnostics.js";
 import { PROTOCOL_VERSION, type SdkConfig } from "./types.js";
 
 /** Default base URL of the Nova-hosted iframe app. */
@@ -67,10 +68,11 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
     if (!config || typeof config !== "object") {
         throw new Error("[wp-nova] init requires a config object");
     }
-    if (!config.publicSurfaceId) {
+    const missing = missingRequiredConfigFields(config);
+    if (missing.includes("publicSurfaceId")) {
         throw new Error("[wp-nova] init requires a `publicSurfaceId`");
     }
-    if (!config.tokenEndpoint) {
+    if (missing.includes("tokenEndpoint")) {
         throw new Error("[wp-nova] init requires a `tokenEndpoint`");
     }
 

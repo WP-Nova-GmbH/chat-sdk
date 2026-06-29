@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { capturePageContext, captureVisiblePageSnapshot, HANDLE_ATTR } from "./snapshot.js";
+import {
+    capturePageContext,
+    captureVisiblePageSnapshot,
+    clearHandleStamps,
+    HANDLE_ATTR,
+    resolveHandleNode,
+} from "./snapshot.js";
 
 const ORIGINALS = {
     window: Object.getOwnPropertyDescriptor(globalThis, "window"),
@@ -53,6 +59,10 @@ class FakeElement {
         return this.attrs.has(name);
     }
 
+    removeAttribute(name: string): void {
+        this.attrs.delete(name);
+    }
+
     getClientRects(): RectLike[] {
         return [this.getBoundingClientRect()];
     }
@@ -91,6 +101,15 @@ class FakeDocument {
     querySelectorAll(selector?: string): FakeElement[] {
         if (selector === "[data-ai-context]") {
             return this.allNodes.filter((node) => node.hasAttribute("data-ai-context"));
+        }
+        if (selector === `[${HANDLE_ATTR}]`) {
+            const found: FakeElement[] = [];
+            const walk = (el: FakeElement): void => {
+                if (el.hasAttribute(HANDLE_ATTR)) found.push(el);
+                for (const child of el.children) walk(child);
+            };
+            walk(this.body);
+            return found;
         }
         return [];
     }
@@ -521,6 +540,79 @@ test("page context omits raw mainHtml so ignored markup cannot bypass field poli
 
         assert.equal("mainHtml" in context, false);
         assert.notEqual(context.snapshot?.visibleText?.includes("swordfish"), true);
+    } finally {
+        restoreGlobals();
+    }
+});
+
+test("clearHandleStamps removes every data-wp-nova-h from the host DOM", () => {
+    const document = new FakeDocument();
+    const link = new FakeElement(
+        "a",
+        new Map([["href", "https://app.example/customers/cus-001"]]),
+        "Acme Renewables",
+        document,
+    );
+    document.body.append(link);
+
+    Object.defineProperty(globalThis, "document", { configurable: true, value: document });
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: { innerHeight: 800, innerWidth: 1200, getSelection: () => "" },
+    });
+    Object.defineProperty(globalThis, "getComputedStyle", {
+        configurable: true,
+        value: () => ({ display: "block", opacity: "1", visibility: "visible" }),
+    });
+
+    try {
+        const snapshot = captureVisiblePageSnapshot();
+        const handle = snapshot.links?.[0]?.handle;
+        assert.ok(handle);
+        assert.equal(link.getAttribute(HANDLE_ATTR), handle);
+        assert.equal(document.querySelectorAll(`[${HANDLE_ATTR}]`).length, 1);
+
+        clearHandleStamps();
+
+        assert.equal(link.getAttribute(HANDLE_ATTR), null);
+        assert.equal(document.querySelectorAll(`[${HANDLE_ATTR}]`).length, 0);
+        assert.equal(resolveHandleNode(handle), undefined);
+    } finally {
+        restoreGlobals();
+    }
+});
+
+test("capture walks each element once (isVisible/getComputedStyle ~once per element)", () => {
+    const document = new FakeDocument();
+    // A pure-text subtree: no links/controls, so no targetContext walk confounds
+    // the count. The single fused walk calls isVisible once per element.
+    const article = new FakeElement("article", new Map(), "", document);
+    const p1 = new FakeElement("p", new Map(), "First paragraph", document);
+    const p2 = new FakeElement("p", new Map(), "Second paragraph", document);
+    article.append(p1);
+    article.append(p2);
+    document.body.append(article);
+
+    let computedStyleCalls = 0;
+    Object.defineProperty(globalThis, "document", { configurable: true, value: document });
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: { innerHeight: 800, innerWidth: 1200, getSelection: () => "" },
+    });
+    Object.defineProperty(globalThis, "getComputedStyle", {
+        configurable: true,
+        value: () => {
+            computedStyleCalls++;
+            return { display: "block", opacity: "1", visibility: "visible" };
+        },
+    });
+
+    try {
+        captureVisiblePageSnapshot();
+
+        // 3 elements (article, p1, p2) → exactly 3 isVisible reads. The previous
+        // two-walk implementation would have produced 6.
+        assert.equal(computedStyleCalls, 3);
     } finally {
         restoreGlobals();
     }

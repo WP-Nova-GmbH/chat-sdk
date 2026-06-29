@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ResolvedConfig } from "./config.js";
+import { DEFAULT_ACCENT, type ResolvedConfig } from "./config.js";
 import type { WpNovaChatElement } from "./element.js";
 import { __resetTokenCooldownForTests } from "./token.js";
 
@@ -550,7 +550,7 @@ test("stale token responses after frame reset are ignored", async () => {
             sendAuthToken: (token: string) => void;
             stop: () => void;
         };
-        lastToken?: string;
+        lastAuth?: unknown;
         acquireToken: () => Promise<void>;
         resetFrame: () => void;
     };
@@ -580,7 +580,7 @@ test("stale token responses after frame reset are ignored", async () => {
     await pending;
 
     assert.deepEqual(sentTokens, []);
-    assert.equal(element.lastToken, undefined);
+    assert.equal(element.lastAuth, undefined);
 });
 
 test("render omits microphone delegation unless voice mode is enabled", () => {
@@ -615,8 +615,7 @@ test("config changes that target a different iframe reset bridge and buffered au
     const element = makeElement() as {
         resolved?: ResolvedConfig;
         bridge?: { stop: () => void };
-        lastToken?: string;
-        lastUnavailable?: { email: string; message: string };
+        lastAuth?: unknown;
         setConfig: (config: {
             publicSurfaceId: string;
             tokenEndpoint: string;
@@ -631,8 +630,7 @@ test("config changes that target a different iframe reset bridge and buffered au
             stopped = true;
         },
     };
-    element.lastToken = "old-token";
-    element.lastUnavailable = { email: "old@example.com", message: "Old" };
+    element.lastAuth = { kind: "granted", token: "old-token", expiresIn: 60 };
 
     element.setConfig({
         publicSurfaceId: "surf_2",
@@ -643,8 +641,7 @@ test("config changes that target a different iframe reset bridge and buffered au
 
     assert.equal(stopped, true);
     assert.equal(element.bridge, undefined);
-    assert.equal(element.lastToken, undefined);
-    assert.equal(element.lastUnavailable, undefined);
+    assert.equal(element.lastAuth, undefined);
     assert.equal(element.resolved?.iframeSrc.includes("surface=surf_2"), true);
 });
 
@@ -653,7 +650,7 @@ test("config changes that toggle voice mode reset the iframe", () => {
     const element = makeElement() as {
         resolved?: ResolvedConfig;
         bridge?: { stop: () => void };
-        lastToken?: string;
+        lastAuth?: unknown;
         setConfig: (config: {
             publicSurfaceId: string;
             tokenEndpoint: string;
@@ -667,7 +664,7 @@ test("config changes that toggle voice mode reset the iframe", () => {
             stopped = true;
         },
     };
-    element.lastToken = "old-token";
+    element.lastAuth = { kind: "granted", token: "old-token", expiresIn: 60 };
 
     element.setConfig({
         publicSurfaceId: "surf_1",
@@ -678,7 +675,7 @@ test("config changes that toggle voice mode reset the iframe", () => {
 
     assert.equal(stopped, true);
     assert.equal(element.bridge, undefined);
-    assert.equal(element.lastToken, undefined);
+    assert.equal(element.lastAuth, undefined);
     assert.equal(element.resolved?.voiceModeEnabled, true);
     assert.equal(new URL(element.resolved?.iframeSrc ?? "").searchParams.get("voice"), "1");
 });
@@ -696,4 +693,58 @@ test("READY protocol range must include the SDK protocol", () => {
     assert.equal(element.isProtocolCompatible(config, 1, 3), true);
     assert.equal(element.isProtocolCompatible(config, 3, 4), false);
     assert.equal(element.isProtocolCompatible(config, 0, 1), false);
+});
+
+test("armRefresh schedules no proactive refresh for a missing or zero TTL", () => {
+    const scheduled: number[] = [];
+    const element = makeElement() as { armRefresh: (expiresInSec: number) => void };
+    Object.defineProperty(globalThis, "setTimeout", {
+        configurable: true,
+        value: (_callback: () => void, ms?: number) => {
+            scheduled.push(Number(ms ?? 0));
+            return 1;
+        },
+    });
+    Object.defineProperty(globalThis, "clearTimeout", {
+        configurable: true,
+        value: () => undefined,
+    });
+
+    try {
+        element.armRefresh(0);
+        element.armRefresh(Number.NaN);
+        assert.deepEqual(scheduled, []);
+
+        // A normal TTL still arms a proactive re-mint at ~80% of the lifetime.
+        element.armRefresh(900);
+        assert.deepEqual(scheduled, [720_000]);
+    } finally {
+        if (ORIGINALS.setTimeout) Object.defineProperty(globalThis, "setTimeout", ORIGINALS.setTimeout);
+        if (ORIGINALS.clearTimeout)
+            Object.defineProperty(globalThis, "clearTimeout", ORIGINALS.clearTimeout);
+    }
+});
+
+test("render falls back to DEFAULT_ACCENT for a non-hex triggerColor", () => {
+    const element = makeElement() as {
+        shadowRoot?: { innerHTML: string };
+        render: (config: ResolvedConfig) => void;
+    };
+
+    element.render(resolvedConfig({ triggerColor: "red;}#launcher{background:url(evil)}" }));
+    const html = element.shadowRoot?.innerHTML ?? "";
+
+    assert.equal(html.includes(`--wpn-accent:${DEFAULT_ACCENT}`), true);
+    assert.equal(html.includes("background:url(evil)"), false);
+});
+
+test("render passes a valid hex triggerColor through to the shadow style", () => {
+    const element = makeElement() as {
+        shadowRoot?: { innerHTML: string };
+        render: (config: ResolvedConfig) => void;
+    };
+
+    element.render(resolvedConfig({ triggerColor: "#abcdef" }));
+
+    assert.equal(element.shadowRoot?.innerHTML.includes("--wpn-accent:#abcdef"), true);
 });
