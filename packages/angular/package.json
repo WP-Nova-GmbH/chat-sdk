@@ -1,6 +1,6 @@
 {
     "name": "@wp-nova/chat-sdk-angular",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Angular component and service wrappers for the Nova Chat SDK.",
     "license": "MIT",
     "private": false,
