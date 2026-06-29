@@ -72,6 +72,7 @@ jobs:
                   npm run lint
                   npm test
                   npm run pack:dry-run
+                  npm run check-angular-publishable
 
             - name: Publish npm packages
               run: |

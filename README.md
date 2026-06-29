@@ -60,10 +60,25 @@ accept `?surface=surf_...&baseUrl=http://localhost:5173&tokenEndpoint=/api/nova-
 
 ## Releases
 
-For the initial public release, publish the existing `1.0.0` package versions
-with `npm run release`; do not run `npm run version-packages` first.
+`npm run release` builds every package, runs `npm run check-angular-publishable`,
+and then publishes each package from the directory that produces a resolvable npm
+tarball:
 
-After that, package patch releases do not need new docs selector entries. Run
+- `@wp-nova/chat-sdk` and `@wp-nova/chat-sdk-react` publish from their package
+  roots (their manifests declare `exports` and `files: ["dist"]`).
+- `@wp-nova/chat-sdk-angular` publishes from its **built `packages/angular/dist`**
+  directory. ng-packagr owns the dist manifest, so the package root deliberately
+  has no `main`/`module`/`types`/`exports`. Publishing the Angular package root
+  ships an unresolvable package (`npm install @wp-nova/chat-sdk-angular` then fails
+  with `ERR_MODULE_NOT_FOUND`). Do **not** use `changeset publish` for this repo,
+  because it publishes the Angular package root. `npm run check-angular-publishable`
+  guards against publishing a malformed Angular artifact.
+
+Use `npm run version-packages` (`changeset version`) only to bump versions; use
+`npm run release` to publish. The CI workflow in `.github/workflows/release.yml`
+publishes the same three targets the same way.
+
+After a release, package patch releases do not need new docs selector entries. Run
 `npm run check-docs-release-sync` before publishing to confirm the package
 major/minor line still matches the current docs line and current docs do not pin
 an exact CDN patch URL.
