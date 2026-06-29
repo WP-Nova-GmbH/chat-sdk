@@ -56,6 +56,11 @@ Because the bytes change as releases roll forward, the rolling URL cannot use a 
 
 ## npm Packages
 
+All three packages are published on npm:
+[`@wp-nova/chat-sdk`](https://www.npmjs.com/package/@wp-nova/chat-sdk),
+[`@wp-nova/chat-sdk-react`](https://www.npmjs.com/package/@wp-nova/chat-sdk-react),
+and [`@wp-nova/chat-sdk-angular`](https://www.npmjs.com/package/@wp-nova/chat-sdk-angular).
+
 Bundled apps should install from npm:
 
 ```bash
