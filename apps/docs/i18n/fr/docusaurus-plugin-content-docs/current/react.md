@@ -5,14 +5,14 @@ title: React
 
 ## React
 
-`@wp-nova/sdk-react` encapsule le SDK navigateur sans l’importer pendant le rendu serveur.
+`@wp-nova/chat-sdk-react` encapsule le SDK navigateur sans l’importer pendant le rendu serveur.
 
 ```bash
-npm install @wp-nova/sdk @wp-nova/sdk-react
+npm install @wp-nova/chat-sdk @wp-nova/chat-sdk-react
 ```
 
 ```tsx
-import { NovaChatProvider, useNovaTool } from "@wp-nova/sdk-react";
+import { NovaChatProvider, useNovaTool } from "@wp-nova/chat-sdk-react";
 
 function CustomerTools() {
   useNovaTool("create_ticket", async (args) => {

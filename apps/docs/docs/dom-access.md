@@ -108,7 +108,7 @@ Tools the agent can call are defined by your SDK integration. Nova admin only
 controls whether SDK-defined page tools are allowed for the surface.
 
 ```ts
-import { registerTool, unregisterTool } from "@wp-nova/sdk";
+import { registerTool, unregisterTool } from "@wp-nova/chat-sdk";
 
 registerTool({
   name: "set_customer_status",

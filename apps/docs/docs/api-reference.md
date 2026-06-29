@@ -26,7 +26,7 @@ import {
   defineElement,
   ELEMENT_TAG,
   WpNovaChatElement,
-} from "@wp-nova/sdk";
+} from "@wp-nova/chat-sdk";
 ```
 
 `WpNova(command, ...args)` and the named helpers call the same singleton controller.
@@ -173,7 +173,7 @@ Handles are valid only for the snapshot that issued them. Every tool result retu
 The SDK defines `<wp-nova-chat>` lazily and idempotently. You can pre-place the element in the DOM, but most integrations should let `init` create and mount it.
 
 ```ts
-import { ELEMENT_TAG, defineElement } from "@wp-nova/sdk";
+import { ELEMENT_TAG, defineElement } from "@wp-nova/chat-sdk";
 
 defineElement();
 console.log(ELEMENT_TAG); // "wp-nova-chat"

@@ -23,7 +23,7 @@
         "format": "biome format --write .",
         "lint": "turbo run lint",
         "lint:fix": "biome check --formatter-enabled=false --write .",
-        "pack:dry-run": "npm pack --dry-run --json --workspace packages/chat-sdk && npm pack --dry-run --json --workspace packages/react && npm --workspace @wp-nova/sdk-angular run build && npm pack --dry-run --json packages/angular/dist",
+        "pack:dry-run": "npm pack --dry-run --json --workspace packages/chat-sdk && npm pack --dry-run --json --workspace packages/react && npm --workspace @wp-nova/chat-sdk-angular run build && npm pack --dry-run --json packages/angular/dist",
         "test": "turbo run test",
         "version-packages": "changeset version",
         "release": "npm run build && changeset publish"

@@ -10,7 +10,7 @@ Nova ne peut pas exécuter de JavaScript arbitraire dans la page hôte. Il peut 
 ### Enregistrer des handlers d’outils
 
 ```ts
-import { registerToolHandler, unregisterToolHandler } from "@wp-nova/sdk";
+import { registerToolHandler, unregisterToolHandler } from "@wp-nova/chat-sdk";
 
 registerToolHandler("set_customer_status", async (args) => {
   const customerId = String(args.customerId);

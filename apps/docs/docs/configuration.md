@@ -6,7 +6,7 @@ title: Configuration
 All options are passed to `WpNova("init", config)` or the `init(config)` npm helper. The only required fields are `publicSurfaceId` and `tokenEndpoint`.
 
 ```ts
-import { init } from "@wp-nova/sdk";
+import { init } from "@wp-nova/chat-sdk";
 
 init({
   publicSurfaceId: "surf_...",
@@ -83,7 +83,7 @@ If `publicSurfaceId`, `baseUrl`, or `protocolVersion` changes, the element rebui
 Use `destroy()` or `WpNova("destroy")` only when your app truly disables or removes the assistant. Normal SPA route changes do not require unmounting.
 
 ```ts
-import { destroy } from "@wp-nova/sdk";
+import { destroy } from "@wp-nova/chat-sdk";
 
 destroy();
 ```

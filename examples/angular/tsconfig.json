@@ -2,7 +2,7 @@
     "extends": "@wp-nova/typescript-config/angular.json",
     "compilerOptions": {
         "paths": {
-            "@wp-nova/sdk-angular": ["../../packages/angular/src/public-api.ts"]
+            "@wp-nova/chat-sdk-angular": ["../../packages/angular/src/public-api.ts"]
         }
     },
     "include": ["src/**/*.ts"]

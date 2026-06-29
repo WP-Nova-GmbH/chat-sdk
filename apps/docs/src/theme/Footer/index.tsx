@@ -61,9 +61,9 @@ export default function Footer() {
                     </div>
                     <div>
                         <h2>{content.packages}</h2>
-                        <Link to="/api-reference">@wp-nova/sdk</Link>
-                        <Link to="/react">@wp-nova/sdk-react</Link>
-                        <Link to="/angular">@wp-nova/sdk-angular</Link>
+                        <Link to="/api-reference">@wp-nova/chat-sdk</Link>
+                        <Link to="/react">@wp-nova/chat-sdk-react</Link>
+                        <Link to="/angular">@wp-nova/chat-sdk-angular</Link>
                     </div>
                     <div>
                         <h2>{content.more}</h2>

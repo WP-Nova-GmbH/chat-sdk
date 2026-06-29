@@ -1,4 +1,4 @@
-import type { SdkConfig, ToolDefinition, ToolHandler } from "@wp-nova/sdk";
+import type { SdkConfig, ToolDefinition, ToolHandler } from "@wp-nova/chat-sdk";
 import {
     createContext,
     memo,
@@ -10,7 +10,7 @@ import {
     useRef,
 } from "react";
 
-type SdkModule = typeof import("@wp-nova/sdk");
+type SdkModule = typeof import("@wp-nova/chat-sdk");
 
 export type NovaToolDefinition = ToolDefinition;
 
@@ -43,16 +43,16 @@ export interface NovaChatApi {
 const NovaChatContext = createContext<NovaChatApi | null>(null);
 
 async function loadSdk(): Promise<SdkModule> {
-    return import("@wp-nova/sdk");
+    return import("@wp-nova/chat-sdk");
 }
 
 // NOTE (A8): the core now exports `missingRequiredConfigFields`,
 // `formatErrorMessage`, `buildDisabledMessage` and `reportOperationError`. They are
-// NOT consumed here because a static import of `@wp-nova/sdk` pulls the core
+// NOT consumed here because a static import of `@wp-nova/chat-sdk` pulls the core
 // package root, which eagerly evaluates `class extends HTMLElement` and throws
 // under Next.js / Node SSR (the wrapper deliberately reaches the core only via a
 // runtime dynamic import). These copies stay SSR-safe until the core exposes the
-// diagnostics on an SSR-safe subpath (e.g. `@wp-nova/sdk/diagnostics`).
+// diagnostics on an SSR-safe subpath (e.g. `@wp-nova/chat-sdk/diagnostics`).
 function formatErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
@@ -262,4 +262,4 @@ export function useNovaTool(tool: NovaToolDefinition) {
     }, [api, toolKey]);
 }
 
-export type { SdkConfig, ToolDefinition, ToolHandler } from "@wp-nova/sdk";
+export type { SdkConfig, ToolDefinition, ToolHandler } from "@wp-nova/chat-sdk";

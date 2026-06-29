@@ -1,9 +1,11 @@
-# @wp-nova/sdk-angular
+# @wp-nova/chat-sdk-angular
 
 Angular standalone component and service wrappers for the Nova Chat SDK.
 
+📖 **Full documentation:** [https://wp-nova.ai/chat-sdk](https://wp-nova.ai/chat-sdk)
+
 ```ts
-import { provideNovaChat } from "@wp-nova/sdk-angular";
+import { provideNovaChat } from "@wp-nova/chat-sdk-angular";
 
 export const appConfig = {
     providers: [
@@ -19,4 +21,4 @@ export const appConfig = {
 <wp-nova-chat-mount [tools]="tools" />
 ```
 
-Install this package with `@wp-nova/sdk`.
+Install this package with `@wp-nova/chat-sdk`.

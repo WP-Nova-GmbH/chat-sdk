@@ -5,15 +5,15 @@ title: Angular
 
 ## Angular
 
-`@wp-nova/sdk-angular` fournit un service Angular, un provider d'environnement et un composant standalone.
+`@wp-nova/chat-sdk-angular` fournit un service Angular, un provider d'environnement et un composant standalone.
 
 ```bash
-npm install @wp-nova/sdk @wp-nova/sdk-angular
+npm install @wp-nova/chat-sdk @wp-nova/chat-sdk-angular
 ```
 
 ```ts
 import { bootstrapApplication } from "@angular/platform-browser";
-import { provideNovaChat } from "@wp-nova/sdk-angular";
+import { provideNovaChat } from "@wp-nova/chat-sdk-angular";
 
 bootstrapApplication(AppComponent, {
   providers: [
@@ -27,7 +27,7 @@ bootstrapApplication(AppComponent, {
 
 ```ts
 import { Component, inject } from "@angular/core";
-import { NovaChatComponent, NovaChatService } from "@wp-nova/sdk-angular";
+import { NovaChatComponent, NovaChatService } from "@wp-nova/chat-sdk-angular";
 
 @Component({
   standalone: true,

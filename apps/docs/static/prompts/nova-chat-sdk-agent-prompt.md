@@ -32,9 +32,9 @@ For production, confirm the Embedded Chat Surface allows the exact host origin, 
 3. Store `NOVA_INTEGRATION_SECRET` only in server-side env/config.
 4. Install the right frontend package:
    - Plain HTML or non-bundled page: CDN script snippet.
-   - React: `@wp-nova/sdk` and `@wp-nova/sdk-react`.
-   - Angular: `@wp-nova/sdk` and `@wp-nova/sdk-angular`.
-   - Other bundled app: `@wp-nova/sdk`.
+   - React: `@wp-nova/chat-sdk` and `@wp-nova/chat-sdk-react`.
+   - Angular: `@wp-nova/chat-sdk` and `@wp-nova/chat-sdk-angular`.
+   - Other bundled app: `@wp-nova/chat-sdk`.
 5. Initialize with `publicSurfaceId` and `tokenEndpoint`.
 6. Register handlers for useful surface-declared page tools.
 7. Add `data-wp-nova-include` only to safe fields and `data-wp-nova-ignore` to sensitive regions.
@@ -150,7 +150,7 @@ The unavailable response is a valid success state. Do not turn it into `401`, `4
 ### Core npm
 
 ```ts
-import { init, registerTool } from "@wp-nova/sdk";
+import { init, registerTool } from "@wp-nova/chat-sdk";
 
 registerTool({
   name: "create_ticket",
@@ -181,7 +181,7 @@ init({
 ### React
 
 ```tsx
-import { NovaChatProvider, type NovaToolDefinition } from "@wp-nova/sdk-react";
+import { NovaChatProvider, type NovaToolDefinition } from "@wp-nova/chat-sdk-react";
 
 const tools: NovaToolDefinition[] = [
   {
@@ -223,7 +223,7 @@ export function App() {
 ### Angular
 
 ```ts
-import { provideNovaChat } from "@wp-nova/sdk-angular";
+import { provideNovaChat } from "@wp-nova/chat-sdk-angular";
 
 export const appConfig = {
   providers: [

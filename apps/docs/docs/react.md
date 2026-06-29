@@ -3,10 +3,10 @@ id: react
 title: React
 ---
 
-`@wp-nova/sdk-react` wraps the browser SDK without importing it during server render. Install both the core package and the React wrapper:
+`@wp-nova/chat-sdk-react` wraps the browser SDK without importing it during server render. Install both the core package and the React wrapper:
 
 ```bash
-npm install @wp-nova/sdk @wp-nova/sdk-react
+npm install @wp-nova/chat-sdk @wp-nova/chat-sdk-react
 ```
 
 ## Provider Setup
@@ -14,7 +14,7 @@ npm install @wp-nova/sdk @wp-nova/sdk-react
 Mount `NovaChatProvider` once near the top of your client-side app. It initializes the singleton SDK and cleans up wrapper-owned tool handlers on unmount.
 
 ```tsx
-import { NovaChatProvider } from "@wp-nova/sdk-react";
+import { NovaChatProvider } from "@wp-nova/chat-sdk-react";
 import { Routes } from "./Routes";
 
 const novaConfig = {
@@ -40,7 +40,7 @@ If your tools are stable inside one component, pass them through the `tools` pro
 
 ```tsx
 import { useMemo } from "react";
-import { NovaChatProvider, type NovaToolDefinition } from "@wp-nova/sdk-react";
+import { NovaChatProvider, type NovaToolDefinition } from "@wp-nova/chat-sdk-react";
 
 export function App() {
   const tools = useMemo<NovaToolDefinition[]>(
@@ -80,7 +80,7 @@ export function App() {
 Use `useNovaTool` when a tool belongs to a feature component and should unregister when that component unmounts.
 
 ```tsx
-import { useNovaTool } from "@wp-nova/sdk-react";
+import { useNovaTool } from "@wp-nova/chat-sdk-react";
 
 function CustomerTools() {
   useNovaTool({

@@ -24,6 +24,6 @@ Le canal rolling est une facilité opt-in. L’URL versionnée immuable reste la
 
 ### Versions de documentation et versions npm
 
-Les entrées du sélecteur de documentation décrivent le contrat d’intégration public, pas chaque patch npm. La documentation `v1.0` s’applique à `@wp-nova/sdk@1.0.x`, `@wp-nova/sdk-react@1.0.x` et `@wp-nova/sdk-angular@1.0.x`.
+Les entrées du sélecteur de documentation décrivent le contrat d’intégration public, pas chaque patch npm. La documentation `v1.0` s’applique à `@wp-nova/chat-sdk@1.0.x`, `@wp-nova/chat-sdk-react@1.0.x` et `@wp-nova/chat-sdk-angular@1.0.x`.
 
 Les patch releases npm réutilisent la même ligne de documentation sauf si les consignes d’intégration changent. Une nouvelle release majeure ou mineure qui modifie le comportement documenté reçoit une nouvelle entrée dans le sélecteur.

@@ -143,7 +143,7 @@ async function main() {
     }
 
     if (!process.exitCode) {
-        console.log(`Docs release metadata is synced with @wp-nova/sdk ${packageVersion}.`);
+        console.log(`Docs release metadata is synced with @wp-nova/chat-sdk ${packageVersion}.`);
     }
 }
 

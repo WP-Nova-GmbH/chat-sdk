@@ -40,7 +40,7 @@ The exact version and `integrity` value are published next to the bundle as `/sd
 
 ## Docs Versions vs npm Versions
 
-Docs selector entries describe the public integration contract, not every npm patch. The `v1.0` docs apply to `@wp-nova/sdk@1.0.x`, `@wp-nova/sdk-react@1.0.x`, and `@wp-nova/sdk-angular@1.0.x`.
+Docs selector entries describe the public integration contract, not every npm patch. The `v1.0` docs apply to `@wp-nova/chat-sdk@1.0.x`, `@wp-nova/chat-sdk-react@1.0.x`, and `@wp-nova/chat-sdk-angular@1.0.x`.
 
 Patch npm releases reuse the same docs line unless the integration guidance changes. A new major or minor release that changes documented behavior gets a new docs selector entry.
 
@@ -59,14 +59,14 @@ Because the bytes change as releases roll forward, the rolling URL cannot use a 
 Bundled apps should install from npm:
 
 ```bash
-npm install @wp-nova/sdk
+npm install @wp-nova/chat-sdk
 ```
 
 Framework wrappers install alongside the core package:
 
 ```bash
-npm install @wp-nova/sdk @wp-nova/sdk-react
-npm install @wp-nova/sdk @wp-nova/sdk-angular
+npm install @wp-nova/chat-sdk @wp-nova/chat-sdk-react
+npm install @wp-nova/chat-sdk @wp-nova/chat-sdk-angular
 ```
 
 Pin package versions in your lockfile and upgrade intentionally after reading release notes.

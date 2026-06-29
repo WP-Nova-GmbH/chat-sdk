@@ -24,6 +24,6 @@ Der Rolling Channel ist eine optionale Komfortfunktion. Die unveränderliche ver
 
 ### Dokumentationsversionen und npm-Versionen
 
-Einträge im Dokumentationswähler beschreiben den öffentlichen Integrationsvertrag, nicht jeden npm-Patch. Die `v1.0`-Dokumentation gilt für `@wp-nova/sdk@1.0.x`, `@wp-nova/sdk-react@1.0.x` und `@wp-nova/sdk-angular@1.0.x`.
+Einträge im Dokumentationswähler beschreiben den öffentlichen Integrationsvertrag, nicht jeden npm-Patch. Die `v1.0`-Dokumentation gilt für `@wp-nova/chat-sdk@1.0.x`, `@wp-nova/chat-sdk-react@1.0.x` und `@wp-nova/chat-sdk-angular@1.0.x`.
 
 Patch-Releases auf npm verwenden dieselbe Dokumentationslinie, solange sich die Integrationshinweise nicht ändern. Ein neues Major- oder Minor-Release mit dokumentiertem Verhalten erhält einen neuen Eintrag im Dokumentationswähler.

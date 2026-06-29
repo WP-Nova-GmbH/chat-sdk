@@ -1,4 +1,4 @@
-# @wp-nova/sdk
+# @wp-nova/chat-sdk
 
 Framework-agnostic browser SDK that embeds the Nova Ark chat into a customer-owned
 web app. The SDK mounts a Nova-hosted iframe (`<baseUrl>/embed/chat`) inside a
@@ -10,6 +10,8 @@ dependency-free executor.
 > The SDK never sees a tenant secret and never talks to Nova directly. It fetches
 > a short-lived embedded-session token from **your** backend (`tokenEndpoint`),
 > which holds the integration secret.
+
+📖 **Full documentation:** [https://wp-nova.ai/chat-sdk](https://wp-nova.ai/chat-sdk)
 
 ## Install
 
@@ -86,11 +88,11 @@ above unless you accept that the bytes can change under you.
 ### npm
 
 ```bash
-npm install @wp-nova/sdk
+npm install @wp-nova/chat-sdk
 ```
 
 ```ts
-import { WpNova } from "@wp-nova/sdk";
+import { WpNova } from "@wp-nova/chat-sdk";
 
 WpNova("init", { publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
 WpNova("registerTool", {

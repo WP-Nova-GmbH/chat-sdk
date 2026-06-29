@@ -1,9 +1,11 @@
-# @wp-nova/sdk-react
+# @wp-nova/chat-sdk-react
 
 React provider and hooks for the Nova Chat SDK.
 
+📖 **Full documentation:** [https://wp-nova.ai/chat-sdk](https://wp-nova.ai/chat-sdk)
+
 ```tsx
-import { NovaChatProvider, useNovaTool } from "@wp-nova/sdk-react";
+import { NovaChatProvider, useNovaTool } from "@wp-nova/chat-sdk-react";
 
 function Tools() {
     useNovaTool("create_ticket", async (args) => crm.createTicket(args));
@@ -24,4 +26,4 @@ export function App() {
 }
 ```
 
-Install this package with `@wp-nova/sdk`.
+Install this package with `@wp-nova/chat-sdk`.

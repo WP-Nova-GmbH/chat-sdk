@@ -39,11 +39,11 @@ Das Queue-Snippet erlaubt dir, Tools zu registrieren, bevor die SDK-Datei gelade
 ### npm
 
 ```bash
-npm install @wp-nova/sdk
+npm install @wp-nova/chat-sdk
 ```
 
 ```ts
-import { init, registerToolHandler } from "@wp-nova/sdk";
+import { init, registerToolHandler } from "@wp-nova/chat-sdk";
 
 registerToolHandler("create_ticket", async (args) => {
   return myApp.createTicket(args);
