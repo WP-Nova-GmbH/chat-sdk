@@ -27,7 +27,7 @@
         "test": "turbo run test",
         "version-packages": "changeset version",
         "check-angular-publishable": "node scripts/check-angular-publishable.mjs",
-        "release": "npm run build && npm run check-angular-publishable && npm publish --workspace packages/chat-sdk --access public && npm publish --workspace packages/react --access public && npm publish packages/angular/dist --access public"
+        "release": "npm run build && npm run check-angular-publishable && node scripts/publish-packages.mjs"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.5",
