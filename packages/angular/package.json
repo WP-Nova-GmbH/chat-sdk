@@ -10,7 +10,7 @@
         "access": "public"
     },
     "scripts": {
-        "build": "ng-packagr -p ng-package.json",
+        "build": "node ../../scripts/copy-license.mjs && ng-packagr -p ng-package.json",
         "check-types": "tsc -p tsconfig.lib.json --noEmit",
         "dev": "ng-packagr -p ng-package.json --watch",
         "lint": "biome check --formatter-enabled=false ./src --error-on-warnings",

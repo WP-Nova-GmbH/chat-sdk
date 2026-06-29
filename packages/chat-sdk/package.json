@@ -22,7 +22,7 @@
         }
     },
     "scripts": {
-        "build": "tsup && node ../../scripts/write-sri.mjs dist/index.global.js",
+        "build": "node ../../scripts/copy-license.mjs && tsup && node ../../scripts/write-sri.mjs dist/index.global.js",
         "prepublishOnly": "npm run build",
         "dev": "tsup --watch",
         "lint": "biome check --formatter-enabled=false ./src --error-on-warnings",
