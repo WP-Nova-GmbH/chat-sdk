@@ -1,0 +1,24 @@
+{
+    "name": "nova-chat-sdk-release-example-react",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Standalone React host app that installs the released @wp-nova/chat-sdk and @wp-nova/chat-sdk-react from npm and follows the React integration docs.",
+    "scripts": {
+        "dev": "vite --host 127.0.0.1 --port 4321",
+        "build": "tsc --noEmit && vite build",
+        "preview": "vite preview --host 127.0.0.1 --port 4321"
+    },
+    "dependencies": {
+        "@wp-nova/chat-sdk": "^1.0.0",
+        "@wp-nova/chat-sdk-react": "^1.0.0",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0"
+    },
+    "devDependencies": {
+        "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
+        "typescript": "^5.8.2",
+        "vite": "^8.1.0"
+    }
+}
