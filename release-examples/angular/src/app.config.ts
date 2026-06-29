@@ -16,8 +16,10 @@ export const appConfig: ApplicationConfig = {
             accent: "#0f766e",
             triggerColor: "#0f766e",
             triggerIconColor: "light",
-            // Opt these field values into page snapshots; everything else is default-deny.
-            safeValueSelectors: ["#dispatch-reference", "[data-agent-readable]"],
+            // Opt this input's VALUE into page snapshots; field values are otherwise
+            // default-deny. safeValueSelectors only affects value fields (input/select/
+            // textarea) — plain visible text is already captured.
+            safeValueSelectors: ["#dispatch-reference"],
         }),
     ],
 };

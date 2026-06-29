@@ -1,5 +1,5 @@
 import { NovaChatProvider, type NovaToolDefinition } from "@wp-nova/chat-sdk-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CreateTicketTool } from "./CreateTicketTool";
 
 // Aurora Helpdesk — a small support console that consumes the RELEASED
@@ -59,8 +59,10 @@ function readConfig() {
         accent: "#5b5bd6",
         triggerColor: "#5b5bd6",
         triggerIconColor: "light" as const,
-        // Opt these field values into page snapshots; everything else is default-deny.
-        safeValueSelectors: ["#case-reference", "[data-agent-readable]"],
+        // Opt this input's VALUE into page snapshots; field values are otherwise
+        // default-deny. safeValueSelectors only affects value fields (input/select/
+        // textarea) — plain visible text is already captured.
+        safeValueSelectors: ["#case-reference"],
     };
 }
 
@@ -74,6 +76,13 @@ export function App() {
     const enabled = config.publicSurfaceId.trim().length > 0;
 
     const activeTicket = tickets.find((ticket) => ticket.id === activeId) ?? DEFAULT_TICKET;
+
+    // The wrapper registers a tool once and keys re-registration on the tool's
+    // content signature (name/description/schema/mutating/confirmationCopy), not
+    // handler identity. So handlers must NOT close over render-scoped state — read
+    // it through a ref that is refreshed every render instead.
+    const liveRef = useRef({ tickets, activeTicket, banner, caseReference });
+    liveRef.current = { tickets, activeTicket, banner, caseReference };
 
     // Stable tools live in the `tools` prop (docs: "Registering Tools with
     // Definitions"). Each handler mutates visible page state and returns
@@ -91,7 +100,9 @@ export function App() {
                 mutating: false,
                 handler: (args) => {
                     const ticketId = String(args.ticketId ?? "");
-                    const ticket = tickets.find((candidate) => candidate.id === ticketId);
+                    const ticket = liveRef.current.tickets.find(
+                        (candidate) => candidate.id === ticketId,
+                    );
                     if (!ticket) return { ok: false, reason: "Ticket not found." };
                     setActiveId(ticket.id);
                     return { ok: true, ticket };
@@ -114,7 +125,7 @@ export function App() {
                 mutating: true,
                 confirmationCopy: "Change this ticket's priority?",
                 handler: (args) => {
-                    const ticketId = String(args.ticketId ?? activeId);
+                    const ticketId = String(args.ticketId ?? liveRef.current.activeTicket.id);
                     const priority = readPriority(args.priority);
                     let updated: Ticket | undefined;
                     setTickets((current) =>
@@ -150,10 +161,11 @@ export function App() {
                 description: "Returns the helpdesk data currently visible in the console.",
                 inputSchema: { type: "object", properties: {} },
                 mutating: false,
-                handler: () => ({ activeTicket, tickets, banner, caseReference }),
+                handler: () => ({ ...liveRef.current }),
             },
         ],
-        [tickets, activeId, activeTicket, banner, caseReference],
+        // Registered once; handlers read live state from liveRef, so this stays stable.
+        [],
     );
 
     return (
@@ -170,7 +182,7 @@ export function App() {
                         <p className="eyebrow">Aurora Helpdesk</p>
                         <h1>Support console</h1>
                     </div>
-                    <p className="banner" role="status" data-agent-readable>
+                    <p className="banner" role="status">
                         {banner}
                     </p>
                 </header>
@@ -182,13 +194,12 @@ export function App() {
                     </p>
                 )}
 
-                {/* Small, safe facts for the agent via data-ai-context. */}
-                <span hidden data-ai-context="currentPageKind">
-                    helpdesk-console
-                </span>
-                <span hidden data-ai-context="activeTicketId">
-                    {activeTicket.id}
-                </span>
+                {/* data-ai-context is only captured from VISIBLE, in-viewport,
+                    non-sensitive elements, so these render as a small context line. */}
+                <p className="context">
+                    <span data-ai-context="currentPageKind">helpdesk-console</span>
+                    <span data-ai-context="activeTicketId">{activeTicket.id}</span>
+                </p>
 
                 <main className="layout">
                     <section className="queue" aria-labelledby="queue-heading">

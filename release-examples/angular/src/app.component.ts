@@ -59,7 +59,7 @@ const INITIAL_JOBS: Job[] = [
                     <p class="eyebrow">Switchyard Dispatch</p>
                     <h1>Control desk</h1>
                 </div>
-                <p class="banner" role="status" data-agent-readable>{{ banner() }}</p>
+                <p class="banner" role="status">{{ banner() }}</p>
             </header>
 
             @if (!chatEnabled()) {
@@ -69,8 +69,12 @@ const INITIAL_JOBS: Job[] = [
                 </p>
             }
 
-            <span hidden data-ai-context="currentPageKind">dispatch-board</span>
-            <span hidden data-ai-context="activeJobId">{{ activeJob().id }}</span>
+            <!-- data-ai-context is only captured from VISIBLE, in-viewport,
+                 non-sensitive elements, so these render as a small context line. -->
+            <p class="context">
+                <span data-ai-context="currentPageKind">dispatch-board</span>
+                <span data-ai-context="activeJobId">{{ activeJob().id }}</span>
+            </p>
 
             <main class="layout">
                 <section class="board" aria-labelledby="board-heading">
@@ -104,7 +108,7 @@ const INITIAL_JOBS: Job[] = [
                         />
                     </label>
 
-                    <p class="ack" data-agent-readable>{{ tools_ack.lastAcknowledgement() }}</p>
+                    <p class="ack">{{ tools_ack.lastAcknowledgement() }}</p>
 
                     <!-- Sensitive region — never captured in a page snapshot. -->
                     <section class="internal" data-wp-nova-ignore>

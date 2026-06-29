@@ -32,7 +32,9 @@
         margin: 0; text-transform: uppercase; letter-spacing: 0.08em;
         font-size: 12px; font-weight: 600; color: var(--brand);
       }
-      h1 { margin: 4px 0 20px; font-size: 28px; }
+      h1 { margin: 4px 0 16px; font-size: 28px; }
+      .context { display: flex; gap: 14px; margin: 0 0 16px; font-size: 12px; color: var(--muted); }
+      .context span:not(:first-child)::before { content: "•"; margin-right: 14px; color: var(--line); }
       .card {
         background: #fff; border: 1px solid var(--line);
         border-radius: 14px; padding: 20px; margin-bottom: 16px;
@@ -63,27 +65,36 @@
       <p class="eyebrow">Meridian Billing</p>
       <h1>Account overview</h1>
 
-      <!-- Small, safe facts for the agent. -->
-      <span hidden data-ai-context="currentPageKind">billing-account</span>
-      <span hidden data-ai-context="accountId">acct-7741</span>
+      <!-- data-ai-context is captured only from VISIBLE, non-sensitive elements,
+           so these render as a small context line. A name like "accountId" would be
+           dropped by the sensitivity rule, so the second fact uses a safe name. -->
+      <p class="context">
+        <span data-ai-context="currentPageKind">billing-account</span>
+        <span data-ai-context="currentPlan">Scale (annual)</span>
+      </p>
 
       <section class="card">
         <dl>
           <div class="row"><dt>Customer</dt><dd>Brightline Studios</dd></div>
           <div class="row"><dt>Plan</dt><dd>Scale (annual)</dd></div>
-          <!-- Opted into snapshots via #current-balance in safeValueSelectors. -->
+          <!-- Plain visible text like this balance is always captured as page text;
+               default-deny only gates field VALUES (see the note input below). -->
           <div class="row">
             <dt>Current balance</dt>
-            <dd><span id="current-balance" data-wp-nova-include>$1,240.00</span></dd>
+            <dd id="current-balance">$1,240.00</dd>
           </div>
-          <!-- Account number: never captured (sensitive, default-deny). -->
-          <div class="row"><dt>Account number</dt><dd>4118-2200-9931</dd></div>
+          <!-- Sensitive PLAIN TEXT is captured unless you exclude its region.
+               data-wp-nova-ignore keeps the account number out of every snapshot. -->
+          <div class="row" data-wp-nova-ignore>
+            <dt>Account number</dt><dd>4118-2200-9931</dd>
+          </div>
         </dl>
 
         <p style="margin: 16px 0 8px"><strong id="invoice-line">Invoice INV-9043 is due in 5 days.</strong></p>
         <label>
           Note to billing
-          <input id="billing-note" value="Customer asked about annual discount." />
+          <!-- A field VALUE is default-deny; data-wp-nova-include opts this one in. -->
+          <input id="billing-note" data-wp-nova-include value="Customer asked about annual discount." />
         </label>
 
         <div style="margin-top: 14px">
@@ -166,7 +177,8 @@
         accent: "#b45309",
         triggerColor: "#b45309",
         triggerIconColor: "light",
-        safeValueSelectors: ["#current-balance", "[data-agent-readable]"],
+        // The billing-note input opts in with data-wp-nova-include above; you can
+        // also opt fields in here by selector, e.g. safeValueSelectors: ["#billing-note"].
       });
 
       // --- Plain host-page logic the tools and the button both drive ----------

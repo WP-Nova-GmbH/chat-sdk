@@ -62,6 +62,24 @@ h2 {
     color: var(--muted);
 }
 
+.context {
+    display: flex;
+    gap: 14px;
+    margin: 0 0 16px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.context span::before {
+    content: "•";
+    margin-right: 6px;
+    color: var(--line);
+}
+
+.context span:first-child::before {
+    content: none;
+}
+
 .notice {
     margin: 0 0 20px;
     padding: 12px 14px;
