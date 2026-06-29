@@ -53,7 +53,10 @@ Required fields:
 
 - `publicSurfaceId`: non-secret `surf_...` handle from Nova admin.
 - `tokenEndpoint`: your backend route that proxies Nova `POST /embed/session`.
-- `voiceMode`: enables the embedded voice button and delegates microphone access to the Nova iframe. Defaults to `false`.
+
+Every other field is optional. Notably, `voiceMode` (default `false`) enables the
+embedded voice button and delegates microphone access to the Nova iframe. See
+[Configuration](./configuration.md) for the full options table.
 
 ## Page Tools
 
