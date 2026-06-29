@@ -27,10 +27,11 @@
     "devDependencies": {
         "@angular/compiler-cli": "^20.3.0",
         "@angular/core": "^20.3.0",
+        "@wp-nova/sdk": "1.0.0",
         "@wp-nova/typescript-config": "*",
+        "jsdom": "^29.1.1",
         "ng-packagr": "^20.3.0",
         "typescript": "5.8.2",
-        "vitest": "^4.0.18",
-        "@wp-nova/sdk": "1.0.0"
+        "vitest": "^4.0.18"
     }
 }

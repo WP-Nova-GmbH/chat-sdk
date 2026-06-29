@@ -1,3 +1,11 @@
+// NOTE (A8): the core now exports `missingRequiredConfigFields`,
+// `formatErrorMessage`, `buildDisabledMessage` and `reportOperationError` so these
+// helpers can live in one place. They are NOT consumed here because importing
+// them statically pulls the core's package root, which eagerly evaluates
+// `class extends HTMLElement` and throws under Angular Universal / Node SSR (the
+// wrapper deliberately reaches the core only via a runtime dynamic import). Keep
+// these copies SSR-safe until the core exposes the diagnostics on an SSR-safe
+// subpath (e.g. `@wp-nova/sdk/diagnostics`) with no DOM evaluation.
 import type { SdkConfig } from "@wp-nova/sdk";
 
 export function reportAngularOperationError(operation: string, error: unknown): void {
