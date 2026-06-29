@@ -12,19 +12,18 @@ tarball) instead of linking the local `packages/*` source.
 | App | Consumes | Docs path it follows | Port |
 | --- | --- | --- | --- |
 | [`react/`](./react) | `@wp-nova/chat-sdk` + `@wp-nova/chat-sdk-react` from npm | [React](https://chat.wp-nova.ai/react) | 4321 |
-| [`angular/`](./angular) | `@wp-nova/chat-sdk` from npm + the corrected `@wp-nova/chat-sdk-angular` release tarball | [Angular](https://chat.wp-nova.ai/angular) | 4322 |
+| [`angular/`](./angular) | `@wp-nova/chat-sdk` + `@wp-nova/chat-sdk-angular` (`^1.0.1`) from npm | [Angular](https://chat.wp-nova.ai/angular) | 4322 |
 | [`plain-html/`](./plain-html) | `@wp-nova/chat-sdk` global build via a pinned, SRI-checked `<script>` | [Quickstart](https://chat.wp-nova.ai/quickstart) + [Release & CDN](https://chat.wp-nova.ai/release-cdn) | 4323 |
 
 Each app is self-contained — see its own `README.md`.
 
-## Why Angular uses a vendored tarball
+## Why Angular pins `@wp-nova/chat-sdk-angular@^1.0.1`
 
-The published `@wp-nova/chat-sdk-angular@1.0.0` is unresolvable (its package root
-shipped without entry points). The fix is in this repo (publish from
-`packages/angular/dist`) and ships as `1.0.1`. Until then, the Angular example
-installs the corrected artifact from `angular/vendor/*.tgz`, produced by
-`npm pack packages/angular/dist`. Once `1.0.1` is published, the app can install
-`@wp-nova/chat-sdk-angular` straight from npm like the others.
+The published `@wp-nova/chat-sdk-angular@1.0.0` was unresolvable (its package root
+shipped without entry points, so imports failed with `ERR_MODULE_NOT_FOUND`).
+`1.0.1` is the fixed publish, built from `packages/angular/dist`, so the Angular
+example pins `^1.0.1` to skip the broken `1.0.0`. Core and React resolve from
+`^1.0.0`.
 
 ## Why plain-HTML self-hosts the SDK
 

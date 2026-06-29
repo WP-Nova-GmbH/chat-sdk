@@ -2,9 +2,10 @@
 
 A standalone Angular host app that follows the
 [Angular integration docs](https://chat.wp-nova.ai/angular). It installs the
-**released** core package [`@wp-nova/chat-sdk`](https://www.npmjs.com/package/@wp-nova/chat-sdk)
-from npm and the `@wp-nova/chat-sdk-angular` wrapper from a vendored release
-tarball (see below).
+**released** [`@wp-nova/chat-sdk`](https://www.npmjs.com/package/@wp-nova/chat-sdk)
+and [`@wp-nova/chat-sdk-angular`](https://www.npmjs.com/package/@wp-nova/chat-sdk-angular)
+packages from npm (the wrapper from `^1.0.1`, which is the first publish with a
+resolvable package — see below).
 
 Like the other apps in `release-examples/`, this project lives **outside** the
 monorepo workspaces, so it resolves the SDK as an external consumer would rather
@@ -24,19 +25,12 @@ than linking the local `packages/*` source.
 - DOM privacy: a `safeValueSelectors` opt-in field (`#dispatch-reference`), an
   ignored region (`data-wp-nova-ignore`), and visible `data-ai-context` facts.
 
-## Why a vendored tarball
+## Why the wrapper is pinned to `^1.0.1`
 
-The published `@wp-nova/chat-sdk-angular@1.0.0` is unresolvable — its package root
-shipped without `main`/`module`/`types`/`exports`. The fix (publish from
-`packages/angular/dist`) ships as `1.0.1`. Until then this app installs the
-corrected artifact from `vendor/wp-nova-chat-sdk-angular-1.0.0.tgz`, produced by:
-
-```bash
-npm pack packages/angular/dist
-```
-
-Once `1.0.1` is on npm, change the dependency to
-`"@wp-nova/chat-sdk-angular": "^1.0.1"` and reinstall.
+The published `@wp-nova/chat-sdk-angular@1.0.0` was unresolvable — its package root
+shipped without `main`/`module`/`types`/`exports`, so `npm install` resolved it but
+imports failed with `ERR_MODULE_NOT_FOUND`. `1.0.1` is the fixed publish (built from
+`packages/angular/dist`), so this app depends on `^1.0.1` to skip the broken `1.0.0`.
 
 ## Run it
 
