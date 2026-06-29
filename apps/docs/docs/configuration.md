@@ -76,7 +76,7 @@ or:
 
 The SDK is singleton-safe. Re-running `init` during HMR, route-level remounts, or duplicate script loads reuses the existing custom element.
 
-If `publicSurfaceId`, `baseUrl`, or `protocolVersion` changes, the element rebuilds the iframe and bridge, clears buffered auth, and fetches a fresh token before posting auth to the iframe.
+If `publicSurfaceId`, `baseUrl`, `voiceMode`, or `protocolVersion` changes, the element rebuilds the iframe and bridge, clears buffered auth, and fetches a fresh token before posting auth to the iframe.
 
 ## Destroying the Embed
 

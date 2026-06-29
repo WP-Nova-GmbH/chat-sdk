@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Meridian Billing — script-tag host page that loads the released Nova Chat SDK with Subresource Integrity."
+    />
+    <title>Meridian Billing</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23b45309'/%3E%3Cpath d='M20 40c4 4 20 4 20-4 0-7-16-4-16-12 0-7 14-7 18-3' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        --ink: #2a1c0a;
+        --muted: #7a6a52;
+        --line: #ecdfc9;
+        --brand: #b45309;
+        --bg: #fbf6ee;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      main { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+      .eyebrow {
+        margin: 0; text-transform: uppercase; letter-spacing: 0.08em;
+        font-size: 12px; font-weight: 600; color: var(--brand);
+      }
+      h1 { margin: 4px 0 16px; font-size: 28px; }
+      .context { display: flex; gap: 14px; margin: 0 0 16px; font-size: 12px; color: var(--muted); }
+      .context span:not(:first-child)::before { content: "•"; margin-right: 14px; color: var(--line); }
+      .card {
+        background: #fff; border: 1px solid var(--line);
+        border-radius: 14px; padding: 20px; margin-bottom: 16px;
+      }
+      .row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }
+      .row dt { color: var(--muted); margin: 0; }
+      .row dd { margin: 0; font-weight: 600; }
+      label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+      input {
+        font: inherit; font-weight: 500; color: var(--ink);
+        padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+      }
+      button {
+        font: inherit; cursor: pointer; padding: 10px 16px;
+        border: 1px solid var(--brand); border-radius: 10px;
+        background: var(--brand); color: #fff; font-weight: 600;
+      }
+      .internal {
+        margin-top: 16px; padding: 12px 14px; border: 1px solid #f0d9d9;
+        border-radius: 10px; background: #fff7f7;
+      }
+      .internal h3 { margin: 0 0 6px; font-size: 13px; color: #b91c1c; }
+      .internal p { margin: 0; font-size: 13px; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Meridian Billing</p>
+      <h1>Account overview</h1>
+
+      <!-- data-ai-context is captured only from VISIBLE, non-sensitive elements,
+           so these render as a small context line. A name like "accountId" would be
+           dropped by the sensitivity rule, so the second fact uses a safe name. -->
+      <p class="context">
+        <span data-ai-context="currentPageKind">billing-account</span>
+        <span data-ai-context="currentPlan">Scale (annual)</span>
+      </p>
+
+      <section class="card">
+        <dl>
+          <div class="row"><dt>Customer</dt><dd>Brightline Studios</dd></div>
+          <div class="row"><dt>Plan</dt><dd>Scale (annual)</dd></div>
+          <!-- Plain visible text like this balance is always captured as page text;
+               default-deny only gates field VALUES (see the note input below). -->
+          <div class="row">
+            <dt>Current balance</dt>
+            <dd id="current-balance">$1,240.00</dd>
+          </div>
+          <!-- Sensitive PLAIN TEXT is captured unless you exclude its region.
+               data-wp-nova-ignore keeps the account number out of every snapshot. -->
+          <div class="row" data-wp-nova-ignore>
+            <dt>Account number</dt><dd>4118-2200-9931</dd>
+          </div>
+        </dl>
+
+        <p style="margin: 16px 0 8px"><strong id="invoice-line">Invoice INV-9043 is due in 5 days.</strong></p>
+        <label>
+          Note to billing
+          <!-- A field VALUE is default-deny; data-wp-nova-include opts this one in. -->
+          <input id="billing-note" data-wp-nova-include value="Customer asked about annual discount." />
+        </label>
+
+        <div style="margin-top: 14px">
+          <button id="apply-credit" type="button">Apply $50 goodwill credit</button>
+        </div>
+
+        <!-- Sensitive region — never captured in a page snapshot. -->
+        <section class="internal" data-wp-nova-ignore>
+          <h3>Internal notes (private)</h3>
+          <p>Collections contact: 555-0199 — do not share with the agent.</p>
+        </section>
+      </section>
+    </main>
+
+    <!--
+      Nova Chat SDK — documented script-tag install (Quickstart > Script Tag,
+      Release & CDN). The queued WpNova snippet lets registerTool/init run before
+      the SDK file has loaded; the queue is replayed in order once it installs.
+
+      In production:
+        j.src = "https://chat.wp-nova.ai/sdk/1.0.0/sdk.js";
+      This example serves the IDENTICAL released bundle from its own origin at
+      /sdk/1.0.0/sdk.js (see vite.config.ts), so the same Subresource Integrity
+      hash validates byte-for-byte without the hosted CDN.
+    -->
+    <script>
+      (function (w, d, s) {
+        w.WpNova = w.WpNova || function () {
+          (w.WpNova.q = w.WpNova.q || []).push(arguments);
+        };
+        var j = d.createElement(s);
+        j.async = 1;
+        j.src = "/sdk/1.0.0/sdk.js";
+        j.crossOrigin = "anonymous";
+        j.integrity = "sha384-vlvmxI6jqVcZFskGhWMFZ5ARrpym/W0AyDkeqhXjYDoGh7m6Rk27hRs4ImFprew1";
+        d.head.appendChild(j);
+      })(window, document, "script");
+
+      // Register a page tool before init. Mutating tools are confirmed in the
+      // iframe before the SDK calls the handler.
+      WpNova("registerTool", {
+        name: "apply_account_credit",
+        description: "Applies a goodwill credit to the visible billing account.",
+        inputSchema: {
+          type: "object",
+          properties: { amount: { type: "number" } },
+          required: ["amount"],
+        },
+        mutating: true,
+        confirmationCopy: "Apply this account credit?",
+        handler: function (args) {
+          var amount = Number(args.amount) || 50;
+          applyCredit(amount);
+          return { ok: true, amount: amount, balance: currentBalanceText() };
+        },
+      });
+
+      WpNova("registerTool", {
+        name: "highlight_invoice",
+        description: "Returns the invoice line currently visible on the account page.",
+        inputSchema: { type: "object", properties: {} },
+        mutating: false,
+        handler: function () {
+          return { ok: true, invoice: document.getElementById("invoice-line").textContent };
+        },
+      });
+
+      // The surface id and iframe host come from .env (injected as window.__NOVA_CONFIG__
+      // by vite.config.ts) or from ?surface=/?baseUrl= query params. In a real static
+      // page you would hard-code your own surf_... id here.
+      var novaConfig = window.__NOVA_CONFIG__ || {};
+      var query = new URLSearchParams(location.search);
+
+      WpNova("init", {
+        publicSurfaceId:
+          query.get("surface") || novaConfig.surfaceId || "surf_replace_me",
+        tokenEndpoint: "/api/nova-token",
+        baseUrl: query.get("baseUrl") || novaConfig.baseUrl || undefined,
+        title: "Meridian assistant",
+        accent: "#b45309",
+        triggerColor: "#b45309",
+        triggerIconColor: "light",
+        // The billing-note input opts in with data-wp-nova-include above; you can
+        // also opt fields in here by selector, e.g. safeValueSelectors: ["#billing-note"].
+      });
+
+      // --- Plain host-page logic the tools and the button both drive ----------
+      function currentBalanceText() {
+        return document.getElementById("current-balance").textContent;
+      }
+      function parseMoney(text) {
+        return Number(String(text).replace(/[^0-9.]/g, "")) || 0;
+      }
+      function applyCredit(amount) {
+        var el = document.getElementById("current-balance");
+        var next = Math.max(0, parseMoney(el.textContent) - amount);
+        el.textContent = "$" + next.toLocaleString("en-US", { minimumFractionDigits: 2 });
+      }
+      document
+        .getElementById("apply-credit")
+        .addEventListener("click", function () {
+          applyCredit(50);
+        });
+    </script>
+  </body>
+</html>

@@ -1,15 +1,13 @@
 name: Release SDK
 
 on:
+    # The tag value is only a release signal. The set of packages actually
+    # published is whatever has a manifest version not yet on the registry, so
+    # linked (non-lockstep) bumps — e.g. an Angular-only patch — release cleanly.
     push:
         tags:
             - "sdk-*"
     workflow_dispatch:
-        inputs:
-            version:
-                description: Version to publish, matching all public package manifests.
-                required: true
-                type: string
 
 jobs:
     publish:
@@ -37,34 +35,6 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            - name: Derive SDK version
-              id: ver
-              run: |
-                  if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-                    VERSION="${{ inputs.version }}"
-                  else
-                    TAG="${GITHUB_REF#refs/tags/}"
-                    VERSION="${TAG#sdk-}"
-                  fi
-                  export VERSION
-
-                  node <<'NODE'
-                  const version = process.env.VERSION;
-                  const manifests = [
-                    ["@wp-nova/chat-sdk", "packages/chat-sdk/package.json"],
-                    ["@wp-nova/chat-sdk-react", "packages/react/package.json"],
-                    ["@wp-nova/chat-sdk-angular", "packages/angular/package.json"],
-                  ];
-                  for (const [name, manifestPath] of manifests) {
-                    const manifest = require(`./${manifestPath}`);
-                    if (manifest.version !== version) {
-                      throw new Error(`${name} is ${manifest.version}, expected ${version}`);
-                    }
-                  }
-                  NODE
-
-                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
             - name: Validate release
               run: |
                   npm run build
@@ -72,17 +42,17 @@ jobs:
                   npm run lint
                   npm test
                   npm run pack:dry-run
+                  npm run check-angular-publishable
 
             - name: Publish npm packages
-              run: |
-                  npm publish --workspace packages/chat-sdk --access public
-                  npm publish --workspace packages/react --access public
-                  npm publish packages/angular/dist --access public
+              id: publish
+              run: node scripts/publish-packages.mjs
 
             - name: Stage CDN artifacts
               id: stage
+              if: steps.publish.outputs.published_core == 'true'
               run: |
-                  VERSION="${{ steps.ver.outputs.version }}"
+                  VERSION="${{ steps.publish.outputs.core_version }}"
                   SRC="packages/chat-sdk/dist/index.global.js"
                   SRI="packages/chat-sdk/dist/index.global.js.sri"
                   STAGE="cdn-upload"
@@ -98,8 +68,9 @@ jobs:
                   echo "Rolling URL:   https://chat.wp-nova.ai/sdk/v1/sdk.js (no SRI)"
 
             - name: Upload CDN artifact
+              if: steps.publish.outputs.published_core == 'true'
               uses: actions/upload-artifact@v4
               with:
-                  name: sdk-${{ steps.ver.outputs.version }}-cdn
+                  name: sdk-${{ steps.publish.outputs.core_version }}-cdn
                   path: cdn-upload/
                   retention-days: 30

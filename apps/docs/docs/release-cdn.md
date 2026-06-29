@@ -56,6 +56,11 @@ Because the bytes change as releases roll forward, the rolling URL cannot use a 
 
 ## npm Packages
 
+All three packages are published on npm:
+[`@wp-nova/chat-sdk`](https://www.npmjs.com/package/@wp-nova/chat-sdk),
+[`@wp-nova/chat-sdk-react`](https://www.npmjs.com/package/@wp-nova/chat-sdk-react),
+and [`@wp-nova/chat-sdk-angular`](https://www.npmjs.com/package/@wp-nova/chat-sdk-angular).
+
 Bundled apps should install from npm:
 
 ```bash
@@ -70,3 +75,33 @@ npm install @wp-nova/chat-sdk @wp-nova/chat-sdk-angular
 ```
 
 Pin package versions in your lockfile and upgrade intentionally after reading release notes.
+
+## Troubleshooting
+
+### Launcher never loads from the CDN
+
+If the launcher never appears, open devtools Network and check the SDK script tag:
+
+- A **404** on `https://chat.wp-nova.ai/sdk/<version>/sdk.js` means that version is
+  not deployed to the CDN. Confirm the exact `<version>` you pinned is published,
+  and that the companion `https://chat.wp-nova.ai/sdk/<version>/sdk.js.sri` exists.
+- An **integrity** error means the `integrity` attribute does not match the served
+  bytes. Use the hash from the published `.sri` for that exact version.
+
+For local development, or whenever the hosted CDN is unavailable, self-host the
+released `dist/index.global.js` from your own origin and point the script `src`
+there, using the integrity hash from `dist/index.global.js.sri`. The
+`release-examples/plain-html` app in this repo does exactly this — it serves the
+npm-installed `index.global.js` at `/sdk/<version>/sdk.js` so the same SRI
+validates byte-for-byte without the hosted CDN.
+
+### Angular wrapper fails to resolve
+
+If `@wp-nova/chat-sdk-angular` installs but imports fail with no entry point, you
+have the broken `1.0.0` publish (its package root shipped without
+`main`/`module`/`types`/`exports`). Upgrade to `1.0.1` or later, which publishes
+the wrapper from its built `dist`. For immediate local work, consume the built
+package directly — for example install a tarball produced by
+`npm pack packages/angular/dist`, as `release-examples/angular` does. Core
+(`@wp-nova/chat-sdk`) and React (`@wp-nova/chat-sdk-react`) `1.0.x` resolve
+normally.

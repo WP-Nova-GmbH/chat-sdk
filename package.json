@@ -26,7 +26,8 @@
         "pack:dry-run": "npm pack --dry-run --json --workspace packages/chat-sdk && npm pack --dry-run --json --workspace packages/react && npm --workspace @wp-nova/chat-sdk-angular run build && npm pack --dry-run --json packages/angular/dist",
         "test": "turbo run test",
         "version-packages": "changeset version",
-        "release": "npm run build && changeset publish"
+        "check-angular-publishable": "node scripts/check-angular-publishable.mjs",
+        "release": "npm run build && npm run check-angular-publishable && node scripts/publish-packages.mjs"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.5",
