@@ -28,7 +28,11 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-Only put browser-safe values in Angular environment files. Keep the integration secret in your backend environment.
+These reads use `import.meta.env`, which a Vite-based Angular build (like the
+`release-examples/angular` app in this repo) populates from `VITE_*` variables.
+With the Angular CLI builder, read the same values from an `environment.ts` file
+instead. Either way, only put browser-safe values in client config and keep the
+integration secret in your backend environment.
 
 ## Component Mount
 
@@ -106,6 +110,9 @@ export class CustomerToolRegistration {
 ```
 
 Mutating tools are confirmed in the iframe before the SDK calls your handler.
+Handlers may accept an optional second argument, `{ signal }`, an `AbortSignal`
+the SDK aborts when the bridge times the tool round-trip out, so long-running or
+mutating handlers can cancel cleanly: `handler: async (args, { signal } = {}) => { ... }`.
 
 ## Disabling Chat
 
@@ -115,4 +122,14 @@ Use the component's `enabled` input when a tenant or route should not mount chat
 <wp-nova-chat-mount [enabled]="canUseNova" [tools]="tools" />
 ```
 
-When disabled, the wrapper destroys the SDK mount and unregisters component-owned handlers.
+When disabled, the wrapper releases its retained mount (refcounted) and
+unregisters its tools. The shared chat element is torn down once the last mount
+releases, so disabling one mount never destroys another's live chat.
+
+## Troubleshooting
+
+| Symptom | Likely cause |
+| --- | --- |
+| `@wp-nova/chat-sdk-angular` fails to resolve or imports have no entry point | You have the broken `1.0.0` publish, whose package root shipped without `main`/`module`/`types`/`exports`. Upgrade to `1.0.1` or later, which republishes the wrapper from its built `dist`. For immediate local work, consume the built package directly (for example, install a tarball produced by `npm pack packages/angular/dist`, as `release-examples/angular` does). |
+| `<wp-nova-chat-mount>` renders nothing | The standalone `NovaChatComponent` was not added to the consuming component's `imports`. `provideNovaChat` only registers config; the component must be imported to instantiate the element. |
+| Tool state changes from the agent do not update the view | Under zoneless change detection, mutate state through signals (or call `markForCheck`) so the view refreshes after a tool handler runs. |

@@ -62,6 +62,16 @@ html[data-theme="dark"] {
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}
+
 ::selection {
     background: #9a72f8;
     color: #ffffff;

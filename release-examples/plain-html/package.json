@@ -1,0 +1,18 @@
+{
+    "name": "nova-chat-sdk-release-example-plain-html",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Standalone script-tag host page that loads the released @wp-nova/chat-sdk global build with Subresource Integrity, following the Quickstart and Release & CDN docs.",
+    "scripts": {
+        "dev": "vite --host 127.0.0.1 --port 4323",
+        "build": "vite build",
+        "preview": "vite preview --host 127.0.0.1 --port 4323"
+    },
+    "dependencies": {
+        "@wp-nova/chat-sdk": "^1.0.0"
+    },
+    "devDependencies": {
+        "vite": "^8.1.0"
+    }
+}

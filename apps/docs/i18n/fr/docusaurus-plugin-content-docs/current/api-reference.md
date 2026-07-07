@@ -40,11 +40,13 @@ export interface SdkConfig {
   triggerColor?: string;
   triggerIconColor?: "light" | "dark" | string;
   safeValueSelectors?: string[];
+  voiceMode?: boolean;
   protocolVersion?: number;
 }
 
 export type ToolHandler = (
   args: Record<string, unknown>,
+  opts?: { signal?: AbortSignal },
 ) => unknown | Promise<unknown>;
 ```
 

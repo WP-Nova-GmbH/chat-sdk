@@ -140,5 +140,6 @@ Tool rules:
 - Throwing or rejecting is reported as `handler_threw`.
 - A missing handler is reported as `no_handler`.
 - Mutating tools require `confirmationCopy` and are confirmed in the iframe before execution.
+- Handlers receive an optional second argument, `{ signal?: AbortSignal }`, aborted when the bridge times the round-trip out, so long-running or mutating handlers can bail out early.
 
 After a handler runs, the SDK captures a fresh page snapshot so the agent continues from the current page state.

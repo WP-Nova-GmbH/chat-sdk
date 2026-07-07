@@ -8,7 +8,7 @@ You are a coding agent integrating the Nova Chat SDK into the website or app in 
 - Never call Nova `POST /embed/session` directly from the browser.
 - Read the user's email from the authenticated server-side session. Do not trust an email or user id supplied by the browser.
 - Pass through both successful Nova token outcomes: `{ access_token, expires_in }` and `{ unavailable: true, email, message }`.
-- Browser tool registration does not grant the agent new tools. Tool names must also be declared on the Nova Embedded Chat Surface.
+- Browser tool registration does not grant the agent new tools: the surface must allow SDK-defined page tools (an allow-list gate on the Nova Embedded Chat Surface). The tool name, description, schema, mutating flag, and handler live in your browser integration code, not in Nova admin.
 - Do not build custom confirmation UI for mutating tools. The iframe confirms mutating tools using the server-declared `mutating` flag.
 
 ## Inputs to Collect
@@ -178,6 +178,12 @@ init({
 });
 ```
 
+Only `publicSurfaceId` and `tokenEndpoint` are required. Optional browser-safe
+config fields include `title`, `accent`, `triggerColor`, `triggerIconColor`,
+`mount`, `safeValueSelectors`, and `voiceMode` (set `voiceMode: true` to enable
+the embedded voice button and delegate microphone access to the Nova iframe;
+defaults to `false`).
+
 ### React
 
 ```tsx
@@ -236,9 +242,26 @@ export const appConfig = {
 };
 ```
 
-```html
-<wp-nova-chat-mount [tools]="tools" />
+`provideNovaChat` only registers config. `NovaChatComponent` is a standalone
+component, so import it into the consuming component's `imports` or the
+`<wp-nova-chat-mount>` element will not instantiate:
+
+```ts
+import { NovaChatComponent } from "@wp-nova/chat-sdk-angular";
+
+@Component({
+  standalone: true,
+  selector: "app-root",
+  imports: [NovaChatComponent],
+  template: `<wp-nova-chat-mount [tools]="tools" />`,
+})
+export class AppComponent {
+  tools = [/* ToolDefinition[] */];
+}
 ```
+
+`import.meta.env["VITE_*"]` assumes a Vite-based Angular build; with the Angular
+CLI builder, read the same values from an `environment.ts` file instead.
 
 ## Page Tools
 
@@ -256,9 +279,16 @@ interface ToolDefinition {
   inputSchema: Record<string, unknown>;
   mutating: boolean;
   confirmationCopy?: string;
-  handler: (args: Record<string, unknown>) => unknown | Promise<unknown>;
+  handler: (
+    args: Record<string, unknown>,
+    opts?: { signal?: AbortSignal },
+  ) => unknown | Promise<unknown>;
 }
 ```
+
+The handler's optional `opts.signal` is an `AbortSignal` the SDK aborts when the
+bridge times the tool round-trip out, so a long-running or mutating handler can
+cancel in-flight work. The one-argument form is fine when you do not need it.
 
 Example SDK declaration:
 
@@ -366,6 +396,8 @@ Confirm all of these before finishing:
 | Mutating tool does nothing | User likely declined confirmation or handler threw. Check console/server logs. |
 | Snapshot omits a safe value | Add `data-wp-nova-include` or `safeValueSelectors`, and ensure it is not sensitive. |
 | SPA route does not change | Handle `wp-nova:navigate` or use normal same-origin links. |
+| Launcher never appears; `sdk.js` 404s | The pinned SDK version is not deployed at `https://chat.wp-nova.ai/sdk/<version>/sdk.js`. Confirm the version and `.sri`; for local dev, self-host the released `dist/index.global.js` from your own origin. |
+| `@wp-nova/chat-sdk-angular` import fails to resolve | The `1.0.0` publish shipped without entry points. Upgrade to `1.0.1`+, or install the built `dist` directly (e.g. `npm pack packages/angular/dist`). Core and React `1.0.x` resolve normally. |
 
 ## Useful Source Files When Working in Nova Repos
 

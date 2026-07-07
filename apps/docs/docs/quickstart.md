@@ -224,6 +224,7 @@ Rules:
 - Do not put secrets in handler return values.
 - Do not build your own confirmation UI for mutating tools. Nova uses the surface's server-declared `mutating` flag and confirms in the iframe before the SDK executes the handler.
 - A missing handler returns a typed `no_handler` error to the agent instead of hanging the conversation.
+- Handlers may take an optional second argument, `{ signal }`, an `AbortSignal` the SDK aborts when the bridge times the tool round-trip out, so long-running or mutating handlers can cancel cleanly: `handler: async (args, { signal } = {}) => { ... }`.
 
 ## Step 5: Mark DOM Privacy Boundaries
 
@@ -298,4 +299,5 @@ Open `http://127.0.0.1:4308`, add that exact origin to the surface, and repeat t
 | Tool fails with `no_handler` | The handler registered with `registerTool` was removed or the requested tool name no longer matches an SDK-defined tool. |
 | Tool never executes | The user declined the mutating-tool confirmation. |
 | Snapshot omits a field value | The field was not opted in or matched a sensitivity rule. |
+| Launcher never appears at all | The SDK script failed to load. In devtools Network, confirm the script tag returns 200, not 404. A 404 on `https://chat.wp-nova.ai/sdk/<version>/sdk.js` means that version is not deployed; verify the exact `<version>` and that `integrity` matches the published `.sri`. For local development, self-host the released `dist/index.global.js` from your own origin. |
 | Launcher never authenticates | `tokenEndpoint` is unreachable, returns malformed JSON, or does not pass through Nova's response. |

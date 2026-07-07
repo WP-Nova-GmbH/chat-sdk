@@ -109,6 +109,9 @@ function CustomerTools() {
 ```
 
 Mutating tools are confirmed in the iframe before the SDK calls your handler.
+Handlers may accept an optional second argument, `{ signal }`, an `AbortSignal`
+the SDK aborts when the bridge times the tool round-trip out, so long-running or
+mutating handlers can cancel in-flight work: `handler: async (args, { signal } = {}) => { ... }`.
 
 ## Conditional Mounting
 

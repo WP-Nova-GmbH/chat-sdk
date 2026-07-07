@@ -44,6 +44,7 @@ export interface SdkConfig {
   triggerColor?: string;
   triggerIconColor?: "light" | "dark" | string;
   safeValueSelectors?: string[];
+  voiceMode?: boolean;
   protocolVersion?: number;
 }
 ```
@@ -56,11 +57,16 @@ Optional fields:
 
 - `tokenEndpoint`: your backend route that proxies Nova `POST /embed/session`. Omitting it selects login-only mode, where the iframe drives its own in-widget login and the SDK never mints a host token.
 
+Every other field is optional. Notably, `voiceMode` (default `false`) enables the
+embedded voice button and delegates microphone access to the Nova iframe. See
+[Configuration](./configuration.md) for the full options table.
+
 ## Page Tools
 
 ```ts
 export type ToolHandler = (
   args: Record<string, unknown>,
+  opts?: { signal?: AbortSignal },
 ) => unknown | Promise<unknown>;
 
 export interface ToolDefinition {
@@ -96,6 +102,9 @@ unregisterTool("create_ticket");
 
 Handler results must be JSON-serializable. The SDK captures a fresh snapshot
 after a successful handler. Handler failures are reported as typed bridge errors.
+The optional `opts.signal` is an `AbortSignal` the SDK aborts when the bridge times
+the tool round-trip out, so a cooperating handler can stop a long-running or
+mutating action.
 
 `registerToolHandler(name, handler)` and `unregisterToolHandler(name)` remain
 available as deprecated execution-only compatibility helpers. Handler-only tools
@@ -163,6 +172,9 @@ export interface VisiblePageSnapshot {
   visibleText?: string;
   links?: VisibleLink[];
   controls?: VisibleControl[];
+  // Metadata for visible field values the privacy policy withheld:
+  // labels/types/reasons only, never the value itself.
+  omittedValues?: OmittedFieldValue[];
   handles?: ElementHandle[];
   truncated?: boolean;
   partial?: boolean;

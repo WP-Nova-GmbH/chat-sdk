@@ -19,6 +19,7 @@ Common targets in this repo:
 - `react` for `packages/react`.
 - `angular` for `packages/angular`.
 - `typescript-config` for `packages/typescript-config`.
+- `release-examples` for the standalone apps in `release-examples/*`.
 - `repo` for root-level tooling, CI, and agent guidance.
 
 Before committing, inspect the staged paths and derive the scope from the targeted apps and packages.
