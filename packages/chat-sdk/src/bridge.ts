@@ -46,6 +46,11 @@ export interface BridgeHandlers {
     /** The embedded-session token expired; re-fetch + re-push AUTH_TOKEN. */
     onAuthExpired: () => void;
     /**
+     * The iframe announced whether it manages its own in-widget login session
+     * (WP-104). `selfManaged` true pauses host re-minting; false resumes it.
+     */
+    onLoginState?: (selfManaged: boolean) => void;
+    /**
      * The iframe announced READY; the host pushes the token + REGISTER_TOOLS.
      * Return false to reject the iframe protocol and fail closed.
      */
@@ -181,9 +186,13 @@ export class Bridge {
         this.send({ type: "UNAVAILABLE", email, message });
     }
 
-    /** Tell the iframe token acquisition failed before a session token was issued. */
-    sendAuthError(message: string): void {
-        this.send({ type: "AUTH_ERROR", message });
+    /**
+     * Tell the iframe token acquisition failed before a session token was issued.
+     * The optional `code` lets the iframe branch on the cause — the SDK sends
+     * `NO_HOST_AUTH` for a login-only surface so the iframe shows its login screen.
+     */
+    sendAuthError(message: string, code?: string): void {
+        this.send({ type: "AUTH_ERROR", message, code });
     }
 
     /** Tell the iframe which SDK-declared tools the host has registered. */
@@ -236,6 +245,10 @@ export class Bridge {
             case "AUTH_EXPIRED":
                 if (!this.protocolAccepted) return;
                 this.handlers.onAuthExpired();
+                break;
+            case "LOGIN_STATE":
+                if (!this.protocolAccepted) return;
+                this.handlers.onLoginState?.(data.selfManaged === true);
                 break;
             case "MINIMIZE":
                 if (!this.protocolAccepted) return;

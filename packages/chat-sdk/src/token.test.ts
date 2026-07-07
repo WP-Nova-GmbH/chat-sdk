@@ -24,6 +24,7 @@ function restoreGlobals(): void {
 const CONFIG = {
     publicSurfaceId: "surf_1",
     tokenEndpoint: "/token",
+    authMode: "host",
     baseUrl: "https://chat.wp-nova.ai",
     iframeOrigin: "https://chat.wp-nova.ai",
     iframeSrc: "https://chat.wp-nova.ai/embed/chat?surface=surf_1",

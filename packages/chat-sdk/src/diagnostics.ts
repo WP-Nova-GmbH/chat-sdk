@@ -9,14 +9,18 @@
 import type { SdkConfig } from "./types.js";
 
 /**
- * The required `SdkConfig` fields that are missing/blank. `resolveConfig` reuses
- * this so the throw-on-init contract and the wrappers' disabled-state diagnostics
- * agree on what "required" means.
+ * The unconditionally-required `SdkConfig` fields that are missing/blank.
+ * `resolveConfig` reuses this so the throw-on-init contract and the wrappers'
+ * disabled-state diagnostics agree on what "required" means.
+ *
+ * `tokenEndpoint` is intentionally NOT listed: it is optional for login-only
+ * surfaces (WP-104). `resolveConfig` still rejects an explicitly empty-string
+ * `tokenEndpoint` separately, so a typo is caught while a deliberate omission
+ * resolves to login-only mode.
  */
 export function missingRequiredConfigFields(config: SdkConfig): string[] {
     const missing: string[] = [];
     if (!config?.publicSurfaceId?.trim()) missing.push("publicSurfaceId");
-    if (!config?.tokenEndpoint?.trim()) missing.push("tokenEndpoint");
     return missing;
 }
 

@@ -32,6 +32,14 @@ const MIN_REFRESH_MS = 5_000;
 /** Retry cadence after tokenEndpoint transport failures. */
 const TOKEN_ERROR_RETRY_MS = 30_000;
 
+/**
+ * The AUTH_ERROR the SDK sends for a login-only surface (`authMode: "none"`). The
+ * `code` lets a WP-104 iframe pin the origin and open its in-widget login screen
+ * immediately; an older iframe ignores the code and renders the generic message.
+ */
+const NO_HOST_AUTH_MESSAGE = "no host authentication configured";
+const NO_HOST_AUTH_CODE = "NO_HOST_AUTH";
+
 /** Message-circle glyph used by the settings preview and SDK launcher. */
 const LAUNCHER_CHAT_SVG =
     '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
@@ -74,6 +82,12 @@ export class WpNovaChatElement extends HTMLElement {
     private launcherThemeReady = false;
     private developmentMode = false;
     private tokenRequestId = 0;
+    /**
+     * True while the iframe manages its own in-widget login session (WP-104). The
+     * SDK then pauses host re-minting and ignores AUTH_EXPIRED-triggered mints;
+     * see onLoginState / acquireToken.
+     */
+    private selfManaged = false;
 
     static get observedAttributes(): string[] {
         return ["open", "title", "accent"];
@@ -162,12 +176,18 @@ export class WpNovaChatElement extends HTMLElement {
         this.booting = false;
         this.tokenRequestId++;
         this.lastAuth = undefined;
+        this.selfManaged = false;
         this.developmentMode = false;
         this.removeAttribute("data-wpn-dev");
         clearHandleStamps();
     }
 
-    /** Idempotent boot: render the shell once, wire the bridge, fetch the token. */
+    /**
+     * Idempotent boot: render the shell once, wire the bridge, and either fetch a
+     * host token (`authMode: "host"`) or buffer the login-only NO_HOST_AUTH signal
+     * (`authMode: "none"`). In login-only mode the SDK never touches a
+     * tokenEndpoint; the iframe drives an in-widget login instead.
+     */
     private boot(): void {
         if (!this.resolved || this.booting) return;
         this.booting = true;
@@ -175,10 +195,27 @@ export class WpNovaChatElement extends HTMLElement {
             if (!this.shadowReady) this.render(this.resolved);
             if (!this.bridge) this.wireBridge(this.resolved);
             this.bridge?.start();
-            void this.acquireToken();
+            if (this.resolved.authMode === "none") {
+                this.enterLoginOnly();
+            } else {
+                void this.acquireToken();
+            }
         } finally {
             this.booting = false;
         }
+    }
+
+    /**
+     * Login-only boot path (`authMode: "none"`): reveal the launcher and buffer a
+     * NO_HOST_AUTH auth error so it is (re-)pushed on READY. No token is fetched,
+     * no proactive refresh is ever armed, and no tokenEndpoint is contacted.
+     */
+    private enterLoginOnly(): void {
+        this.clearRefresh();
+        this.clearErrorRetry();
+        this.revealLauncherTheme();
+        this.lastAuth = { kind: "error", message: NO_HOST_AUTH_MESSAGE, code: NO_HOST_AUTH_CODE };
+        this.pushAuthState();
     }
 
     private requiresFrameReset(current: ResolvedConfig, next: ResolvedConfig): boolean {
@@ -208,7 +245,9 @@ export class WpNovaChatElement extends HTMLElement {
         const shadow = this.shadowRoot ?? this.attachShadow({ mode: "open" });
         // Validate before interpolating into the shadow <style> so a host-supplied
         // value cannot inject arbitrary CSS into the shadow root.
-        const accent = isHexColor(config.triggerColor) ? config.triggerColor.trim() : DEFAULT_ACCENT;
+        const accent = isHexColor(config.triggerColor)
+            ? config.triggerColor.trim()
+            : DEFAULT_ACCENT;
         const iconColor = resolveLauncherIconColor(config.triggerIconColor) ?? "#ffffff";
         const title = config.title;
         this.syncLauncherThemeVisibility();
@@ -328,7 +367,8 @@ export class WpNovaChatElement extends HTMLElement {
             // Capture is synchronous; a throw is mapped to a capture_error frame.
             onSnapshotRequest: () => capturePageContext(this.resolved?.safeValueSelectors ?? []),
             onClientToolRequest: (call, signal) => this.runClientTool(call, signal),
-            onAuthExpired: () => void this.acquireToken(),
+            onAuthExpired: () => this.handleAuthExpired(),
+            onLoginState: (selfManaged) => this.handleLoginState(selfManaged),
             // The iframe-owned header's ⌄ control closes the SDK-owned panel.
             onMinimize: () => this.close(),
             onSurfaceTheme: (theme) => {
@@ -455,7 +495,7 @@ export class WpNovaChatElement extends HTMLElement {
         } else if (auth.kind === "unavailable") {
             this.bridge.sendUnavailable(auth.email, auth.message);
         } else {
-            this.bridge.sendAuthError(auth.message);
+            this.bridge.sendAuthError(auth.message, auth.code);
         }
     }
 
@@ -464,10 +504,15 @@ export class WpNovaChatElement extends HTMLElement {
      * outcome: push AUTH_TOKEN + arm the proactive re-mint timer on a grant,
      * forward the unavailable state, or surface a transport error. The iframe
      * renders the unavailable / error UI; the SDK renders nothing actionable.
+     *
+     * No-ops for a login-only surface (`authMode: "none"`, no tokenEndpoint) and
+     * while the iframe manages its own in-widget session (`selfManaged`), so a
+     * stray proactive-timer callback racing a LOGIN_STATE never hits the endpoint.
      */
     private async acquireToken(): Promise<void> {
         const config = this.resolved;
         if (!config) return;
+        if (config.authMode === "none" || this.selfManaged) return;
         const requestId = ++this.tokenRequestId;
         this.clearErrorRetry();
         const result = await fetchToken(config);
@@ -494,6 +539,44 @@ export class WpNovaChatElement extends HTMLElement {
             this.pushAuthState();
             this.armErrorRetry();
         }
+    }
+
+    /**
+     * Service an inbound AUTH_EXPIRED. In login-only mode there is no token to
+     * mint, so re-send the idempotent NO_HOST_AUTH signal (the iframe re-opens its
+     * login screen). While the iframe manages its own in-widget session, ignore
+     * the mint entirely — its self-login token takes precedence. Otherwise, in
+     * host mode, re-fetch from the tokenEndpoint.
+     */
+    private handleAuthExpired(): void {
+        if (this.resolved?.authMode === "none") {
+            this.enterLoginOnly();
+            return;
+        }
+        if (this.selfManaged) return;
+        void this.acquireToken();
+    }
+
+    /**
+     * Service an inbound LOGIN_STATE. `selfManaged` true pauses host re-minting
+     * (clear the proactive timer; ignore AUTH_EXPIRED-triggered mints) because the
+     * iframe's self-login token now takes precedence. `false` resumes: in host
+     * mode trigger one immediate mint so the widget recovers instantly after an
+     * in-widget logout; in login-only mode re-send NO_HOST_AUTH instead.
+     */
+    private handleLoginState(selfManaged: boolean): void {
+        if (this.selfManaged === selfManaged) return;
+        this.selfManaged = selfManaged;
+        if (selfManaged) {
+            this.clearRefresh();
+            this.clearErrorRetry();
+            return;
+        }
+        if (this.resolved?.authMode === "none") {
+            this.enterLoginOnly();
+            return;
+        }
+        void this.acquireToken();
     }
 
     /** Arm proactive re-mint at ~80% of the token's TTL (floored). */

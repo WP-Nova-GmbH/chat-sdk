@@ -368,6 +368,13 @@ export interface AuthErrorFrame extends FrameBase {
     type: "AUTH_ERROR";
     /** User-renderable transport/error message. No token was issued. */
     message: string;
+    /**
+     * Machine-readable error code the iframe can branch on. Additive and
+     * optional so old iframes ignore it and fall back to the generic message.
+     * The SDK emits `NO_HOST_AUTH` for a login-only surface (`authMode: "none"`)
+     * to pin the origin and trigger the iframe's in-widget login screen.
+     */
+    code?: string;
 }
 
 /** Union of every frame the SDK sends to the iframe. */
@@ -447,6 +454,25 @@ export interface AuthExpiredFrame extends FrameBase {
 }
 
 /**
+ * The iframe announces whether it is managing its own (in-widget) authentication
+ * session. Sent when the user logs in or out inside the widget (WP-104).
+ *
+ * While `selfManaged` is true the iframe owns a self-login token that takes
+ * precedence over host-asserted auth, so the SDK pauses proactive host re-minting
+ * and ignores its own `AUTH_EXPIRED`-triggered mints. When it flips back to false
+ * (in-widget logout) the SDK resumes host minting so the widget recovers instantly.
+ *
+ * Additive and optional: old SDKs drop the unknown frame type (verified in
+ * `bridge.ts`), so no protocol bump is required.
+ */
+export interface LoginStateFrame extends FrameBase {
+    source: EmbedSource;
+    type: "LOGIN_STATE";
+    /** True while the iframe manages its own in-widget login session. */
+    selfManaged: boolean;
+}
+
+/**
  * The user minimized the chat from inside the iframe (the header's ⌄ control).
  * The launcher and the in-iframe header are the two ways to close the panel; this
  * frame lets the iframe-owned header drive the SDK-owned panel without coupling
@@ -482,6 +508,7 @@ export type EmbedFrame =
     | ConfirmationRequestFrame
     | ConfirmationResultFrame
     | AuthExpiredFrame
+    | LoginStateFrame
     | MinimizeFrame
     | SurfaceThemeFrame;
 
@@ -542,7 +569,16 @@ export type TokenResult =
           developmentMode?: boolean;
       }
     | { kind: "unavailable"; email: string; message: string }
-    | { kind: "error"; message: string };
+    | {
+          kind: "error";
+          message: string;
+          /**
+           * Machine-readable cause forwarded to the iframe on the AUTH_ERROR
+           * frame. Set to `NO_HOST_AUTH` for a login-only surface; absent for
+           * transport/malformed-response errors.
+           */
+          code?: string;
+      };
 
 // ---------------------------------------------------------------------------
 // SDK init config
@@ -560,8 +596,13 @@ export interface SdkConfig {
      * The customer's own backend endpoint that mints an embedded-session token.
      * The SDK fetches the token from HERE — never from Nova directly with the
      * integration secret.
+     *
+     * Optional. Omit it for a login-only surface whose host page does no
+     * authentication of its own: the SDK skips host token acquisition and the
+     * iframe drives an in-widget login instead (`authMode: "none"`, WP-104). An
+     * empty string is rejected as a typo — omit the field to opt into login-only.
      */
-    tokenEndpoint: string;
+    tokenEndpoint?: string;
     /**
      * Base URL of the Nova-hosted iframe app. The iframe is mounted at
      * `<baseUrl>/embed/chat`. Defaults to the production chat host.

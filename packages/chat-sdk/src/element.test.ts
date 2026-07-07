@@ -104,6 +104,7 @@ function resolvedConfig(overrides: Partial<ResolvedConfig> = {}): ResolvedConfig
     return {
         publicSurfaceId: "surf_1",
         tokenEndpoint: "/token",
+        authMode: "host",
         baseUrl: "https://chat.wp-nova.ai",
         iframeOrigin: "https://chat.wp-nova.ai",
         iframeSrc: "https://chat.wp-nova.ai/embed/chat?surface=surf_1",
@@ -117,6 +118,16 @@ function resolvedConfig(overrides: Partial<ResolvedConfig> = {}): ResolvedConfig
         protocolVersion: 1,
         ...overrides,
     };
+}
+
+/**
+ * Drain several microtask turns so an awaited fetch continuation chain settles.
+ * Uses microtasks (not setTimeout) so tests that stub setTimeout still advance.
+ */
+async function tick(): Promise<void> {
+    for (let i = 0; i < 8; i++) {
+        await Promise.resolve();
+    }
 }
 
 let ElementConstructor: typeof WpNovaChatElement;
@@ -719,7 +730,8 @@ test("armRefresh schedules no proactive refresh for a missing or zero TTL", () =
         element.armRefresh(900);
         assert.deepEqual(scheduled, [720_000]);
     } finally {
-        if (ORIGINALS.setTimeout) Object.defineProperty(globalThis, "setTimeout", ORIGINALS.setTimeout);
+        if (ORIGINALS.setTimeout)
+            Object.defineProperty(globalThis, "setTimeout", ORIGINALS.setTimeout);
         if (ORIGINALS.clearTimeout)
             Object.defineProperty(globalThis, "clearTimeout", ORIGINALS.clearTimeout);
     }
@@ -747,4 +759,260 @@ test("render passes a valid hex triggerColor through to the shadow style", () =>
     element.render(resolvedConfig({ triggerColor: "#abcdef" }));
 
     assert.equal(element.shadowRoot?.innerHTML.includes("--wpn-accent:#abcdef"), true);
+});
+
+// --- WP-104: login-only surfaces + LOGIN_STATE ---------------------------------
+
+/** Records the auth frames a login-only element pushes to a ready iframe. */
+interface AuthErrorSpy {
+    messages: string[];
+    codes: Array<string | undefined>;
+    tokens: string[];
+}
+
+/** A fake bridge that records the auth frames the element sends. */
+function fakeAuthBridge(spy: AuthErrorSpy): {
+    sendAuthError: (message: string, code?: string) => void;
+    sendAuthToken: (token: string) => void;
+    sendUnavailable: (email: string, message: string) => void;
+    start: () => void;
+    stop: () => void;
+} {
+    return {
+        sendAuthError: (message, code) => {
+            spy.messages.push(message);
+            spy.codes.push(code);
+        },
+        sendAuthToken: (token) => {
+            spy.tokens.push(token);
+        },
+        sendUnavailable: () => undefined,
+        start: () => undefined,
+        stop: () => undefined,
+    };
+}
+
+test("a login-only surface emits NO_HOST_AUTH once the iframe is ready", () => {
+    const spy: AuthErrorSpy = { messages: [], codes: [], tokens: [] };
+    const element = makeElement() as {
+        resolved: ResolvedConfig;
+        iframeReady: boolean;
+        bridge?: unknown;
+        enterLoginOnly: () => void;
+    };
+    element.resolved = resolvedConfig({ authMode: "none", tokenEndpoint: "" });
+    element.iframeReady = true;
+    element.bridge = fakeAuthBridge(spy);
+
+    element.enterLoginOnly();
+
+    assert.deepEqual(spy.messages, ["no host authentication configured"]);
+    assert.deepEqual(spy.codes, ["NO_HOST_AUTH"]);
+    assert.deepEqual(spy.tokens, []);
+});
+
+test("a login-only surface never fetches a host token on boot", () => {
+    __resetTokenCooldownForTests();
+    let fetchCalls = 0;
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => {
+            fetchCalls++;
+            return { ok: true, status: 200, json: async () => ({}) };
+        },
+    });
+    const spy: AuthErrorSpy = { messages: [], codes: [], tokens: [] };
+    const element = makeElement() as {
+        resolved: ResolvedConfig;
+        iframeReady: boolean;
+        bridge?: unknown;
+        shadowReady: boolean;
+        booting: boolean;
+        boot: () => void;
+    };
+    element.resolved = resolvedConfig({ authMode: "none", tokenEndpoint: "" });
+    element.iframeReady = true;
+    element.bridge = fakeAuthBridge(spy);
+    // Skip render()/wireBridge() by marking the shell ready with our fake bridge.
+    element.shadowReady = true;
+
+    try {
+        element.boot();
+
+        assert.equal(fetchCalls, 0);
+        assert.deepEqual(spy.codes, ["NO_HOST_AUTH"]);
+    } finally {
+        __resetTokenCooldownForTests();
+    }
+});
+
+test("AUTH_EXPIRED on a login-only surface re-sends NO_HOST_AUTH instead of minting", () => {
+    __resetTokenCooldownForTests();
+    let fetchCalls = 0;
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => {
+            fetchCalls++;
+            return { ok: true, status: 200, json: async () => ({}) };
+        },
+    });
+    const spy: AuthErrorSpy = { messages: [], codes: [], tokens: [] };
+    const element = makeElement() as {
+        resolved: ResolvedConfig;
+        iframeReady: boolean;
+        bridge?: unknown;
+        handleAuthExpired: () => void;
+    };
+    element.resolved = resolvedConfig({ authMode: "none", tokenEndpoint: "" });
+    element.iframeReady = true;
+    element.bridge = fakeAuthBridge(spy);
+
+    try {
+        element.handleAuthExpired();
+
+        assert.equal(fetchCalls, 0);
+        assert.deepEqual(spy.codes, ["NO_HOST_AUTH"]);
+    } finally {
+        __resetTokenCooldownForTests();
+    }
+});
+
+test("LOGIN_STATE self-managed pauses proactive re-minting", () => {
+    let cleared = false;
+    const element = makeElement() as {
+        resolved: ResolvedConfig;
+        selfManaged: boolean;
+        refreshTimer?: number;
+        handleLoginState: (selfManaged: boolean) => void;
+    };
+    element.resolved = resolvedConfig();
+    element.refreshTimer = 42 as unknown as number;
+    Object.defineProperty(globalThis, "clearTimeout", {
+        configurable: true,
+        value: () => {
+            cleared = true;
+        },
+    });
+
+    element.handleLoginState(true);
+
+    assert.equal(element.selfManaged, true);
+    assert.equal(cleared, true);
+    assert.equal(element.refreshTimer, undefined);
+});
+
+test("a self-managed session ignores AUTH_EXPIRED-triggered host mints", async () => {
+    __resetTokenCooldownForTests();
+    let fetchCalls = 0;
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => {
+            fetchCalls++;
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({ access_token: "t", expires_in: 900 }),
+            };
+        },
+    });
+    Object.defineProperty(globalThis, "clearTimeout", {
+        configurable: true,
+        value: () => undefined,
+    });
+    const element = makeElement() as {
+        resolved: ResolvedConfig;
+        selfManaged: boolean;
+        handleLoginState: (selfManaged: boolean) => void;
+        handleAuthExpired: () => void;
+    };
+    element.resolved = resolvedConfig();
+
+    try {
+        element.handleLoginState(true);
+        element.handleAuthExpired();
+        await tick();
+
+        assert.equal(fetchCalls, 0);
+    } finally {
+        __resetTokenCooldownForTests();
+    }
+});
+
+test("LOGIN_STATE resume re-mints immediately in host mode", async () => {
+    __resetTokenCooldownForTests();
+    let fetchCalls = 0;
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => {
+            fetchCalls++;
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({ access_token: "t", expires_in: 900 }),
+            };
+        },
+    });
+    Object.defineProperty(globalThis, "setTimeout", {
+        configurable: true,
+        value: () => 1,
+    });
+    Object.defineProperty(globalThis, "clearTimeout", {
+        configurable: true,
+        value: () => undefined,
+    });
+    const element = makeElement() as {
+        resolved: ResolvedConfig;
+        selfManaged: boolean;
+        handleLoginState: (selfManaged: boolean) => void;
+    };
+    element.resolved = resolvedConfig();
+    element.selfManaged = true;
+
+    try {
+        element.handleLoginState(false);
+        await tick();
+
+        assert.equal(element.selfManaged, false);
+        assert.equal(fetchCalls, 1);
+    } finally {
+        __resetTokenCooldownForTests();
+    }
+});
+
+test("LOGIN_STATE resume on a login-only surface re-sends NO_HOST_AUTH, not a mint", async () => {
+    __resetTokenCooldownForTests();
+    let fetchCalls = 0;
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => {
+            fetchCalls++;
+            return { ok: true, status: 200, json: async () => ({}) };
+        },
+    });
+    Object.defineProperty(globalThis, "clearTimeout", {
+        configurable: true,
+        value: () => undefined,
+    });
+    const spy: AuthErrorSpy = { messages: [], codes: [], tokens: [] };
+    const element = makeElement() as {
+        resolved: ResolvedConfig;
+        iframeReady: boolean;
+        bridge?: unknown;
+        selfManaged: boolean;
+        handleLoginState: (selfManaged: boolean) => void;
+    };
+    element.resolved = resolvedConfig({ authMode: "none", tokenEndpoint: "" });
+    element.iframeReady = true;
+    element.bridge = fakeAuthBridge(spy);
+    element.selfManaged = true;
+
+    try {
+        element.handleLoginState(false);
+        await tick();
+
+        assert.equal(fetchCalls, 0);
+        assert.deepEqual(spy.codes, ["NO_HOST_AUTH"]);
+    } finally {
+        __resetTokenCooldownForTests();
+    }
 });

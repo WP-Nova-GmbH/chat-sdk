@@ -358,3 +358,66 @@ test("the round-trip timeout aborts a cooperating handler so it does not mutate"
         restoreWindow();
     }
 });
+
+test("LOGIN_STATE is dispatched to onLoginState only after READY", () => {
+    let listener: ((event: MessageEvent) => void) | undefined;
+    const states: boolean[] = [];
+    const iframeWindow = { postMessage() {} } as unknown as Window;
+    installWindow((cb) => {
+        listener = cb;
+    });
+
+    const bridge = new Bridge(
+        { iframeOrigin: "https://chat.example", protocolVersion: 2 } as ResolvedConfig,
+        {
+            onSnapshotRequest: () => ({ url: "https://host.example" }),
+            onClientToolRequest: async () => ({ result: {} }),
+            onAuthExpired: () => undefined,
+            onReady: () => undefined,
+            onLoginState: (selfManaged) => {
+                states.push(selfManaged);
+            },
+        },
+    );
+
+    const loginState = (selfManaged: boolean): MessageEvent =>
+        ({
+            origin: "https://chat.example",
+            source: iframeWindow,
+            data: {
+                source: EMBED_SOURCE,
+                protocolVersion: 2,
+                type: "LOGIN_STATE",
+                selfManaged,
+            } satisfies EmbedFrame,
+        }) as MessageEvent;
+
+    try {
+        bridge.setIframeWindow(iframeWindow);
+        bridge.start();
+
+        // Before READY the frame is dropped (protocol not yet accepted).
+        listener?.(loginState(true));
+        assert.deepEqual(states, []);
+
+        listener?.({
+            origin: "https://chat.example",
+            source: iframeWindow,
+            data: {
+                source: EMBED_SOURCE,
+                protocolVersion: 2,
+                type: "READY",
+                minProtocolVersion: 1,
+                maxProtocolVersion: 2,
+            } satisfies EmbedFrame,
+        } as MessageEvent);
+
+        listener?.(loginState(true));
+        listener?.(loginState(false));
+
+        assert.deepEqual(states, [true, false]);
+    } finally {
+        bridge.stop();
+        restoreWindow();
+    }
+});

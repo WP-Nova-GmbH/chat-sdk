@@ -34,10 +34,21 @@ export const TIMEOUTS = {
     tokenEndpoint: 15_000,
 } as const;
 
+/**
+ * How the embedded session is authenticated.
+ *   - `"host"`: the host page mints tokens via its `tokenEndpoint` (the default).
+ *   - `"none"`: login-only surface — no `tokenEndpoint`; the iframe drives an
+ *     in-widget login and the SDK never acquires a host token (WP-104).
+ */
+export type AuthMode = "host" | "none";
+
 /** Resolved, validated config the rest of the SDK consumes. */
 export interface ResolvedConfig {
     publicSurfaceId: string;
+    /** The host token endpoint, or "" when `authMode` is "none" (login-only). */
     tokenEndpoint: string;
+    /** Derived auth mode: host-minted tokens vs. login-only (no tokenEndpoint). */
+    authMode: AuthMode;
     baseUrl: string;
     /** Exact origin of the iframe — outbound postMessages target THIS, never "*". */
     iframeOrigin: string;
@@ -61,8 +72,13 @@ export interface ResolvedConfig {
 
 /**
  * Validate + normalize a raw `SdkConfig` into a `ResolvedConfig`. Throws on the
- * two non-negotiable fields (`publicSurfaceId`, `tokenEndpoint`) and computes
- * the iframe's exact origin once so the bridge can target it precisely.
+ * one non-negotiable field (`publicSurfaceId`) and computes the iframe's exact
+ * origin once so the bridge can target it precisely.
+ *
+ * `tokenEndpoint` is optional: omitting it entirely resolves to a login-only
+ * surface (`authMode: "none"`), where the iframe drives an in-widget login and
+ * the SDK never mints a host token. An explicitly EMPTY-STRING `tokenEndpoint`
+ * is rejected as a typo — the caller must omit the field to opt into login-only.
  */
 export function resolveConfig(config: SdkConfig): ResolvedConfig {
     if (!config || typeof config !== "object") {
@@ -72,9 +88,17 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
     if (missing.includes("publicSurfaceId")) {
         throw new Error("[wp-nova] init requires a `publicSurfaceId`");
     }
-    if (missing.includes("tokenEndpoint")) {
-        throw new Error("[wp-nova] init requires a `tokenEndpoint`");
+    // Distinguish a deliberate omission (login-only) from a typo: a present but
+    // blank `tokenEndpoint` is almost always a mistake, so reject it rather than
+    // silently dropping the host into login-only mode.
+    const tokenEndpointProvided = config.tokenEndpoint !== undefined;
+    if (tokenEndpointProvided && !config.tokenEndpoint?.trim()) {
+        throw new Error(
+            "[wp-nova] `tokenEndpoint` must be a non-empty string; omit it entirely for a login-only surface",
+        );
     }
+    const authMode: AuthMode = tokenEndpointProvided ? "host" : "none";
+    const tokenEndpoint = tokenEndpointProvided ? (config.tokenEndpoint as string) : "";
 
     const baseUrl = (config.baseUrl || DEFAULT_BASE_URL).replace(/\/$/, "");
     const url = new URL(EMBED_PATH, `${baseUrl}/`);
@@ -88,7 +112,8 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
 
     return {
         publicSurfaceId: config.publicSurfaceId,
-        tokenEndpoint: config.tokenEndpoint,
+        tokenEndpoint,
+        authMode,
         baseUrl,
         iframeOrigin: url.origin,
         iframeSrc: url.toString(),

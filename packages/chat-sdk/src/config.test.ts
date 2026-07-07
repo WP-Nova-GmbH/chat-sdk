@@ -51,3 +51,37 @@ test("voice mode opt-in adds the iframe URL capability signal", () => {
     assert.equal(config.voiceModeEnabled, true);
     assert.equal(new URL(config.iframeSrc).searchParams.get("voice"), "1");
 });
+
+test("a supplied tokenEndpoint resolves to host auth mode", () => {
+    const config = resolveConfig(REQUIRED_CONFIG);
+
+    assert.equal(config.authMode, "host");
+    assert.equal(config.tokenEndpoint, "/nova-token");
+});
+
+test("an omitted tokenEndpoint resolves to login-only mode", () => {
+    const config = resolveConfig({ publicSurfaceId: "surf_1" });
+
+    assert.equal(config.authMode, "none");
+    assert.equal(config.tokenEndpoint, "");
+    // The surface handle still rides the iframe URL for pre-auth theming.
+    assert.equal(new URL(config.iframeSrc).searchParams.get("surface"), "surf_1");
+});
+
+test("an empty-string tokenEndpoint is rejected as a typo", () => {
+    assert.throws(
+        () => resolveConfig({ publicSurfaceId: "surf_1", tokenEndpoint: "" }),
+        /tokenEndpoint.*non-empty.*omit it/,
+    );
+    assert.throws(
+        () => resolveConfig({ publicSurfaceId: "surf_1", tokenEndpoint: "   " }),
+        /tokenEndpoint.*non-empty.*omit it/,
+    );
+});
+
+test("publicSurfaceId is still required in login-only mode", () => {
+    assert.throws(
+        () => resolveConfig({} as Parameters<typeof resolveConfig>[0]),
+        /publicSurfaceId/,
+    );
+});

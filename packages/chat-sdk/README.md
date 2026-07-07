@@ -110,7 +110,7 @@ WpNova("registerTool", {
 | Field             | Required | Description                                                                                  |
 | ----------------- | -------- | -------------------------------------------------------------------------------------------- |
 | `publicSurfaceId` | yes      | Non-secret, SDK-facing surface handle. The only identifier that crosses the browser boundary. |
-| `tokenEndpoint`   | yes      | Your backend endpoint that mints an embedded-session token (see token contract).             |
+| `tokenEndpoint`   | no       | Your backend endpoint that mints an embedded-session token (see token contract). Omit it entirely for a login-only surface (see below). An empty string is rejected as a typo. |
 | `baseUrl`         | no       | Base URL of the Nova-hosted iframe app. Defaults to `https://chat.wp-nova.ai`.               |
 | `mount`           | no       | Host element (or selector) to mount into. Defaults to `document.body`.                       |
 | `title`           | no       | Launcher / panel title shown before surface theming arrives.                                 |
@@ -148,6 +148,44 @@ works without a token. A non-2xx / network failure is treated as a **transport
 error** (distinct from the unavailable state) with bounded retry, backoff, and a
 cooldown so a persistently-failing endpoint can't tight-loop.
 
+## Login-only surfaces
+
+Some surfaces are embedded on a page that does **no authentication of its own** —
+there is no host session to assert an email from, so there is nothing for a
+`tokenEndpoint` to proxy. For these, **omit `tokenEndpoint` entirely** and the
+user authenticates *inside the widget* with their own Nova account instead:
+
+```ts
+import { init } from "@wp-nova/chat-sdk";
+
+// Login-only: no tokenEndpoint. The widget drives an in-widget login.
+init({ publicSurfaceId: "surf_…" });
+```
+
+What the SDK does in login-only mode (`authMode: "none"`):
+
+- It never contacts a `tokenEndpoint` and never acquires or refreshes a host token.
+- After the iframe's `READY` handshake it sends `AUTH_ERROR { code: "NO_HOST_AUTH" }`,
+  which pins the origin in the iframe and opens its in-widget login screen
+  immediately — there is no connect timeout to wait out.
+- On `AUTH_EXPIRED` it re-sends the same `NO_HOST_AUTH` signal (idempotent) instead
+  of trying to mint.
+
+> **An empty-string `tokenEndpoint` is a typo, not login-only.** To opt into
+> login-only you must omit the field. `init({ publicSurfaceId, tokenEndpoint: "" })`
+> throws so a mistyped endpoint is never silently downgraded to no host auth.
+
+> **Platform requirement.** Login-only mode needs a platform release that includes
+> WP-104 (in-widget login). Against that release the `NO_HOST_AUTH` signal renders
+> the sign-in screen. Against an **older** `/embed/chat` the iframe does not
+> understand the login screen and instead shows a generic, retryable auth-error
+> state — so ship login-only surfaces only once the platform is on WP-104.
+
+When the user logs in or out inside the widget, the iframe emits `LOGIN_STATE`
+(see Bridge protocol) so the SDK pauses/resumes its host token lifecycle
+accordingly. In login-only mode there is no host lifecycle to resume, so a logout
+just re-shows the login screen.
+
 ## Auth refresh (AUTH_EXPIRED re-mint)
 
 Embedded-session tokens are short-lived (~15 min). The SDK keeps the session alive
@@ -161,6 +199,13 @@ without a browser-held refresh token:
 
 Because the iframe can't reach your cross-origin `tokenEndpoint` itself, the SDK
 is always the re-mint path.
+
+While the user is signed in **inside the widget**, the iframe owns a self-login
+token that takes precedence over host auth. It announces this with
+`LOGIN_STATE { selfManaged: true }`, and the SDK then **pauses** proactive re-minting
+and ignores `AUTH_EXPIRED`-triggered mints so the two sessions don't fight. On
+in-widget logout the iframe sends `LOGIN_STATE { selfManaged: false }`; in host mode
+the SDK resumes and mints once immediately so the widget recovers instantly.
 
 ## Integrator tools
 
@@ -286,3 +331,13 @@ All host ↔ iframe communication is `postMessage` with strict `event.origin` +
 Request/response pairs carry a `correlationId`; errors are explicit `*_ERROR`
 frames (never a successful empty result). See `src/types.ts` for the full,
 self-contained wire contract.
+
+Two additive frames support in-widget login (WP-104), so `PROTOCOL_VERSION` stays
+`2` — old iframes ignore the unknown `AUTH_ERROR.code`, old SDKs drop the unknown
+`LOGIN_STATE` frame type:
+
+- `AUTH_ERROR` carries an optional `code`. The SDK sends `code: "NO_HOST_AUTH"`
+  for a login-only surface so the iframe opens its in-widget login screen.
+- `LOGIN_STATE { selfManaged }` (iframe → SDK) tells the SDK the iframe is
+  managing its own login session. `true` pauses host re-minting; `false` resumes
+  it (and mints once immediately in host mode).
