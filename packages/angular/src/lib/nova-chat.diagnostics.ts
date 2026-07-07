@@ -28,9 +28,15 @@ export function formatErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * The unconditionally-required `SdkConfig` fields that are missing/blank. Mirrors
+ * the core `missingRequiredConfigFields`; kept SSR-safe here (see the A8 note above).
+ *
+ * `tokenEndpoint` is intentionally NOT listed: it is optional for login-only
+ * surfaces (WP-104).
+ */
 function missingRequiredConfigFields(config: SdkConfig): string[] {
     const missing: string[] = [];
     if (!config.publicSurfaceId?.trim()) missing.push("publicSurfaceId");
-    if (!config.tokenEndpoint?.trim()) missing.push("tokenEndpoint");
     return missing;
 }
