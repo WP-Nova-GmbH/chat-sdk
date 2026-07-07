@@ -36,7 +36,7 @@ import {
 ```ts
 export interface SdkConfig {
   publicSurfaceId: string;
-  tokenEndpoint: string;
+  tokenEndpoint?: string;
   baseUrl?: string;
   mount?: string | HTMLElement;
   title?: string;
@@ -51,7 +51,10 @@ export interface SdkConfig {
 Required fields:
 
 - `publicSurfaceId`: non-secret `surf_...` handle from Nova admin.
-- `tokenEndpoint`: your backend route that proxies Nova `POST /embed/session`.
+
+Optional fields:
+
+- `tokenEndpoint`: your backend route that proxies Nova `POST /embed/session`. Omitting it selects login-only mode, where the iframe drives its own in-widget login and the SDK never mints a host token.
 
 ## Page Tools
 

@@ -40,7 +40,7 @@ The exact version and `integrity` value are published next to the bundle as `/sd
 
 ## Docs Versions vs npm Versions
 
-Docs selector entries describe the public integration contract, not every npm patch. The `v1.0` docs apply to `@wp-nova/chat-sdk@1.0.x`, `@wp-nova/chat-sdk-react@1.0.x`, and `@wp-nova/chat-sdk-angular@1.0.x`.
+Docs selector entries describe the public integration contract, not every npm patch. The current `v1.1` docs apply to `@wp-nova/chat-sdk`, `@wp-nova/chat-sdk-react`, and `@wp-nova/chat-sdk-angular` in the `>=1.1.0 <1.2.0` range.
 
 Patch npm releases reuse the same docs line unless the integration guidance changes. A new major or minor release that changes documented behavior gets a new docs selector entry.
 
