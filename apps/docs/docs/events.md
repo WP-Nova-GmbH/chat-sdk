@@ -13,7 +13,8 @@ The SDK sends frames only to the iframe's exact origin. The iframe accepts frame
 | --- | --- | --- |
 | `READY` | iframe to SDK | The iframe is ready to receive auth and tool registration data. It includes the protocol version range it supports. |
 | `AUTH_TOKEN` | SDK to iframe | Pushes a short-lived embedded-session token and optional trusted display settings. |
-| `AUTH_ERROR` | SDK to iframe | Reports a transport or malformed token-endpoint failure. |
+| `AUTH_ERROR` | SDK to iframe | Reports a transport or malformed token-endpoint failure. Carries an optional `code`; the SDK sends `code: "NO_HOST_AUTH"` on a login-only surface to open the in-widget login screen. |
+| `LOGIN_STATE` | iframe to SDK | Announces whether the iframe is managing its own in-widget login session. `selfManaged: true` pauses host re-minting; `false` resumes it. |
 | `UNAVAILABLE` | SDK to iframe | Tells the iframe that the asserted email did not resolve to an active Nova tenant user. |
 | `AUTH_EXPIRED` | iframe to SDK | Requests a token re-mint after a 401 or expired embedded session. |
 | `REGISTER_TOOLS` | SDK to iframe | Announces SDK-defined tool specs that are currently registered by the host app. |
@@ -34,6 +35,14 @@ Embedded-session tokens are short-lived. The SDK refreshes in two ways:
 - **Reactive:** when the iframe emits `AUTH_EXPIRED`, the SDK re-fetches from `tokenEndpoint` and sends a new `AUTH_TOKEN`.
 
 The iframe cannot call your cross-origin `tokenEndpoint` directly, so the SDK is always the re-mint path.
+
+### In-widget login (`LOGIN_STATE`)
+
+While the user is signed in inside the widget, the iframe owns a self-login token that takes precedence over host auth. It emits `LOGIN_STATE { selfManaged: true }`, and the SDK then pauses proactive re-minting and ignores `AUTH_EXPIRED`-triggered mints so the host and in-widget sessions do not fight. On in-widget logout the iframe emits `LOGIN_STATE { selfManaged: false }`; in host mode the SDK resumes and mints once immediately so the widget recovers instantly.
+
+### Login-only surfaces (`NO_HOST_AUTH`)
+
+A [login-only surface](./configuration.md#login-only-surfaces) (no `tokenEndpoint`) has no host token lifecycle. The SDK acquires no token and instead sends `AUTH_ERROR { code: "NO_HOST_AUTH" }` after `READY` to open the in-widget login screen; it re-sends the same signal on `AUTH_EXPIRED`. `PROTOCOL_VERSION` stays `2` — both additions are backward compatible.
 
 ## Error Semantics
 
