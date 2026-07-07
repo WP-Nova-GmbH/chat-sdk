@@ -1016,3 +1016,143 @@ test("LOGIN_STATE resume on a login-only surface re-sends NO_HOST_AUTH, not a mi
         __resetTokenCooldownForTests();
     }
 });
+
+test("a self-managed transition discards an in-flight host mint's late grant", async () => {
+    let resolveFetch: (response: unknown) => void = () => undefined;
+    const scheduled: number[] = [];
+    const spy: AuthErrorSpy = { messages: [], codes: [], tokens: [] };
+    const element = makeElement() as {
+        resolved: ResolvedConfig;
+        iframeReady: boolean;
+        bridge?: unknown;
+        selfManaged: boolean;
+        refreshTimer?: number;
+        acquireToken: () => Promise<void>;
+        handleLoginState: (selfManaged: boolean) => void;
+    };
+    element.resolved = resolvedConfig();
+    element.iframeReady = true;
+    element.bridge = fakeAuthBridge(spy);
+
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: () =>
+            new Promise((resolve) => {
+                resolveFetch = resolve;
+            }),
+    });
+    Object.defineProperty(globalThis, "setTimeout", {
+        configurable: true,
+        value: (_callback: () => void, ms?: number) => {
+            scheduled.push(Number(ms ?? 0));
+            return 1;
+        },
+    });
+    Object.defineProperty(globalThis, "clearTimeout", {
+        configurable: true,
+        value: () => undefined,
+    });
+
+    // Host mint is in flight; a LOGIN_STATE(true) arrives before it resolves.
+    const pending = element.acquireToken();
+    element.handleLoginState(true);
+    // The in-flight fetch now resolves with a fresh grant that must NOT win.
+    resolveFetch({
+        ok: true,
+        json: async () => ({ access_token: "late-token", expires_in: 900 }),
+    });
+    await pending;
+
+    assert.deepEqual(spy.tokens, []);
+    assert.deepEqual(scheduled, []);
+    assert.equal(element.refreshTimer, undefined);
+});
+
+/**
+ * Drive the real READY handler by reaching the onReady closure wireBridge stored on
+ * the bridge, so the `selfManaged = false` reset (iframe-reload recovery) is exercised.
+ */
+function fireReady(element: {
+    wireBridge: (config: ResolvedConfig) => void;
+    bridge?: { handlers: { onReady: (min?: number, max?: number) => unknown } };
+    resolved: ResolvedConfig;
+    iframe?: unknown;
+}): void {
+    element.iframe = { addEventListener: () => undefined, contentWindow: null };
+    element.wireBridge(element.resolved);
+    element.bridge?.handlers.onReady();
+}
+
+test("a READY handshake clears a stuck selfManaged so host mode re-mints on AUTH_EXPIRED", async () => {
+    __resetTokenCooldownForTests();
+    let fetchCalls = 0;
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => {
+            fetchCalls++;
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({ access_token: "t", expires_in: 900 }),
+            };
+        },
+    });
+    Object.defineProperty(globalThis, "setTimeout", {
+        configurable: true,
+        value: () => 1,
+    });
+    Object.defineProperty(globalThis, "clearTimeout", {
+        configurable: true,
+        value: () => undefined,
+    });
+    const element = makeElement() as {
+        resolved: ResolvedConfig;
+        selfManaged: boolean;
+        wireBridge: (config: ResolvedConfig) => void;
+        bridge?: { handlers: { onReady: (min?: number, max?: number) => unknown } };
+        iframe?: unknown;
+        handleAuthExpired: () => void;
+    };
+    element.resolved = resolvedConfig();
+    element.selfManaged = true;
+
+    try {
+        // A reloaded iframe re-runs its READY handshake; the SDK returns to its
+        // config-driven default so AUTH_EXPIRED is serviced instead of ignored.
+        fireReady(element);
+        assert.equal(element.selfManaged, false);
+
+        element.handleAuthExpired();
+        await tick();
+
+        assert.equal(fetchCalls, 1);
+    } finally {
+        __resetTokenCooldownForTests();
+    }
+});
+
+test("a READY handshake clears selfManaged so login-only re-sends NO_HOST_AUTH on AUTH_EXPIRED", () => {
+    const spy: AuthErrorSpy = { messages: [], codes: [], tokens: [] };
+    const element = makeElement() as {
+        resolved: ResolvedConfig;
+        iframeReady: boolean;
+        selfManaged: boolean;
+        wireBridge: (config: ResolvedConfig) => void;
+        bridge?: { handlers: { onReady: (min?: number, max?: number) => unknown } };
+        iframe?: unknown;
+        handleAuthExpired: () => void;
+    };
+    element.resolved = resolvedConfig({ authMode: "none", tokenEndpoint: "" });
+    element.selfManaged = true;
+
+    fireReady(element);
+    assert.equal(element.selfManaged, false);
+
+    // Swap in a recording bridge for the AUTH_EXPIRED path; iframe stays ready.
+    element.iframeReady = true;
+    (element as { bridge?: unknown }).bridge = fakeAuthBridge(spy);
+    element.handleAuthExpired();
+
+    assert.deepEqual(spy.codes, ["NO_HOST_AUTH"]);
+    assert.deepEqual(spy.tokens, []);
+});

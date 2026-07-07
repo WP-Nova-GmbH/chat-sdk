@@ -385,6 +385,13 @@ export class WpNovaChatElement extends HTMLElement {
                     return false;
                 }
                 this.iframeReady = true;
+                // A fresh handshake (first boot OR an iframe reload) re-declares the
+                // iframe's state: its interactive session lives only in iframe memory
+                // and is lost on reload, so clear selfManaged back to the config-driven
+                // default. If it still holds a session it re-sends LOGIN_STATE(true)
+                // after its own boot; otherwise the SDK stays free to service
+                // AUTH_EXPIRED instead of ignoring it forever behind a stuck flag.
+                this.selfManaged = false;
                 // Push the buffered auth outcome (token / unavailable / error) and
                 // the current SDK-declared tools now that the iframe can receive them.
                 this.pushAuthState();
@@ -516,7 +523,11 @@ export class WpNovaChatElement extends HTMLElement {
         const requestId = ++this.tokenRequestId;
         this.clearErrorRetry();
         const result = await fetchToken(config);
-        if (requestId !== this.tokenRequestId || this.resolved !== config) return;
+        // Discard a stale result: the frame reset (tokenRequestId bump), a config
+        // swap, or a LOGIN_STATE(true) that flipped us to selfManaged mid-fetch (it
+        // also bumps tokenRequestId — the `|| this.selfManaged` is belt-and-braces).
+        if (requestId !== this.tokenRequestId || this.resolved !== config || this.selfManaged)
+            return;
         this.lastAuth = result;
         if (result.kind === "granted") {
             this.applySurfaceLauncherTheme({
@@ -544,16 +555,15 @@ export class WpNovaChatElement extends HTMLElement {
     /**
      * Service an inbound AUTH_EXPIRED. In login-only mode there is no token to
      * mint, so re-send the idempotent NO_HOST_AUTH signal (the iframe re-opens its
-     * login screen). While the iframe manages its own in-widget session, ignore
-     * the mint entirely — its self-login token takes precedence. Otherwise, in
-     * host mode, re-fetch from the tokenEndpoint.
+     * login screen). Otherwise, in host mode, re-fetch from the tokenEndpoint —
+     * acquireToken itself hard-returns while `selfManaged`, so no caller-side guard
+     * is needed here.
      */
     private handleAuthExpired(): void {
         if (this.resolved?.authMode === "none") {
             this.enterLoginOnly();
             return;
         }
-        if (this.selfManaged) return;
         void this.acquireToken();
     }
 
@@ -568,6 +578,10 @@ export class WpNovaChatElement extends HTMLElement {
         if (this.selfManaged === selfManaged) return;
         this.selfManaged = selfManaged;
         if (selfManaged) {
+            // Invalidate any in-flight host mint: bumping the counter acquireToken
+            // captured makes its post-await staleness guard discard the result, so a
+            // late grant can't stomp the iframe's fresh in-widget session.
+            this.tokenRequestId++;
             this.clearRefresh();
             this.clearErrorRetry();
             return;

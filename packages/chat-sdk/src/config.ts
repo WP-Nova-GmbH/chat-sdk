@@ -96,14 +96,15 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
     // Distinguish a deliberate omission (login-only) from a typo: a present but
     // blank `tokenEndpoint` is almost always a mistake, so reject it rather than
     // silently dropping the host into login-only mode.
-    const tokenEndpointProvided = config.tokenEndpoint !== undefined;
-    if (tokenEndpointProvided && !config.tokenEndpoint?.trim()) {
+    if (config.tokenEndpoint !== undefined && !config.tokenEndpoint.trim()) {
         throw new Error(
             "[wp-nova] `tokenEndpoint` must be a non-empty string; omit it entirely for a login-only surface",
         );
     }
-    const authMode: AuthMode = tokenEndpointProvided ? "host" : "none";
-    const tokenEndpoint = tokenEndpointProvided ? (config.tokenEndpoint as string) : "";
+    // The empty-string throw above guarantees a provided value is non-blank, so a
+    // falsy `tokenEndpoint` here means it was omitted → login-only (`authMode: "none"`).
+    const tokenEndpoint = config.tokenEndpoint ?? "";
+    const authMode: AuthMode = tokenEndpoint ? "host" : "none";
 
     const baseUrl = (config.baseUrl || DEFAULT_BASE_URL).replace(/\/$/, "");
     const url = new URL(EMBED_PATH, `${baseUrl}/`);
