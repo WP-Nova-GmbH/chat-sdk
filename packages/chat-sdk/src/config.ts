@@ -45,7 +45,12 @@ export type AuthMode = "host" | "none";
 /** Resolved, validated config the rest of the SDK consumes. */
 export interface ResolvedConfig {
     publicSurfaceId: string;
-    /** The host token endpoint, or "" when `authMode` is "none" (login-only). */
+    /**
+     * The host token endpoint, or "" when `authMode` is "none" (login-only).
+     * Paired with `authMode`: both are derived together in `resolveConfig` from
+     * whether `SdkConfig.tokenEndpoint` was provided. Branch on `authMode`;
+     * treat this field as data for the fetch, never as the mode signal.
+     */
     tokenEndpoint: string;
     /** Derived auth mode: host-minted tokens vs. login-only (no tokenEndpoint). */
     authMode: AuthMode;
