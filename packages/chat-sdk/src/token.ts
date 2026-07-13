@@ -167,6 +167,10 @@ function interpret(body: TokenEndpointResponse): TokenResult {
             kind: "unavailable",
             email: typeof body.email === "string" ? body.email : "",
             message: typeof body.message === "string" ? body.message : "",
+            messageIsCustom:
+                typeof body.message_is_custom === "boolean"
+                    ? body.message_is_custom
+                    : undefined,
             accessRequestToken:
                 typeof body.access_request_token === "string"
                     ? body.access_request_token

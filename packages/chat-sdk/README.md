@@ -144,10 +144,15 @@ your session cookie, via `credentials: "include"`). Your endpoint must pass thro
   "unavailable": true,
   "email": "user@acme.com",
   "message": "No Nova account for this email.",
+  "message_is_custom": false,
   "access_request_token": "<purpose-scoped capability>",
   "access_request_expires_in": 3600
 }
 ```
+
+Nova sets `message_is_custom` to `false` for its built-in unavailable message so
+the iframe can render that copy in the active UI language. A value of `true`
+preserves administrator-authored surface copy verbatim.
 
 Pass the full Nova response body and status through without rewriting or dropping
 fields. The capability enables the iframe's administrator-notification action and

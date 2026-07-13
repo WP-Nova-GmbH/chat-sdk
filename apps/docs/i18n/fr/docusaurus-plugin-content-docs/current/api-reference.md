@@ -50,6 +50,25 @@ export type ToolHandler = (
 ) => unknown | Promise<unknown>;
 ```
 
+### Utilisateur indisponible
+
+```ts
+export interface UnavailableUserResponse {
+  unavailable: true;
+  email: string;
+  message: string;
+  message_is_custom?: boolean;
+  access_request_token?: string;
+  access_request_expires_in?: number;
+  access_token?: undefined;
+}
+```
+
+`message_is_custom: false` identifie le message intégré de Nova, que l’iframe
+traduit. La valeur `true` identifie un texte rédigé par un administrateur et
+affiché sans modification. Transmettez la réponse complète pour que l’action de
+demande d’accès reste disponible.
+
 ### Custom Element
 
 Le SDK définit `<wp-nova-chat>` de façon lazy et idempotente. Vous pouvez placer l’élément à l’avance dans le DOM, mais la plupart des intégrations doivent laisser `init` le créer et le monter.

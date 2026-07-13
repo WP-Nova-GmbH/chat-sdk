@@ -143,11 +143,16 @@ export interface UnavailableUserResponse {
   unavailable: true;
   email: string;
   message: string;
+  message_is_custom?: boolean;
   access_request_token?: string;
   access_request_expires_in?: number;
   access_token?: undefined;
 }
 ```
+
+`message_is_custom: false` identifies Nova's built-in message, which the iframe
+localizes. A value of `true` identifies administrator-authored copy that is shown
+verbatim.
 
 Return Nova's complete unresolved response without rewriting its status or fields.
 The optional capability powers the administrator access-request action and is not

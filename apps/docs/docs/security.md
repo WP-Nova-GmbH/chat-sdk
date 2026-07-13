@@ -52,6 +52,7 @@ Nova resolves the email asserted by your backend to an active, non-deleted tenan
   "unavailable": true,
   "email": "person@example.com",
   "message": "We could not find an account for person@example.com.",
+  "message_is_custom": false,
   "access_request_token": "<purpose-scoped capability>",
   "access_request_expires_in": 3600
 }
@@ -61,6 +62,8 @@ No user is provisioned, no thread is created, and no chat token is issued. The
 access-request capability is separately purpose-scoped and cannot authenticate
 chat APIs. Pass the complete response and status through unchanged so the iframe
 can show the configured message and administrator-notification action.
+The `message_is_custom` discriminator lets the iframe localize Nova's built-in
+message while preserving administrator-authored surface copy.
 
 ## Tool Permissions
 

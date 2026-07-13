@@ -182,11 +182,13 @@ export class Bridge {
         message: string,
         accessRequestToken?: string,
         accessRequestExpiresIn?: number,
+        messageIsCustom?: boolean,
     ): void {
         this.send({
             type: "UNAVAILABLE",
             email,
             message,
+            messageIsCustom,
             accessRequestToken,
             accessRequestExpiresIn,
         });

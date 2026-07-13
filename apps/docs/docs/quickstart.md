@@ -128,10 +128,15 @@ Pass both successful outcomes through unchanged:
   "unavailable": true,
   "email": "person@example.com",
   "message": "We could not find an account for person@example.com.",
+  "message_is_custom": false,
   "access_request_token": "<purpose-scoped capability>",
   "access_request_expires_in": 3600
 }
 ```
+
+Nova sets `message_is_custom` to `false` for its built-in message so the iframe
+can translate it into the active UI language. Administrator-authored messages are
+marked `true` and displayed verbatim.
 
 The unavailable response is not an error. Pass the complete response through
 unchanged so the iframe can render the no-access state and offer the administrator

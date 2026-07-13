@@ -152,6 +152,7 @@ test("an explicit unavailable body survives a proxy-rewritten non-2xx status", a
                 unavailable: true,
                 email: "missing@example.com",
                 message: "No account",
+                message_is_custom: false,
                 access_request_token: "request-capability",
                 access_request_expires_in: 3600,
             }),
@@ -163,6 +164,7 @@ test("an explicit unavailable body survives a proxy-rewritten non-2xx status", a
             kind: "unavailable",
             email: "missing@example.com",
             message: "No account",
+            messageIsCustom: false,
             accessRequestToken: "request-capability",
             accessRequestExpiresIn: 3600,
         });

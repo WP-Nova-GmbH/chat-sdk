@@ -360,6 +360,8 @@ export interface UnavailableFrame extends FrameBase {
     email: string;
     /** Message rendered from the surface's unavailableUserMessageTemplate. */
     message: string;
+    /** Whether message is administrator-authored rather than Nova's default. */
+    messageIsCustom?: boolean;
     /** Purpose-scoped access-request capability; optional for older Nova backends. */
     accessRequestToken?: string;
     /** Capability lifetime in seconds. */
@@ -528,6 +530,8 @@ export interface UnavailableUserResponse {
     email: string;
     /** Message rendered from the surface's unavailableUserMessageTemplate. */
     message: string;
+    /** Whether message came from an administrator-authored surface template. */
+    message_is_custom?: boolean;
     /** Purpose-scoped access-request capability passed through from Nova. */
     access_request_token?: string;
     /** Capability lifetime in seconds. */
@@ -553,6 +557,7 @@ export type TokenResult =
           kind: "unavailable";
           email: string;
           message: string;
+          messageIsCustom?: boolean;
           accessRequestToken?: string;
           accessRequestExpiresIn?: number;
       }

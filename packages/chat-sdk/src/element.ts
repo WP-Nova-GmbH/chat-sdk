@@ -460,6 +460,7 @@ export class WpNovaChatElement extends HTMLElement {
                 auth.message,
                 auth.accessRequestToken,
                 auth.accessRequestExpiresIn,
+                auth.messageIsCustom,
             );
         } else {
             this.bridge.sendAuthError(auth.message);

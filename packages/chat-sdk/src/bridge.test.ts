@@ -50,7 +50,7 @@ test("UNAVAILABLE preserves access-request capability fields", () => {
     );
 
     bridge.setIframeWindow(iframeWindow);
-    bridge.sendUnavailable("missing@example.com", "No account", "capability", 3600);
+    bridge.sendUnavailable("missing@example.com", "No account", "capability", 3600, false);
 
     assert.deepEqual(posted, [
         {
@@ -59,6 +59,7 @@ test("UNAVAILABLE preserves access-request capability fields", () => {
             type: "UNAVAILABLE",
             email: "missing@example.com",
             message: "No account",
+            messageIsCustom: false,
             accessRequestToken: "capability",
             accessRequestExpiresIn: 3600,
         },
