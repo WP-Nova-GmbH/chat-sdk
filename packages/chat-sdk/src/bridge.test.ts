@@ -32,6 +32,39 @@ function installWindow(onListener: (cb: (event: MessageEvent) => void) => void):
 
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
+test("UNAVAILABLE preserves access-request capability fields", () => {
+    const posted: SdkFrame[] = [];
+    const iframeWindow = {
+        postMessage(frame: SdkFrame) {
+            posted.push(frame);
+        },
+    } as unknown as Window;
+    const bridge = new Bridge(
+        { iframeOrigin: "https://chat.example", protocolVersion: 2 } as ResolvedConfig,
+        {
+            onSnapshotRequest: () => ({ url: "https://host.example" }),
+            onClientToolRequest: async () => ({}),
+            onAuthExpired: () => undefined,
+            onReady: () => undefined,
+        },
+    );
+
+    bridge.setIframeWindow(iframeWindow);
+    bridge.sendUnavailable("missing@example.com", "No account", "capability", 3600);
+
+    assert.deepEqual(posted, [
+        {
+            source: SDK_SOURCE,
+            protocolVersion: 2,
+            type: "UNAVAILABLE",
+            email: "missing@example.com",
+            message: "No account",
+            accessRequestToken: "capability",
+            accessRequestExpiresIn: 3600,
+        },
+    ]);
+});
+
 test("client tool errors include a best-effort recovery snapshot", async () => {
     let listener: ((event: MessageEvent) => void) | undefined;
     const posted: Array<{ frame: SdkFrame; origin: string }> = [];

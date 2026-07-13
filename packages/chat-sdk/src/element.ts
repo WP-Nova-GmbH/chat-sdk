@@ -208,7 +208,9 @@ export class WpNovaChatElement extends HTMLElement {
         const shadow = this.shadowRoot ?? this.attachShadow({ mode: "open" });
         // Validate before interpolating into the shadow <style> so a host-supplied
         // value cannot inject arbitrary CSS into the shadow root.
-        const accent = isHexColor(config.triggerColor) ? config.triggerColor.trim() : DEFAULT_ACCENT;
+        const accent = isHexColor(config.triggerColor)
+            ? config.triggerColor.trim()
+            : DEFAULT_ACCENT;
         const iconColor = resolveLauncherIconColor(config.triggerIconColor) ?? "#ffffff";
         const title = config.title;
         this.syncLauncherThemeVisibility();
@@ -453,7 +455,12 @@ export class WpNovaChatElement extends HTMLElement {
         if (auth.kind === "granted") {
             this.bridge.sendAuthToken(auth.token, auth.displaySettings ?? null);
         } else if (auth.kind === "unavailable") {
-            this.bridge.sendUnavailable(auth.email, auth.message);
+            this.bridge.sendUnavailable(
+                auth.email,
+                auth.message,
+                auth.accessRequestToken,
+                auth.accessRequestExpiresIn,
+            );
         } else {
             this.bridge.sendAuthError(auth.message);
         }

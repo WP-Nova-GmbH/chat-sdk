@@ -177,8 +177,19 @@ export class Bridge {
     }
 
     /** Tell the iframe the asserted email is unavailable (no token issued, AC4). */
-    sendUnavailable(email: string, message: string): void {
-        this.send({ type: "UNAVAILABLE", email, message });
+    sendUnavailable(
+        email: string,
+        message: string,
+        accessRequestToken?: string,
+        accessRequestExpiresIn?: number,
+    ): void {
+        this.send({
+            type: "UNAVAILABLE",
+            email,
+            message,
+            accessRequestToken,
+            accessRequestExpiresIn,
+        });
     }
 
     /** Tell the iframe token acquisition failed before a session token was issued. */

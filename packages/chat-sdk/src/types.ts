@@ -360,6 +360,10 @@ export interface UnavailableFrame extends FrameBase {
     email: string;
     /** Message rendered from the surface's unavailableUserMessageTemplate. */
     message: string;
+    /** Purpose-scoped access-request capability; optional for older Nova backends. */
+    accessRequestToken?: string;
+    /** Capability lifetime in seconds. */
+    accessRequestExpiresIn?: number;
 }
 
 /** Tell the iframe token acquisition failed for transport or malformed-response reasons. */
@@ -524,6 +528,10 @@ export interface UnavailableUserResponse {
     email: string;
     /** Message rendered from the surface's unavailableUserMessageTemplate. */
     message: string;
+    /** Purpose-scoped access-request capability passed through from Nova. */
+    access_request_token?: string;
+    /** Capability lifetime in seconds. */
+    access_request_expires_in?: number;
     access_token?: undefined;
 }
 
@@ -541,7 +549,13 @@ export type TokenResult =
           /** True when the surface is in development origin mode (badge the launcher). */
           developmentMode?: boolean;
       }
-    | { kind: "unavailable"; email: string; message: string }
+    | {
+          kind: "unavailable";
+          email: string;
+          message: string;
+          accessRequestToken?: string;
+          accessRequestExpiresIn?: number;
+      }
     | { kind: "error"; message: string };
 
 // ---------------------------------------------------------------------------
