@@ -127,11 +127,17 @@ Pass both successful outcomes through unchanged:
 {
   "unavailable": true,
   "email": "person@example.com",
-  "message": "We could not find an account for person@example.com."
+  "message": "We could not find an account for person@example.com.",
+  "access_request_token": "<purpose-scoped capability>",
+  "access_request_expires_in": 3600
 }
 ```
 
-The unavailable response is not an error. It is how Nova tells the iframe to render a no-access state without creating a thread. HTTP 4xx/5xx responses and network failures are transport errors; the SDK reports them and retries with bounded backoff.
+The unavailable response is not an error. Pass the complete response through
+unchanged so the iframe can render the no-access state and offer the administrator
+notification action without creating a thread. An explicit unavailable body remains
+unavailable if a proxy changes only its HTTP status; other HTTP 4xx/5xx responses
+and network failures are transport errors.
 
 ## Step 3: Install the Browser SDK
 
