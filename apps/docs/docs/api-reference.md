@@ -143,11 +143,22 @@ export interface UnavailableUserResponse {
   unavailable: true;
   email: string;
   message: string;
+  message_is_custom?: boolean;
+  access_request_token?: string;
+  access_request_expires_in?: number;
   access_token?: undefined;
 }
 ```
 
-Non-2xx responses and malformed bodies are treated as token transport errors. `{ unavailable: true }` is a valid terminal state, not a transport error.
+`message_is_custom: false` identifies Nova's built-in message, which the iframe
+localizes. A value of `true` identifies administrator-authored copy that is shown
+verbatim.
+
+Return Nova's complete unresolved response without rewriting its status or fields.
+The optional capability powers the administrator access-request action and is not
+a chat credential. An explicitly discriminated `{ unavailable: true }` body is
+recognized even if an intermediary rewrites the status; other non-2xx and malformed
+bodies are token transport errors.
 
 ## Page Context Types
 

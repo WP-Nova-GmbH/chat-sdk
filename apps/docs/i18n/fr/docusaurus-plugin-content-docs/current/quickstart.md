@@ -81,3 +81,21 @@ app.post("/api/nova-token", async (req, res) => {
   res.send(await response.text());
 });
 ```
+
+Si l’adresse e-mail ne correspond à aucun utilisateur Nova actif, la réponse ne
+contient aucun token de chat :
+
+```json
+{
+  "unavailable": true,
+  "email": "person@example.com",
+  "message": "Aucun compte Nova n’a été trouvé.",
+  "message_is_custom": false,
+  "access_request_token": "<autorisation limitée à cet usage>",
+  "access_request_expires_in": 3600
+}
+```
+
+Transmettez le statut et le corps sans modification. `message_is_custom: false`
+permet à l’iframe d’afficher le message intégré de Nova dans la langue active de
+l’interface ; le texte personnalisé d’un administrateur est marqué `true`.

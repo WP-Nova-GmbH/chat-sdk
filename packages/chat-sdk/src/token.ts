@@ -89,6 +89,21 @@ export async function fetchToken(config: ResolvedConfig): Promise<TokenResult> {
                 }),
             });
 
+            // Parse an explicitly-discriminated unavailable body before status
+            // classification. Some customer proxies preserve Nova's response body
+            // but rewrite the 200 to a 4xx; that must remain the legitimate
+            // unavailable-user outcome. Malformed bodies still follow the normal
+            // transport-error path below.
+            let body: TokenEndpointResponse | undefined;
+            try {
+                body = (await response.json()) as TokenEndpointResponse;
+            } catch {
+                body = undefined;
+            }
+            if (body && body.unavailable === true) {
+                return interpret(body);
+            }
+
             if (!response.ok) {
                 // A 4xx is unlikely to recover on retry; a 5xx might. Either way
                 // it's a transport error, distinct from the unavailable state.
@@ -97,7 +112,10 @@ export async function fetchToken(config: ResolvedConfig): Promise<TokenResult> {
                 continue;
             }
 
-            const body = (await response.json()) as TokenEndpointResponse;
+            if (!body) {
+                lastError = "token endpoint returned malformed JSON";
+                break;
+            }
             const parsed = interpret(body);
             // An unavailable user is a terminal, non-retryable outcome.
             return parsed;
@@ -147,8 +165,21 @@ function interpret(body: TokenEndpointResponse): TokenResult {
     if (body && body.unavailable === true) {
         return {
             kind: "unavailable",
-            email: body.email,
-            message: body.message,
+            email: typeof body.email === "string" ? body.email : "",
+            message: typeof body.message === "string" ? body.message : "",
+            messageIsCustom:
+                typeof body.message_is_custom === "boolean"
+                    ? body.message_is_custom
+                    : undefined,
+            accessRequestToken:
+                typeof body.access_request_token === "string"
+                    ? body.access_request_token
+                    : undefined,
+            accessRequestExpiresIn:
+                typeof body.access_request_expires_in === "number" &&
+                body.access_request_expires_in > 0
+                    ? body.access_request_expires_in
+                    : undefined,
         };
     }
     if (body && typeof body.access_token === "string" && body.access_token) {

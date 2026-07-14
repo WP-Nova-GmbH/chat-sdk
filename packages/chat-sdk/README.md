@@ -139,14 +139,27 @@ your session cookie, via `credentials: "include"`). Your endpoint must pass thro
 // Resolved user → short-lived token
 { "access_token": "<embedded-session token>", "expires_in": 900 }
 
-// Unmatched email → unavailable state (no token; the iframe renders the message)
-{ "unavailable": true, "email": "user@acme.com", "message": "No Nova account for this email." }
+// Unmatched email → unavailable state and access-request capability (no chat token)
+{
+  "unavailable": true,
+  "email": "user@acme.com",
+  "message": "No Nova account for this email.",
+  "message_is_custom": false,
+  "access_request_token": "<purpose-scoped capability>",
+  "access_request_expires_in": 3600
+}
 ```
 
-Passing the unavailable result through is required so the unavailable-user state
-works without a token. A non-2xx / network failure is treated as a **transport
-error** (distinct from the unavailable state) with bounded retry, backoff, and a
-cooldown so a persistently-failing endpoint can't tight-loop.
+Nova sets `message_is_custom` to `false` for its built-in unavailable message so
+the iframe can render that copy in the active UI language. A value of `true`
+preserves administrator-authored surface copy verbatim.
+
+Pass the full Nova response body and status through without rewriting or dropping
+fields. The capability enables the iframe's administrator-notification action and
+cannot authenticate chat APIs. For compatibility with proxies that preserve the
+body but rewrite the status, an explicitly discriminated `{ unavailable: true }`
+body still renders the unavailable state. Other non-2xx, network, and malformed
+responses remain transport errors with bounded retry, backoff, and cooldown.
 
 ## Auth refresh (AUTH_EXPIRED re-mint)
 

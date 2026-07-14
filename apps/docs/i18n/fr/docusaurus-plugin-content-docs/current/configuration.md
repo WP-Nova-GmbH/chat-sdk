@@ -33,6 +33,25 @@ init({
 });
 ```
 
+### Réponse pour un utilisateur indisponible
+
+L’endpoint de token doit également transmettre la réponse complète pour les
+utilisateurs non associés :
+
+```json
+{
+  "unavailable": true,
+  "email": "person@example.com",
+  "message": "Aucun compte Nova n’a été trouvé.",
+  "message_is_custom": false,
+  "access_request_token": "<autorisation limitée à cet usage>",
+  "access_request_expires_in": 3600
+}
+```
+
+Nova utilise `message_is_custom: false` pour son message intégré traduisible et
+`true` pour le texte de surface rédigé par un administrateur.
+
 ### Reinitialisation
 
 Le SDK est compatible singleton. Relancer `init` pendant le HMR ou un remount au niveau d’une route réutilise le Custom Element existant. Si `publicSurfaceId`, `baseUrl` ou `protocolVersion` change, l’élément reconstruit l’iframe et le bridge, puis récupère un nouveau token avant de poster l’authentification.

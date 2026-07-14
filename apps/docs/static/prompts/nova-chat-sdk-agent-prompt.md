@@ -7,7 +7,7 @@ You are a coding agent integrating the Nova Chat SDK into the website or app in 
 - Never put the Nova integration secret in browser code, public env vars, static HTML, logs, or tests.
 - Never call Nova `POST /embed/session` directly from the browser.
 - Read the user's email from the authenticated server-side session. Do not trust an email or user id supplied by the browser.
-- Pass through both successful Nova token outcomes: `{ access_token, expires_in }` and `{ unavailable: true, email, message }`.
+- Pass through both successful Nova token outcomes without selecting fields: `{ access_token, expires_in, … }` and `{ unavailable: true, email, message, message_is_custom, access_request_token, access_request_expires_in }`.
 - Browser tool registration does not grant the agent new tools: the surface must allow SDK-defined page tools (an allow-list gate on the Nova Embedded Chat Surface). The tool name, description, schema, mutating flag, and handler live in your browser integration code, not in Nova admin.
 - Do not build custom confirmation UI for mutating tools. The iframe confirms mutating tools using the server-declared `mutating` flag.
 
@@ -117,10 +117,17 @@ app.post("/api/nova-token", async (req, res) => {
 ```
 
 ```json
-{ "unavailable": true, "email": "user@example.com", "message": "No Nova account found." }
+{
+  "unavailable": true,
+  "email": "user@example.com",
+  "message": "No Nova account found.",
+  "message_is_custom": false,
+  "access_request_token": "<purpose-scoped capability>",
+  "access_request_expires_in": 3600
+}
 ```
 
-The unavailable response is a valid success state. Do not turn it into `401`, `403`, or `404`.
+The unavailable response is a valid success state. Do not turn it into `401`, `403`, or `404`, and do not drop additive fields. `message_is_custom: false` allows the iframe to localize Nova's built-in message; custom administrator copy is marked `true` and preserved verbatim.
 
 ## Frontend Mount
 
