@@ -124,6 +124,16 @@ function readExampleEnv({ mode }: ConfigEnv): ExampleEnv {
 function novaTokenProxyPlugin(exampleName: string, env: ExampleEnv): Plugin {
     return {
         name: "nova-token-dev-proxy",
+        /** Reports a missing example user email without preventing Vite from starting. */
+        configResolved(config) {
+            if (!env.testEmail) {
+                config.logger.error(
+                    "[nova example] NOVA_TEST_EMAIL is missing. Set it in release-examples/plain-html/.env " +
+                        "(see release-examples/plain-html/.env.example); it supplies the simulated " +
+                        "authenticated user and token minting will fail until configured.",
+                );
+            }
+        },
         configureServer(server) {
             server.middlewares.use("/api/nova-token", async (request, response) => {
                 if (request.method !== "POST") {
