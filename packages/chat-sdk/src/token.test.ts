@@ -133,6 +133,109 @@ test("a production surface grant does not flag development mode", async () => {
     }
 });
 
+test("an explicit unavailable body survives a proxy-rewritten non-2xx status", async () => {
+    __resetTokenCooldownForTests();
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { origin: "https://app.example" },
+    });
+    Object.defineProperty(globalThis, "AbortSignal", {
+        configurable: true,
+        value: { timeout: () => new AbortController().signal },
+    });
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => ({
+            ok: false,
+            status: 403,
+            json: async () => ({
+                unavailable: true,
+                email: "missing@example.com",
+                message: "No account",
+                message_is_custom: false,
+                access_request_token: "request-capability",
+                access_request_expires_in: 3600,
+            }),
+        }),
+    });
+
+    try {
+        assert.deepEqual(await fetchToken(CONFIG), {
+            kind: "unavailable",
+            email: "missing@example.com",
+            message: "No account",
+            messageIsCustom: false,
+            accessRequestToken: "request-capability",
+            accessRequestExpiresIn: 3600,
+        });
+    } finally {
+        __resetTokenCooldownForTests();
+        restoreGlobals();
+    }
+});
+
+test("a non-2xx response without the unavailable discriminator remains an auth error", async () => {
+    __resetTokenCooldownForTests();
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { origin: "https://app.example" },
+    });
+    Object.defineProperty(globalThis, "AbortSignal", {
+        configurable: true,
+        value: { timeout: () => new AbortController().signal },
+    });
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => ({
+            ok: false,
+            status: 403,
+            json: async () => ({ message: "forbidden" }),
+        }),
+    });
+
+    try {
+        assert.deepEqual(await fetchToken(CONFIG), {
+            kind: "error",
+            message: "token endpoint returned 403",
+        });
+    } finally {
+        __resetTokenCooldownForTests();
+        restoreGlobals();
+    }
+});
+
+test("malformed successful JSON remains a typed auth error", async () => {
+    __resetTokenCooldownForTests();
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { origin: "https://app.example" },
+    });
+    Object.defineProperty(globalThis, "AbortSignal", {
+        configurable: true,
+        value: { timeout: () => new AbortController().signal },
+    });
+    Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: async () => ({
+            ok: true,
+            status: 200,
+            json: async () => {
+                throw new SyntaxError("invalid JSON");
+            },
+        }),
+    });
+
+    try {
+        assert.deepEqual(await fetchToken(CONFIG), {
+            kind: "error",
+            message: "token endpoint returned malformed JSON",
+        });
+    } finally {
+        __resetTokenCooldownForTests();
+        restoreGlobals();
+    }
+});
+
 test("token cooldown is keyed per endpoint and reset by clear()", async () => {
     __resetTokenCooldownForTests();
     const calls: string[] = [];

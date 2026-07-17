@@ -18,6 +18,13 @@ Das SDK ist um eine enge Vertrauensgrenze im Browser herum entworfen.
 
 Dein Backend muss den aktuellen Benutzer über deine eigene Session authentifizieren. Es sollte Nova mit einem serverseitigen Secret aufrufen und entweder die Token-Antwort oder die Antwort für einen nicht verfügbaren Benutzer zurückgeben.
 
+Die Antwort für nicht verfügbare Benutzer kann eine zweckgebundene
+`access_request_token`-Berechtigung enthalten. Sie kann ausschließlich eine
+Zugriffsanfrage erstellen oder deren Status lesen und authentifiziert keine
+Chat-API. Gib auch `message_is_custom` unverändert weiter: `false` erlaubt dem
+iframe, Novas integrierten Text zu lokalisieren; `true` bewahrt den von
+Administratoren verfassten Surface-Text.
+
 Vertraue für die Token-Ausstellung keiner E-Mail-Adresse und keiner Benutzer-ID, die vom Browser geliefert wird.
 
 ### CSP und Framing

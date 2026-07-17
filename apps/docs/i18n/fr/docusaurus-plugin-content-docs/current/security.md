@@ -18,6 +18,13 @@ Le SDK est conçu autour d’une limite de confiance navigateur étroite.
 
 Votre backend doit authentifier l’utilisateur courant avec votre propre session. Il doit appeler Nova avec un secret côté serveur et renvoyer soit la réponse de token, soit la réponse utilisateur indisponible.
 
+La réponse utilisateur indisponible peut contenir une autorisation
+`access_request_token` limitée à la création d’une demande d’accès et à la lecture
+de son statut ; elle n’authentifie aucune API de chat. Transmettez également
+`message_is_custom` sans modification : `false` permet à l’iframe de traduire le
+texte intégré de Nova, tandis que `true` conserve le texte de surface rédigé par
+un administrateur.
+
 Ne faites pas confiance à une adresse e-mail ou à un identifiant utilisateur fourni par le navigateur pour émettre un token.
 
 ### CSP et framing

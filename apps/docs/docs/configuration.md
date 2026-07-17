@@ -66,11 +66,24 @@ Your backend should call Nova with the authenticated user's email and pass throu
 { "access_token": "<embedded-session token>", "expires_in": 900 }
 ```
 
-or:
+or the complete unresolved response:
 
 ```json
-{ "unavailable": true, "email": "person@example.com", "message": "No Nova account found." }
+{
+  "unavailable": true,
+  "email": "person@example.com",
+  "message": "No Nova account found.",
+  "message_is_custom": false,
+  "access_request_token": "<purpose-scoped capability>",
+  "access_request_expires_in": 3600
+}
 ```
+
+Nova uses `message_is_custom: false` for the localizable built-in message and
+`true` for administrator-authored surface copy that must be preserved verbatim.
+
+Do not rewrite the upstream status or select only known fields: forward the full
+Nova response so additive unresolved-user capabilities reach the iframe.
 
 ## Re-initialization
 
