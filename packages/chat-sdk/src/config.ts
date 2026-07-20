@@ -1,7 +1,7 @@
 // Config normalization + protocol tunables for the SDK.
 
 import { missingRequiredConfigFields } from "./diagnostics.js";
-import { PROTOCOL_VERSION, type SdkConfig } from "./types.js";
+import { PROTOCOL_VERSION, type SdkConfig, type SiteRoute } from "./types.js";
 
 /** Default base URL of the Nova-hosted iframe app. */
 export const DEFAULT_BASE_URL = "https://chat.wp-nova.ai";
@@ -56,7 +56,46 @@ export interface ResolvedConfig {
     safeValueSelectors: string[];
     /** Whether the embedded iframe may expose voice mode and request microphone access. */
     voiceModeEnabled: boolean;
+    /** Validated integrator-declared site routes attached to every page capture. */
+    siteRoutes: SiteRoute[];
     protocolVersion: number;
+}
+
+/**
+ * Server-side bound on declared routes (g8way drops the excess anyway); warn at
+ * resolve time so an oversized manifest is caught in development, not silently
+ * truncated in production.
+ */
+const MAX_SITE_ROUTES = 100;
+
+/**
+ * Keep only well-formed routes: a same-origin path (leading "/" but not "//",
+ * which the browser would treat as protocol-relative and thus cross-origin)
+ * plus a non-empty description, deduped by path. Malformed entries are dropped
+ * with a console warning instead of failing init.
+ */
+function resolveSiteRoutes(routes: SdkConfig["routes"]): SiteRoute[] {
+    if (!Array.isArray(routes)) return [];
+
+    const seenPaths = new Set<string>();
+    const resolved: SiteRoute[] = [];
+    for (const route of routes) {
+        const path = typeof route?.path === "string" ? route.path.trim() : "";
+        const description = typeof route?.description === "string" ? route.description.trim() : "";
+        if (!path.startsWith("/") || path.startsWith("//") || seenPaths.has(path)) {
+            console.warn(`[wp-nova] ignoring invalid or duplicate route ${JSON.stringify(route)}`);
+            continue;
+        }
+        seenPaths.add(path);
+        resolved.push({ path, description });
+    }
+    if (resolved.length > MAX_SITE_ROUTES) {
+        console.warn(
+            `[wp-nova] config.routes declares ${resolved.length} routes; only the first ${MAX_SITE_ROUTES} are used`,
+        );
+        return resolved.slice(0, MAX_SITE_ROUTES);
+    }
+    return resolved;
 }
 
 /**
@@ -102,6 +141,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
             ? config.safeValueSelectors.filter((s) => typeof s === "string" && s.trim())
             : [],
         voiceModeEnabled,
+        siteRoutes: resolveSiteRoutes(config.routes),
         protocolVersion: config.protocolVersion ?? PROTOCOL_VERSION,
     };
 }

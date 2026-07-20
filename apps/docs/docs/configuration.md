@@ -30,6 +30,7 @@ init({
 | `triggerIconColor` | No | `light`, `dark`, or a custom hex color for the launcher icon. |
 | `safeValueSelectors` | No | CSS selectors that opt field values into page snapshot capture. Field values still pass sensitivity checks. |
 | `voiceMode` | No | Enables the embedded voice button and delegates microphone access to the Nova iframe. Defaults to `false`. |
+| `routes` | No | Your site's navigable routes (`{ path, description }`), so the agent can navigate straight to a known page instead of hopping through visible links. See [Site routes](#site-routes). |
 | `protocolVersion` | No | Bridge protocol override for compatibility testing. Do not set in normal integrations. |
 
 ## Defaults
@@ -46,6 +47,29 @@ init({
 ```
 
 If `accent` or `triggerColor` is not supplied, the SDK can wait for trusted surface theme data before showing the launcher. Supplying one of those colors gives a branded first paint before authentication completes.
+
+## Site Routes
+
+Without a route list, the agent only knows the links visible on the current page: navigating to any other page means guessing URLs or hopping page by page, and every hop is a full agent round-trip. Declaring `routes` lets a "take me to X" request resolve to a single direct navigation.
+
+```ts
+init({
+  publicSurfaceId: "surf_...",
+  tokenEndpoint: "/api/nova-token",
+  routes: [
+    { path: "/orders", description: "All orders with status, search, and filters" },
+    { path: "/orders/:orderId", description: "Order detail; open an order from /orders" },
+    { path: "/settings/profile", description: "The signed-in user's profile and preferences" },
+  ],
+});
+```
+
+Rules and behavior:
+
+- Only same-origin paths with a leading `/` are accepted; anything else is dropped with a console warning. At most 100 routes are used.
+- For parameterized routes, keep the `:param` placeholder and say in the description where real ids come from. The agent is instructed never to invent placeholder values — it opens the listed index page instead.
+- Declare only routes the current user can actually reach. Filter by role/permissions before calling `init`, and re-init when access changes.
+- Routes are carried with every page capture and re-validated server-side; they are used when the surface has page reading enabled.
 
 ## Token Endpoint Request
 

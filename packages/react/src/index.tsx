@@ -161,6 +161,7 @@ export function NovaChatProvider({
         config.triggerIconColor,
         config.safeValueSelectors,
         config.voiceMode,
+        config.routes,
         config.protocolVersion,
     ]);
     // Intentionally re-derive only on the primitive configKey + mount identity,

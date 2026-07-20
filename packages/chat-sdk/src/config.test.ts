@@ -51,3 +51,53 @@ test("voice mode opt-in adds the iframe URL capability signal", () => {
     assert.equal(config.voiceModeEnabled, true);
     assert.equal(new URL(config.iframeSrc).searchParams.get("voice"), "1");
 });
+
+test("site routes default to empty when not configured", () => {
+    assert.deepEqual(resolveConfig(REQUIRED_CONFIG).siteRoutes, []);
+});
+
+test("site routes keep only same-origin relative paths, deduped and trimmed", () => {
+    const warnings: unknown[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => void warnings.push(args);
+    try {
+        const config = resolveConfig({
+            ...REQUIRED_CONFIG,
+            routes: [
+                { path: "/orders", description: "All orders" },
+                { path: "  /customers/:customerId  ", description: "  Customer detail  " },
+                { path: "/orders", description: "duplicate" },
+                { path: "//evil.example/phish", description: "protocol-relative" },
+                { path: "https://evil.example", description: "absolute" },
+                { path: "no-slash", description: "relative" },
+            ],
+        });
+
+        assert.deepEqual(config.siteRoutes, [
+            { path: "/orders", description: "All orders" },
+            { path: "/customers/:customerId", description: "Customer detail" },
+        ]);
+        assert.equal(warnings.length, 4);
+    } finally {
+        console.warn = originalWarn;
+    }
+});
+
+test("site routes are capped at the server-side bound", () => {
+    const originalWarn = console.warn;
+    console.warn = () => undefined;
+    try {
+        const config = resolveConfig({
+            ...REQUIRED_CONFIG,
+            routes: Array.from({ length: 150 }, (_, index) => ({
+                path: `/page-${index}`,
+                description: `Page ${index}`,
+            })),
+        });
+
+        assert.equal(config.siteRoutes.length, 100);
+        assert.equal(config.siteRoutes[99]?.path, "/page-99");
+    } finally {
+        console.warn = originalWarn;
+    }
+});

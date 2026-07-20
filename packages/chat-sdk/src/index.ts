@@ -28,6 +28,7 @@ export type {
     ClientToolResult,
     PageContext,
     SdkConfig,
+    SiteRoute,
     SurfaceDisplaySettings,
     ToolDefinition,
     ToolHandler,

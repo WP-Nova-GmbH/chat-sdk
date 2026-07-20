@@ -81,6 +81,28 @@ export interface PageContext {
     // --- WS4 Visible Page Snapshot (forward-declared; populated later) -------
     /** The structured Visible Page Snapshot (WS4). */
     snapshot?: VisiblePageSnapshot;
+    /**
+     * The integrator-declared site routes from `SdkConfig.routes`, carried with
+     * every capture so the agent can navigate directly to known pages instead
+     * of hopping through visible links.
+     */
+    siteRoutes?: SiteRoute[];
+}
+
+/**
+ * An integrator-declared route of the host site: a same-origin path (optionally
+ * with `:param` placeholders) plus a short description of what lives there.
+ * Declared once via `SdkConfig.routes`; the backend treats it as untrusted data
+ * and re-validates paths server-side.
+ */
+export interface SiteRoute {
+    /** Same-origin path starting with "/"; may contain `:param` placeholders. */
+    path: string;
+    /**
+     * Short description of the page — what it shows and, for `:param` routes,
+     * where valid ids come from (e.g. "customer detail; open from /customers").
+     */
+    description: string;
 }
 
 /**
@@ -612,6 +634,15 @@ export interface SdkConfig {
      * eligibility unless the host opts in.
      */
     voiceMode?: boolean;
+    /**
+     * Declares the host site's navigable routes so the agent can jump straight
+     * to a known page ("take me to settings") in a single navigate call instead
+     * of hopping through whatever links are currently visible. Only same-origin
+     * paths (leading "/") are accepted; entries are carried with every page
+     * capture and re-validated server-side. Declare only routes the current
+     * user can actually reach — filter by role/permissions before init.
+     */
+    routes?: SiteRoute[];
     /** Protocol version the SDK speaks (defaults to PROTOCOL_VERSION). */
     protocolVersion?: number;
 }

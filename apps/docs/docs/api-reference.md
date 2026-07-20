@@ -45,7 +45,13 @@ export interface SdkConfig {
   triggerIconColor?: "light" | "dark" | string;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
+  routes?: SiteRoute[];
   protocolVersion?: number;
+}
+
+export interface SiteRoute {
+  path: string; // same-origin path, may contain :param placeholders
+  description: string;
 }
 ```
 

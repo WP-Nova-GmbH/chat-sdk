@@ -20,7 +20,13 @@ import { executeNavigation, isNavigationAction } from "./navigation.js";
 import { capturePageContext, clearHandleStamps } from "./snapshot.js";
 import { fetchToken } from "./token.js";
 import { ToolRegistry } from "./tools.js";
-import type { ClientToolCall, ClientToolResult, SdkConfig, TokenResult } from "./types.js";
+import type {
+    ClientToolCall,
+    ClientToolResult,
+    PageContext,
+    SdkConfig,
+    TokenResult,
+} from "./types.js";
 
 /** Tag name of the custom element. */
 export const ELEMENT_TAG = "wp-nova-chat";
@@ -328,7 +334,8 @@ export class WpNovaChatElement extends HTMLElement {
     private wireBridge(config: ResolvedConfig): void {
         const bridge = new Bridge(config, {
             // Capture is synchronous; a throw is mapped to a capture_error frame.
-            onSnapshotRequest: () => capturePageContext(this.resolved?.safeValueSelectors ?? []),
+            onSnapshotRequest: () =>
+                this.withSiteRoutes(capturePageContext(this.resolved?.safeValueSelectors ?? [])),
             onClientToolRequest: (call, signal) => this.runClientTool(call, signal),
             onAuthExpired: () => void this.acquireToken(),
             // The iframe-owned header's ⌄ control closes the SDK-owned panel.
@@ -432,13 +439,28 @@ export class WpNovaChatElement extends HTMLElement {
         this.syncLauncherThemeVisibility();
     }
 
+    /**
+     * Attach the integrator-declared site routes to a captured page context.
+     * Applied at the element (the one owner of the resolved config) so every
+     * capture path — snapshot requests and post-tool snapshots — carries them.
+     */
+    private withSiteRoutes(context: PageContext): PageContext {
+        const siteRoutes = this.resolved?.siteRoutes;
+        return siteRoutes?.length ? { ...context, siteRoutes } : context;
+    }
+
     /** Dispatch a client tool to the navigation executor or the integrator registry. */
-    private runClientTool(call: ClientToolCall, signal?: AbortSignal): Promise<ClientToolResult> {
+    private async runClientTool(
+        call: ClientToolCall,
+        signal?: AbortSignal,
+    ): Promise<ClientToolResult> {
         const safeSelectors = this.resolved?.safeValueSelectors ?? [];
-        if (isNavigationAction(call.name)) {
-            return executeNavigation(call, safeSelectors, signal);
-        }
-        return this.registry.run(call, safeSelectors, signal);
+        const result = isNavigationAction(call.name)
+            ? await executeNavigation(call, safeSelectors, signal)
+            : await this.registry.run(call, safeSelectors, signal);
+        return result.snapshot
+            ? { ...result, snapshot: this.withSiteRoutes(result.snapshot) }
+            : result;
     }
 
     /**
