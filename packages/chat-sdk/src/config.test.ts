@@ -7,6 +7,24 @@ const REQUIRED_CONFIG = {
     tokenEndpoint: "/nova-token",
 };
 
+test("settle timings default and clamp host overrides", () => {
+    assert.deepEqual(resolveConfig(REQUIRED_CONFIG).settle, { quietMs: 200, maxWaitMs: 1600 });
+    assert.deepEqual(
+        resolveConfig({ ...REQUIRED_CONFIG, settle: { quietMs: 5000, maxWaitMs: 10_000 } }).settle,
+        { quietMs: 1000, maxWaitMs: 5000 },
+    );
+    // maxWaitMs can never undercut the quiet window.
+    assert.deepEqual(
+        resolveConfig({ ...REQUIRED_CONFIG, settle: { quietMs: 500, maxWaitMs: 100 } }).settle,
+        { quietMs: 500, maxWaitMs: 500 },
+    );
+    assert.deepEqual(
+        resolveConfig({ ...REQUIRED_CONFIG, settle: { quietMs: Number.NaN, maxWaitMs: -5 } })
+            .settle,
+        { quietMs: 200, maxWaitMs: 1600 },
+    );
+});
+
 test("config without theme input keeps launcher pending for first paint", () => {
     const config = resolveConfig(REQUIRED_CONFIG);
 

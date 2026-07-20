@@ -114,6 +114,50 @@ test("registered tool execution returns handler result and a fresh snapshot", as
     assert.equal(result.snapshot?.title, "Host App");
 });
 
+test("a cap-hit settle flags the host-tool snapshot as unsettled", async () => {
+    installEmptyDom();
+    // A never-firing observer plus a zero cap: the cap timer is armed before the
+    // quiet timer, so the settle resolves unsettled and the capture is flagged.
+    const observerDescriptor = Object.getOwnPropertyDescriptor(globalThis, "MutationObserver");
+    Object.defineProperty(globalThis, "MutationObserver", {
+        configurable: true,
+        value: class {
+            observe(): void {}
+            disconnect(): void {}
+        },
+    });
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            innerHeight: 800,
+            innerWidth: 1200,
+            getSelection: () => "",
+            addEventListener() {},
+            removeEventListener() {},
+        },
+    });
+    try {
+        const registry = new ToolRegistry();
+        registry.register(validTool());
+
+        const result = await registry.run(
+            { name: "create_ticket", args: { title: "Printer is down" } },
+            [],
+            undefined,
+            { quietMs: 0, maxWaitMs: 0 },
+        );
+
+        assert.deepEqual(result.result, { ok: true, title: "Printer is down" });
+        assert.equal(result.snapshot?.snapshot?.unsettled, true);
+    } finally {
+        if (observerDescriptor) {
+            Object.defineProperty(globalThis, "MutationObserver", observerDescriptor);
+        } else {
+            Reflect.deleteProperty(globalThis, "MutationObserver");
+        }
+    }
+});
+
 test("registerToolHandler is execution-only and does not advertise tools", async () => {
     installEmptyDom();
     const registry = new ToolRegistry();
