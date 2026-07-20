@@ -21,6 +21,7 @@ export {
     reportOperationError,
 } from "./diagnostics.js";
 export { defineElement, ELEMENT_TAG, WpNovaChatElement } from "./element.js";
+export { DEFAULT_SETTLE, SETTLED_EVENT, type SettleOptions } from "./settle.js";
 // Consumer-facing types only. The postMessage wire/frame protocol stays internal
 // to the package (import from "./types.js" inside the SDK) so a wire refactor is
 // not a public SemVer-major and autocomplete is not flooded with ~45 frame types.

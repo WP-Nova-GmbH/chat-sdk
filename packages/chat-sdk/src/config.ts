@@ -1,6 +1,7 @@
 // Config normalization + protocol tunables for the SDK.
 
 import { missingRequiredConfigFields } from "./diagnostics.js";
+import { DEFAULT_SETTLE, type SettleOptions } from "./settle.js";
 import { PROTOCOL_VERSION, type SdkConfig, type SiteRoute } from "./types.js";
 
 /** Default base URL of the Nova-hosted iframe app. */
@@ -58,6 +59,8 @@ export interface ResolvedConfig {
     voiceModeEnabled: boolean;
     /** Validated integrator-declared site routes attached to every page capture. */
     siteRoutes: SiteRoute[];
+    /** Clamped post-action settle tuning for the pre-capture mutation wait. */
+    settle: SettleOptions;
     protocolVersion: number;
 }
 
@@ -96,6 +99,33 @@ function resolveSiteRoutes(routes: SdkConfig["routes"]): SiteRoute[] {
         return resolved.slice(0, MAX_SITE_ROUTES);
     }
     return resolved;
+}
+
+/** Upper bounds on host-supplied settle timings; the defaults sit well below them. */
+const SETTLE_QUIET_MS_MAX = 1000;
+const SETTLE_MAX_WAIT_MS_MAX = 5000;
+
+/**
+ * Clamp host-supplied settle tuning into sane bounds; malformed values fall
+ * back to the defaults with a console warning instead of failing init.
+ */
+function resolveSettle(settle: SdkConfig["settle"]): SettleOptions {
+    const resolveMs = (value: unknown, fallback: number, min: number, max: number): number => {
+        if (value == null) return fallback;
+        if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+            console.warn(`[wp-nova] ignoring invalid settle timing ${JSON.stringify(value)}`);
+            return fallback;
+        }
+        return Math.min(Math.max(value, min), max);
+    };
+    const quietMs = resolveMs(settle?.quietMs, DEFAULT_SETTLE.quietMs, 0, SETTLE_QUIET_MS_MAX);
+    const maxWaitMs = resolveMs(
+        settle?.maxWaitMs,
+        Math.max(DEFAULT_SETTLE.maxWaitMs, quietMs),
+        quietMs,
+        SETTLE_MAX_WAIT_MS_MAX,
+    );
+    return { quietMs, maxWaitMs };
 }
 
 /**
@@ -142,6 +172,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
             : [],
         voiceModeEnabled,
         siteRoutes: resolveSiteRoutes(config.routes),
+        settle: resolveSettle(config.settle),
         protocolVersion: config.protocolVersion ?? PROTOCOL_VERSION,
     };
 }

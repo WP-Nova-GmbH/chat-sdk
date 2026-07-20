@@ -139,6 +139,11 @@ export interface VisiblePageSnapshot {
      * agent that page context is incomplete.
      */
     partial?: boolean;
+    /**
+     * True when the post-action settle wait hit its cap: the page was still
+     * mutating at capture time, so this snapshot may lag the last action.
+     */
+    unsettled?: boolean;
 }
 
 /** A captured visible link. */
@@ -643,6 +648,15 @@ export interface SdkConfig {
      * user can actually reach — filter by role/permissions before init.
      */
     routes?: SiteRoute[];
+    /**
+     * Tuning for the post-action DOM settle before snapshot capture.
+     * `quietMs` is the mutation-free window that counts as settled (default 200,
+     * max 1000); `maxWaitMs` is the hard cap on the wait (default 1600, max
+     * 5000) — hitting it flags the snapshot `unsettled`. Hosts can end the wait
+     * early by dispatching the `wp-nova:settled` window event once the view
+     * triggered by the last action has rendered its data.
+     */
+    settle?: { quietMs?: number; maxWaitMs?: number };
     /** Protocol version the SDK speaks (defaults to PROTOCOL_VERSION). */
     protocolVersion?: number;
 }

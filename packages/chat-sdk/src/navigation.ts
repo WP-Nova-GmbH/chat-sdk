@@ -15,7 +15,8 @@
 //      continuation re-streams with a fresh snapshot and the agent re-targets
 //      rather than wedging on a dangling tool_call.
 
-import { capturePageContext, cssEscape, HANDLE_ATTR, resolveHandleNode } from "./snapshot.js";
+import { captureSettledPageContext, DEFAULT_SETTLE, type SettleOptions } from "./settle.js";
+import { cssEscape, HANDLE_ATTR, resolveHandleNode } from "./snapshot.js";
 import type { ClientToolCall, ClientToolResult } from "./types.js";
 
 /** Built-in navigation action names the SDK can execute itself (no host handler). */
@@ -341,6 +342,7 @@ export async function executeNavigation(
     call: ClientToolCall,
     safeSelectors: string[] = [],
     signal?: AbortSignal,
+    settle: SettleOptions = DEFAULT_SETTLE,
 ): Promise<ClientToolResult> {
     const args = call.args ?? {};
     // The round-trip may already have been aborted (timeout) before this runs;
@@ -428,10 +430,9 @@ export async function executeNavigation(
     }
 
     // Let the DOM settle before re-capturing so the fresh snapshot reflects the
-    // action (a microtask + a frame covers most synchronous SPA re-renders).
-    await nextFrame();
-    await nextFrame();
-    return { result, snapshot: capturePageContext(safeSelectors) };
+    // action — a mutation-quiet window bounded by a hard cap, ended early by the
+    // host's `wp-nova:settled` signal when it dispatches one.
+    return { result, snapshot: await captureSettledPageContext(safeSelectors, settle, signal) };
 }
 
 /** Set a field's value and fire input/change so reactive frameworks update. */
@@ -445,15 +446,4 @@ function applyInputValue(el: HTMLElement, value: string): void {
         el.textContent = value;
         el.dispatchEvent(new Event("input", { bubbles: true }));
     }
-}
-
-/** Resolve after one animation frame (or a short timeout when unavailable). */
-function nextFrame(): Promise<void> {
-    return new Promise((resolve) => {
-        if (typeof requestAnimationFrame === "function") {
-            requestAnimationFrame(() => resolve());
-        } else {
-            setTimeout(resolve, 16);
-        }
-    });
 }

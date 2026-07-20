@@ -14,7 +14,7 @@
 //     tool set changes.
 
 import { isNavigationAction, StaleHandleError } from "./navigation.js";
-import { capturePageContext } from "./snapshot.js";
+import { captureSettledPageContext, DEFAULT_SETTLE, type SettleOptions } from "./settle.js";
 import type {
     ClientToolCall,
     ClientToolResult,
@@ -130,6 +130,7 @@ export class ToolRegistry {
         call: ClientToolCall,
         safeSelectors: string[] = [],
         signal?: AbortSignal,
+        settle: SettleOptions = DEFAULT_SETTLE,
     ): Promise<ClientToolResult> {
         const handler = this.tools.get(call.name)?.handler ?? this.legacyHandlers.get(call.name);
         if (!handler) {
@@ -139,7 +140,12 @@ export class ToolRegistry {
             // Pass the abort signal so a cooperating mutating handler can stop if
             // the bridge already timed the round-trip out.
             const result = await handler(call.args ?? {}, { signal });
-            return { result, snapshot: capturePageContext(safeSelectors) };
+            // Host tools re-render the page too (mutations, toasts, invalidated
+            // queries); wait for quiescence before the post-action capture.
+            return {
+                result,
+                snapshot: await captureSettledPageContext(safeSelectors, settle, signal),
+            };
         } catch (cause) {
             if (cause instanceof StaleHandleError) throw cause;
             throw new HandlerThrewError(call.name, cause);

@@ -17,6 +17,7 @@
 import { Bridge } from "./bridge.js";
 import { DEFAULT_ACCENT, type ResolvedConfig, resolveConfig } from "./config.js";
 import { executeNavigation, isNavigationAction } from "./navigation.js";
+import { DEFAULT_SETTLE } from "./settle.js";
 import { capturePageContext, clearHandleStamps } from "./snapshot.js";
 import { fetchToken } from "./token.js";
 import { ToolRegistry } from "./tools.js";
@@ -455,9 +456,10 @@ export class WpNovaChatElement extends HTMLElement {
         signal?: AbortSignal,
     ): Promise<ClientToolResult> {
         const safeSelectors = this.resolved?.safeValueSelectors ?? [];
+        const settle = this.resolved?.settle ?? DEFAULT_SETTLE;
         const result = isNavigationAction(call.name)
-            ? await executeNavigation(call, safeSelectors, signal)
-            : await this.registry.run(call, safeSelectors, signal);
+            ? await executeNavigation(call, safeSelectors, signal, settle)
+            : await this.registry.run(call, safeSelectors, signal, settle);
         return result.snapshot
             ? { ...result, snapshot: this.withSiteRoutes(result.snapshot) }
             : result;

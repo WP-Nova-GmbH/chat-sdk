@@ -114,6 +114,8 @@ function resolvedConfig(overrides: Partial<ResolvedConfig> = {}): ResolvedConfig
         hasFirstPaintLauncherColor: true,
         safeValueSelectors: [],
         voiceModeEnabled: false,
+        siteRoutes: [],
+        settle: { quietMs: 200, maxWaitMs: 1600 },
         protocolVersion: 1,
         ...overrides,
     };
