@@ -23,7 +23,13 @@ Die SDK-Bridge verarbeitet drei Fähigkeiten der Host-Seite:
 
 - Seiten-Snapshots, die sichtbaren Text, Links, Bedienelemente, Labels, Auswahl und sichere Feldwerte zusammenfassen.
 - Eingebaute Navigationsaktionen gegen stabile Element-Handles aus dem neuesten Snapshot.
-- Integrator-Tools, die deine App mit `registerToolHandler` registriert.
+- SDK-definierte Integrator-Tools, die deine App mit dem vollständigen Vertrag
+  und Handler über `registerTool` registriert. Die Surface-Einstellung
+  „Page Tools“ ist nur die serverseitige Freigabe.
+
+Nova kann zusätzlich `request_user_input` als interaktive Auswahlkarte im
+iframe anzeigen. Dieses Conversation Tool und die eingebauten Seitenaktionen
+werden nicht im Host registriert.
 
 ## Packages
 
@@ -35,8 +41,11 @@ Die SDK-Bridge verarbeitet drei Fähigkeiten der Host-Seite:
 
 ## Laufzeitmodell
 
-1. Die Kundenseite lädt `@wp-nova/chat-sdk` per Script-Tag oder npm.
-2. Die Seite ruft `WpNova("init", { publicSurfaceId, tokenEndpoint })` auf.
-3. Das SDK mountet `<wp-nova-chat>`, zeigt das iframe auf `<baseUrl>/embed/chat?surface=<publicSurfaceId>` und holt ein Token vom Kunden-Backend.
-4. Das iframe sendet Bridge-Anfragen wie `REQUEST_SNAPSHOT` oder `CLIENT_TOOL_REQUEST`.
-5. Das SDK antwortet nur nach strikten Origin- und Source-Prüfungen.
+1. Ein Nova-Admin erstellt eine Embedded Chat Surface und konfiguriert Origins,
+   Page Reading, Page Navigation und Page Tools.
+2. Das Backend hält das Secret und stellt einen `tokenEndpoint` bereit.
+3. Die Seite ruft `WpNova("init", { publicSurfaceId, tokenEndpoint })` auf.
+4. Das SDK mountet `<wp-nova-chat>`, authentifiziert das iframe und überträgt
+   Snapshots, Routen und registrierte Tool-Spezifikationen.
+5. Nach Seitenaktionen wartet das SDK auf eine gerenderte Zielansicht, bevor es
+   einen neuen Snapshot sendet.

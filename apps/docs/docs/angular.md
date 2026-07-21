@@ -23,6 +23,13 @@ export const appConfig: ApplicationConfig = {
       publicSurfaceId: import.meta.env["VITE_NOVA_PUBLIC_SURFACE_ID"],
       tokenEndpoint: "/api/nova-token",
       baseUrl: import.meta.env["VITE_NOVA_BASE_URL"],
+      routes: [
+        { path: "/customers", description: "Customer lookup list with search" },
+      ],
+      settle: {
+        maxWaitMs: 5000,
+        waitForNavigationSignal: true,
+      },
     }),
   ],
 };
@@ -66,12 +73,12 @@ export class AppComponent {
       mutating: true,
       confirmationCopy: "Create this ticket?",
       handler: async (args) => {
-      const ticket = await this.crm.createTicket({
-        title: String(args["title"] ?? "Follow up"),
-        priority: String(args["priority"] ?? "normal"),
-      });
+        const ticket = await this.crm.createTicket({
+          title: String(args["title"] ?? "Follow up"),
+          priority: String(args["priority"] ?? "normal"),
+        });
         return { ok: true, ticketId: ticket.id, ticketUrl: ticket.url };
-    },
+      },
     },
   ];
 }
@@ -86,33 +93,25 @@ Use `NovaChatService` when registration belongs in a service or feature initiali
 ```ts
 import { Injectable, inject } from "@angular/core";
 import { NovaChatService } from "@wp-nova/chat-sdk-angular";
+import { createTicketTool } from "./nova-tools";
 
 @Injectable({ providedIn: "root" })
 export class CustomerToolRegistration {
   private readonly nova = inject(NovaChatService);
 
   register() {
-    this.nova.registerTool({
-      name: "show_toast",
-      description: "Shows a short non-persistent message in the host page.",
-      inputSchema: {
-        type: "object",
-        properties: { message: { type: "string" } },
-        required: ["message"],
-      },
-      mutating: false,
-      handler: async (args) => {
-        return { ok: true, message: String(args["message"] ?? "") };
-      },
-    });
+    this.nova.registerTool(createTicketTool);
   }
 }
 ```
 
-Mutating tools are confirmed in the iframe before the SDK calls your handler.
-Handlers may accept an optional second argument, `{ signal }`, an `AbortSignal`
-the SDK aborts when the bridge times the tool round-trip out, so long-running or
-mutating handlers can cancel cleanly: `handler: async (args, { signal } = {}) => { ... }`.
+The same definition can be passed through the component's `tools` input. See
+[Tools and guided workflows](./tools.md) for confirmation, abort, and handler rules.
+
+Filter routes and tools with the signed-in user's permissions. When Angular
+Router destinations render async data, connect `wp-nova:navigate` to the router
+and dispatch `wp-nova:settled` only after the destination data is ready. See
+[Navigation and async pages](./navigation.md).
 
 ## Disabling Chat
 

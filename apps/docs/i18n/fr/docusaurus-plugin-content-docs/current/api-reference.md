@@ -9,8 +9,9 @@ title: Référence API
 
 ```ts
 WpNova("init", config);
-WpNova("registerToolHandler", name, handler);
-WpNova("unregisterToolHandler", name);
+WpNova("registerTool", definition);
+WpNova("unregisterTool", name);
+WpNova("destroy");
 ```
 
 ### Helpers npm
@@ -19,8 +20,11 @@ WpNova("unregisterToolHandler", name);
 import {
   WpNova,
   init,
-  registerToolHandler,
-  unregisterToolHandler,
+  registerTool,
+  unregisterTool,
+  destroy,
+  DEFAULT_SETTLE,
+  SETTLED_EVENT,
   defineElement,
   ELEMENT_TAG,
   WpNovaChatElement,
@@ -41,7 +45,22 @@ export interface SdkConfig {
   triggerIconColor?: "light" | "dark" | string;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
+  routes?: Array<{ path: string; description: string }>;
+  settle?: {
+    quietMs?: number;
+    maxWaitMs?: number;
+    waitForNavigationSignal?: boolean;
+  };
   protocolVersion?: number;
+}
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  mutating: boolean;
+  confirmationCopy?: string;
+  handler: ToolHandler;
 }
 
 export type ToolHandler = (
@@ -49,6 +68,12 @@ export type ToolHandler = (
   opts?: { signal?: AbortSignal },
 ) => unknown | Promise<unknown>;
 ```
+
+`registerToolHandler` reste uniquement comme helper de compatibilité obsolète,
+limité à l’exécution. Un handler seul n’est pas proposé à l’agent.
+
+Un instantané post-action peut être `truncated`, `partial` ou `unsettled`
+et contient les `siteRoutes` validées.
 
 ### Utilisateur indisponible
 

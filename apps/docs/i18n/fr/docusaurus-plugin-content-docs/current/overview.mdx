@@ -23,7 +23,13 @@ Le bridge du SDK gère trois capacités de la page hôte :
 
 - Des instantanés de page qui résument le texte visible, les liens, les contrôles, les libellés, la sélection et les valeurs de champ sûres.
 - Des actions de navigation intégrées sur des handles d’éléments stables issus du dernier instantané.
-- Des outils d’intégration enregistrés par votre app avec `registerToolHandler`.
+- Des outils d’intégration définis par le SDK, enregistrés avec leur contrat
+  complet et leur handler via `registerTool`. Le réglage Page Tools de la
+  surface est uniquement l’autorisation côté serveur.
+
+Nova peut aussi afficher `request_user_input` comme carte de choix interactive
+dans l’iframe. Cet outil de conversation et les actions de page intégrées ne
+s’enregistrent pas dans la page hôte.
 
 ## Packages
 
@@ -35,8 +41,11 @@ Le bridge du SDK gère trois capacités de la page hôte :
 
 ## Modèle d’exécution
 
-1. La page cliente charge `@wp-nova/chat-sdk` par balise script ou via npm.
-2. La page appelle `WpNova("init", { publicSurfaceId, tokenEndpoint })`.
-3. Le SDK monte `<wp-nova-chat>`, pointe son iframe vers `<baseUrl>/embed/chat?surface=<publicSurfaceId>` et récupère un token depuis le backend client.
-4. L’iframe envoie des requêtes de bridge comme `REQUEST_SNAPSHOT` ou `CLIENT_TOOL_REQUEST`.
-5. Le SDK ne répond qu’après des contrôles stricts de l’origine et de la source.
+1. Un administrateur Nova crée la surface et configure les origines, Page
+   Reading, Page Navigation et Page Tools.
+2. Le backend conserve le secret et expose un `tokenEndpoint`.
+3. La page appelle `WpNova("init", { publicSurfaceId, tokenEndpoint })`.
+4. Le SDK monte `<wp-nova-chat>`, authentifie l’iframe et transmet les
+   instantanés, routes et spécifications d’outils enregistrées.
+5. Après une action, le SDK attend que la vue cible soit rendue avant d’envoyer
+   le nouvel instantané.

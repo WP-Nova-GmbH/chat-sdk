@@ -16,7 +16,11 @@ Le SDK est conçu autour d’une limite de confiance navigateur étroite.
 
 ### Responsabilités de l’endpoint de token
 
-Votre backend doit authentifier l’utilisateur courant avec votre propre session. Il doit appeler Nova avec un secret côté serveur et renvoyer soit la réponse de token, soit la réponse utilisateur indisponible.
+Votre backend doit authentifier l’utilisateur courant avec sa propre session.
+Validez le Public Surface ID demandé ainsi que l’origine du corps et l’en-tête
+`Origin` réel par rapport à la configuration de l’app. Appelez Nova avec un
+secret serveur et un timeout, ajoutez `Cache-Control: no-store` et transmettez
+intégralement la réponse de token ou d’utilisateur indisponible.
 
 La réponse utilisateur indisponible peut contenir une autorisation
 `access_request_token` limitée à la création d’une demande d’accès et à la lecture
@@ -26,6 +30,18 @@ texte intégré de Nova, tandis que `true` conserve le texte de surface rédigé
 un administrateur.
 
 Ne faites pas confiance à une adresse e-mail ou à un identifiant utilisateur fourni par le navigateur pour émettre un token.
+
+Le fetch du SDK contient les cookies mais pas l’en-tête Bearer propre à l’app.
+Une SPA Bearer doit créer, via un endpoint protégé séparé, une courte session
+opaque `HttpOnly`, résolue par l’endpoint de token puis révoquée au logout.
+
+### Permissions des outils
+
+Le code SDK déclare les outils complets via `registerTool` ; la surface ne
+conserve qu’un interrupteur d’autorisation Page Tools. Nova valide la définition
+et décide côté serveur si la confirmation iframe est requise. N’enregistrez un
+outil que lorsque l’utilisateur peut exécuter l’action UI/API sous-jacente.
+L’autorisation backend reste obligatoire.
 
 ### CSP et framing
 

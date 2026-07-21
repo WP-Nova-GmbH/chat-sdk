@@ -7,7 +7,8 @@ Nova cannot run arbitrary JavaScript in the host page. It can only use capabilit
 
 - Visible Page Snapshots.
 - Built-in page actions enabled by the Embedded Chat Surface.
-- Integrator-defined page tools declared on the surface and implemented by your app.
+- SDK-defined page tools registered with their contract and handler by your app;
+  the surface Page Tools setting is the server-side allow/deny gate.
 
 ## Page Snapshots
 
@@ -77,69 +78,17 @@ The SDK sends these fields in `context.aiFields`. Do not use this for secrets or
 
 ## Built-In Page Actions
 
-When `pageNavigationEnabled` is enabled on the surface, Nova may offer built-in client tools for page interaction. The SDK executes supported actions against handles from the latest snapshot and returns a fresh snapshot afterward.
+With Page Navigation enabled, Nova can navigate, click/open visible controls,
+set filters, scroll, and refresh context using handles from the latest snapshot.
+The SDK returns a fresh snapshot after each action. See
+[Navigation and async pages](./navigation.md) for routing and readiness behavior.
 
-Common actions include:
-
-| Action | Purpose |
-| --- | --- |
-| `navigate` | Navigate to a same-origin URL or follow a captured link/control. |
-| `open_record` | Open a visible record or row, preferably by durable URL. |
-| `set_filter` | Set a search or filter control and fire `input`/`change`. |
-| `scroll_to` | Scroll a visible element into view. |
-| `highlight` | Scroll to and briefly outline a visible element. |
-| `refresh_context` | Ask for a fresh snapshot without changing the page. |
-
-Same-origin URL navigation first dispatches a cancelable `wp-nova:navigate` event:
-
-```ts
-window.addEventListener("wp-nova:navigate", (event) => {
-  const url = (event as CustomEvent<{ url: string }>).detail.url;
-  router.navigate(new URL(url).pathname);
-  event.preventDefault();
-});
-```
-
-If your SPA does not prevent the event, the SDK falls back to normal document navigation.
+Use real labeled links and buttons. A framework-only click handler on a
+non-interactive row or container may not appear in the snapshot as an actionable
+control.
 
 ## Integrator-Defined Page Tools
 
-Tools the agent can call are defined by your SDK integration. Nova admin only
-controls whether SDK-defined page tools are allowed for the surface.
-
-```ts
-import { registerTool, unregisterTool } from "@wp-nova/chat-sdk";
-
-registerTool({
-  name: "set_customer_status",
-  description: "Changes the visible customer's local status.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      customerId: { type: "string" },
-      status: { type: "string", enum: ["active", "review", "paused", "at_risk"] },
-    },
-    required: ["status"],
-  },
-  mutating: true,
-  confirmationCopy: "Change this customer status?",
-  handler: async (args) => {
-    const customerId = String(args.customerId ?? "");
-    const status = String(args.status ?? "review");
-    await crm.updateCustomer(customerId, { status });
-    return { ok: true, customerId, status };
-  },
-});
-
-unregisterTool("set_customer_status");
-```
-
-Tool rules:
-
-- Return JSON-serializable results.
-- Throwing or rejecting is reported as `handler_threw`.
-- A missing handler is reported as `no_handler`.
-- Mutating tools require `confirmationCopy` and are confirmed in the iframe before execution.
-- Handlers receive an optional second argument, `{ signal?: AbortSignal }`, aborted when the bridge times the round-trip out, so long-running or mutating handlers can bail out early.
-
-After a handler runs, the SDK captures a fresh page snapshot so the agent continues from the current page state.
+Your integration owns SDK tool definitions and handlers; Nova admin supplies the
+surface-level Page Tools gate. See [Tools and guided workflows](./tools.md) for
+registration, limits, permissions, confirmations, and safe workflow patterns.

@@ -15,8 +15,17 @@ npm install @wp-nova/chat-sdk @wp-nova/chat-sdk-react
 import { NovaChatProvider, useNovaTool } from "@wp-nova/chat-sdk-react";
 
 function CustomerTools() {
-  useNovaTool("create_ticket", async (args) => {
-    return crm.createTicket(args);
+  useNovaTool({
+    name: "create_ticket",
+    description: "Crée un ticket de support pour le contexte client visible.",
+    inputSchema: {
+      type: "object",
+      properties: { title: { type: "string" } },
+      required: ["title"],
+    },
+    mutating: true,
+    confirmationCopy: "Créer ce ticket ?",
+    handler: async (args) => crm.createTicket(args),
   });
 
   return null;
@@ -38,3 +47,7 @@ export function App() {
 ```
 
 Le provider s’initialise une seule fois côté client. Les outils gérés par le wrapper sont désenregistrés au démontage.
+
+Stabilisez config, routes et définitions avec `useMemo`/`useCallback`,
+filtrez-les par permissions et montez le provider au-dessus de l’outlet. Les
+routes asynchrones doivent émettre `wp-nova:settled` après leur rendu.

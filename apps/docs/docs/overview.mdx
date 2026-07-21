@@ -36,7 +36,9 @@ The bridge exposes capabilities only when the surface allows them:
 - **Integrator-defined tools:** customer app actions defined and implemented in the browser with `registerTool`.
 
 The browser sends SDK-declared tool specs to Nova each turn. Nova validates them
-server-side and ignores them when the surface disables Page Tools.
+server-side and ignores them when the surface disables Page Tools. Nova may also
+render conversation-native choices with `request_user_input`; that tool belongs
+to the iframe and does not need a host handler.
 
 ## Packages
 
@@ -59,4 +61,4 @@ server-side and ignores them when the surface disables Page Tools.
 
 ## Start Here
 
-Use the [Quickstart](./quickstart.md) for an end-to-end install path. It covers surface setup, the backend token endpoint, script-tag and npm installs, page tools, DOM privacy annotations, and the smoke tests that confirm the integration is ready for production.
+Start with [Plan your integration](./planning.md), then follow the [Quickstart](./quickstart.md). The planning guide helps you decide auth, tools, routes, async-page readiness, privacy, and branding before the code path is fixed.

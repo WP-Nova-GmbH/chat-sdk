@@ -21,11 +21,19 @@ Your backend token endpoint is the security boundary. It must:
 2. Read the user's email from trusted server-side auth state.
 3. Reject unauthenticated requests.
 4. Require `publicSurfaceId` and `origin` from the SDK request.
-5. Call Nova `POST /embed/session` with `Authorization: Bearer <integration secret>`.
-6. Pass Nova's response through, including the unavailable-user response.
-7. Set `Cache-Control: no-store`.
+5. Verify `publicSurfaceId` matches the surface configured for this app.
+6. Verify both the body origin and browser `Origin` header match the expected host origin.
+7. Call Nova `POST /embed/session` with `Authorization: Bearer <integration secret>`.
+8. Pass Nova's response through, including the unavailable-user response.
+9. Set `Cache-Control: no-store`.
 
-Do not trust an email, user id, tenant id, or integration secret supplied by browser code. The integration secret belongs only in server-side configuration.
+Do not trust an email, user id, tenant id, or integration secret supplied by browser code. The integration secret belongs only in server-side configuration. Do not proxy an arbitrary surface id or origin merely because the browser sent it.
+
+The SDK's token request includes cookies but does not inherit the host app's
+custom bearer header. Bearer-authenticated SPAs should create a minimal,
+short-lived `HttpOnly` server session through a separately authenticated
+bootstrap endpoint, then let `tokenEndpoint` resolve that session. Revoke it on
+logout. See [Plan your integration](./planning.md#select-the-authentication-pattern).
 
 ## Origin Checks
 
@@ -67,32 +75,17 @@ message while preserving administrator-authored surface copy.
 
 ## Tool Permissions
 
-Integrator-defined tools are declared on the Embedded Chat Surface. Browser code cannot add new model-callable tools by registering extra handlers.
-
-For each tool:
-
-- `name` must match the registered browser handler.
-- `description` and `inputSchema` tell the agent when and how to call it.
-- `mutating` is server-authoritative. When true, the iframe confirms with the user before sending `CLIENT_TOOL_REQUEST` to the SDK.
-- `confirmationCopy` should name the action in user-facing language.
-
-When in doubt, declare a tool as mutating. A conservative confirmation is better than letting an ambiguous host-page action run without user approval.
+The SDK declares tools with `registerTool`; the surface Page Tools gate decides
+whether Nova accepts them. Nova's relayed `mutating` flag is authoritative and
+controls iframe confirmation. Register only tools the current user may use, and
+enforce the same permission again in the backend. See
+[Tools and guided workflows](./tools.md).
 
 ## Page Snapshot Privacy
 
-The SDK captures visible structure and labels by default, but field values are default-deny.
-
-Always exclude:
-
-- Passwords, one-time codes, hidden inputs, and file inputs.
-- Payment, card, CVC/CVV, SSN, token, secret, account, IBAN, routing, and PIN fields.
-- Any region marked with `data-wp-nova-ignore`.
-
-Opt a value in by adding the `data-wp-nova-include` attribute to the field, or by
-listing a matching selector in the `safeValueSelectors` config option. Even
-opted-in values still pass every sensitivity check. Only opt in values that are
-safe for the agent to read, such as case numbers, filters, visible record IDs, or
-public statuses.
+Field values are default-deny and sensitivity checks override opt-ins. Mark
+private subtrees with `data-wp-nova-ignore`; opt in only required safe values.
+See [Giving the agent DOM access](./dom-access.md).
 
 ## CSP and Framing
 

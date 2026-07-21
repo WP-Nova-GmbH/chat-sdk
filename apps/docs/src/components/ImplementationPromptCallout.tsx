@@ -6,8 +6,7 @@ const PROMPT_URL = "/prompts/nova-chat-sdk-agent-prompt.md";
 const calloutContent = {
     en: {
         eyebrow: "Implementation prompt",
-        body:
-            "This page is the integration spec for humans and coding agents. Copy or download it with task instructions and hand it to an agent to wire the SDK into an app.",
+        body: "Copy or download the implementation prompt for a coding agent. It audits the app first, asks for missing decisions about tools, routes, privacy, readiness, and branding, then implements and verifies the integration.",
         copy: "Copy for AI agent",
         downloadLabel: "Download implementation prompt",
         downloadTitle: "Download .md",
@@ -16,12 +15,11 @@ const calloutContent = {
         genericCopyError: "Could not copy the prompt.",
         copied: "Implementation prompt copied",
         downloaded: "Implementation prompt downloaded",
-        genericDownloadError: "Could not download the prompt."
+        genericDownloadError: "Could not download the prompt.",
     },
     de: {
         eyebrow: "Implementierungs-Prompt",
-        body:
-            "Diese Seite ist die Integrationsspezifikation für Menschen und Coding-Agenten. Kopiere oder lade sie zusammen mit den Aufgabenanweisungen herunter und gib sie einem Agenten, um das SDK in eine App einzubauen.",
+        body: "Kopiere oder lade den Prompt für einen Coding-Agenten herunter. Er prüft zuerst die App, fragt nach offenen Entscheidungen zu Tools, Routen, Datenschutz, Readiness und Branding und implementiert und verifiziert danach die Integration.",
         copy: "Für KI-Agent kopieren",
         downloadLabel: "Implementierungs-Prompt herunterladen",
         downloadTitle: ".md herunterladen",
@@ -31,12 +29,11 @@ const calloutContent = {
         genericCopyError: "Der Prompt konnte nicht kopiert werden.",
         copied: "Implementierungs-Prompt kopiert",
         downloaded: "Implementierungs-Prompt heruntergeladen",
-        genericDownloadError: "Der Prompt konnte nicht heruntergeladen werden."
+        genericDownloadError: "Der Prompt konnte nicht heruntergeladen werden.",
     },
     fr: {
         eyebrow: "Prompt d'intégration",
-        body:
-            "Cette page est la spécification d'intégration pour les humains et les agents de code. Copiez-la ou téléchargez-la avec vos consignes de tâche, puis donnez-la à un agent pour intégrer le SDK dans une app.",
+        body: "Copiez ou téléchargez ce prompt pour un agent de code. Il audite d'abord l'app, demande les décisions manquantes sur les outils, routes, données privées, disponibilité et couleurs, puis implémente et vérifie l'intégration.",
         copy: "Copier pour l'agent IA",
         downloadLabel: "Télécharger le prompt d'intégration",
         downloadTitle: "Télécharger .md",
@@ -46,8 +43,8 @@ const calloutContent = {
         genericCopyError: "Impossible de copier le prompt.",
         copied: "Prompt d'intégration copié",
         downloaded: "Prompt d'intégration téléchargé",
-        genericDownloadError: "Impossible de télécharger le prompt."
-    }
+        genericDownloadError: "Impossible de télécharger le prompt.",
+    },
 } satisfies Record<string, Record<string, string>>;
 
 function downloadText(filename: string, text: string): void {
@@ -80,7 +77,9 @@ function copyTextWithTextarea(text: string): boolean {
 
     const selection = document.getSelection();
     const ranges = selection
-        ? Array.from({ length: selection.rangeCount }, (_value, index) => selection.getRangeAt(index))
+        ? Array.from({ length: selection.rangeCount }, (_value, index) =>
+              selection.getRangeAt(index),
+          )
         : [];
 
     textarea.focus({ preventScroll: true });
@@ -169,7 +168,11 @@ export function ImplementationPromptCallout() {
                     <p>{content.body}</p>
                 </div>
                 <div className="nova-callout__actions">
-                    <button className="nova-button nova-button--primary" type="button" onClick={copyPrompt}>
+                    <button
+                        className="nova-button nova-button--primary"
+                        type="button"
+                        onClick={copyPrompt}
+                    >
                         {content.copy}
                     </button>
                     <button

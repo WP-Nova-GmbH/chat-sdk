@@ -15,8 +15,17 @@ npm install @wp-nova/chat-sdk @wp-nova/chat-sdk-react
 import { NovaChatProvider, useNovaTool } from "@wp-nova/chat-sdk-react";
 
 function CustomerTools() {
-  useNovaTool("create_ticket", async (args) => {
-    return crm.createTicket(args);
+  useNovaTool({
+    name: "create_ticket",
+    description: "Erstellt ein Support-Ticket für den sichtbaren Kundenkontext.",
+    inputSchema: {
+      type: "object",
+      properties: { title: { type: "string" } },
+      required: ["title"],
+    },
+    mutating: true,
+    confirmationCopy: "Dieses Ticket erstellen?",
+    handler: async (args) => crm.createTicket(args),
   });
 
   return null;
@@ -38,3 +47,8 @@ export function App() {
 ```
 
 Der Provider initialisiert einmalig im Client. Tools, die vom Wrapper verwaltet werden, werden beim Unmount wieder deregistriert.
+
+Halte Konfiguration, Routen und Tool-Definitionen mit
+`useMemo`/`useCallback` stabil, filtere sie nach Berechtigungen und mounte
+den Provider oberhalb des Route-Outlets. Asynchrone Routen müssen nach
+`wp-nova:navigate` mit `wp-nova:settled` ihre Readiness signalisieren.
