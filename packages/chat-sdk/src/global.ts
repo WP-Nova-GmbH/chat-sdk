@@ -1,4 +1,4 @@
-import { installGlobal } from "./controller.js";
+import { installGlobal } from "./runtime/controller.js";
 
 export * from "./index.js";
 

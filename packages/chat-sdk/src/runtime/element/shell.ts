@@ -1,0 +1,255 @@
+import { DEFAULT_ACCENT, type ResolvedConfig } from "../../config/config.js";
+
+/** Message-circle glyph used by the settings preview and SDK launcher. */
+const LAUNCHER_CHAT_SVG =
+    '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
+
+/** Chevron-down shown in place of the chat glyph while the panel is open. */
+const LAUNCHER_CHEVRON_SVG =
+    '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+
+/** Minimal attribute escaping for values interpolated into the shadow markup. */
+function escapeAttr(value: string): string {
+    return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+/** Matches supported hex color values for SDK-owned chrome. */
+function isHexColor(value: string): boolean {
+    return /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(value.trim());
+}
+
+function resolveLauncherIconColor(value?: string | null): string | null {
+    if (!value) return null;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "light") return "#ffffff";
+    if (normalized === "dark") return "#0f1117";
+    if (isHexColor(normalized)) return value.trim();
+    return null;
+}
+
+export class ChatShell {
+    private iframe?: HTMLIFrameElement;
+    private panel?: HTMLElement;
+    private launcher?: HTMLButtonElement;
+    private shadowReady = false;
+    private launcherThemeReady = false;
+    private developmentMode = false;
+    private hostConfiguredLauncherColor = false;
+
+    constructor(private readonly host: HTMLElement & { toggle(): void }) {}
+
+    get frame(): HTMLIFrameElement | undefined {
+        return this.iframe;
+    }
+
+    get rendered(): boolean {
+        return this.shadowReady;
+    }
+
+    applyConfig(config: ResolvedConfig): void {
+        this.hostConfiguredLauncherColor = config.hasFirstPaintLauncherColor;
+        this.launcherThemeReady = config.hasFirstPaintLauncherColor;
+        this.applyLauncherTheme({
+            triggerColor: config.triggerColor,
+            triggerIconColor: config.triggerIconColor,
+            reveal: false,
+        });
+        if (this.shadowReady) {
+            if (!this.launcherThemeReady) {
+                this.syncLauncherThemeVisibility();
+            }
+            this.applyLauncherTheme({
+                triggerColor: config.triggerColor,
+                triggerIconColor: config.triggerIconColor,
+                reveal: config.hasFirstPaintLauncherColor,
+            });
+        }
+    }
+
+    reset(): void {
+        this.iframe = undefined;
+        this.panel = undefined;
+        this.launcher = undefined;
+        this.shadowReady = false;
+        this.launcherThemeReady = false;
+        this.developmentMode = false;
+        this.host.removeAttribute("data-wpn-dev");
+    }
+
+    render(config: ResolvedConfig): void {
+        const shadow = this.host.shadowRoot ?? this.host.attachShadow({ mode: "open" });
+        // Validate before interpolating into the shadow <style> so a host-supplied
+        // value cannot inject arbitrary CSS into the shadow root.
+        const accent = isHexColor(config.triggerColor)
+            ? config.triggerColor.trim()
+            : DEFAULT_ACCENT;
+        const iconColor = resolveLauncherIconColor(config.triggerIconColor) ?? "#ffffff";
+        const title = config.title;
+        this.syncLauncherThemeVisibility();
+        const launcherHiddenAttribute = this.launcherThemeReady ? "" : " hidden";
+        const microphoneAllowAttribute = config.voiceModeEnabled ? ' allow="microphone"' : "";
+        shadow.innerHTML = [
+            "<style>",
+            // `all:initial` resets inherited host styles but NOT custom properties,
+            // so the accent token survives for the color-mix shadows below.
+            `:host{all:initial;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-dev:#e8a91d;}`,
+            "*{box-sizing:border-box;}",
+            // --- launcher: 60px accent circle, two-layer shadow ----------------
+            "#launcher{position:fixed;right:24px;bottom:24px;width:60px;height:60px;border:0;",
+            "border-radius:50%;background:var(--wpn-accent);color:var(--wpn-launcher-icon);cursor:pointer;",
+            "display:grid;place-items:center;-webkit-tap-highlight-color:transparent;",
+            "box-shadow:0 8px 24px -4px color-mix(in oklab,var(--wpn-accent) 35%,transparent),0 3px 8px rgba(22,18,42,.18);",
+            "z-index:2147483000;transition:transform .18s cubic-bezier(.2,.7,.3,1),box-shadow .18s,background .18s;}",
+            "#launcher[hidden],:host([launcher-theme-pending]) #launcher{display:none;pointer-events:none;}",
+            "#launcher:hover{transform:translateY(-2px) scale(1.04);",
+            "box-shadow:0 14px 34px -6px color-mix(in oklab,var(--wpn-accent) 45%,transparent),0 5px 12px rgba(22,18,42,.22);}",
+            "#launcher:focus-visible{outline:none;transform:translateY(-2px) scale(1.04);",
+            "box-shadow:0 14px 34px -6px color-mix(in oklab,var(--wpn-accent) 45%,transparent),0 5px 12px rgba(22,18,42,.22),0 0 0 3px color-mix(in oklab,var(--wpn-accent) 25%,transparent);}",
+            // open: darken the launcher and swap the chat glyph for a chevron.
+            ":host([open]) #launcher{background:color-mix(in oklab,var(--wpn-accent) 88%,black);}",
+            "#launcher .ic{display:grid;place-items:center;}",
+            "#launcher .ic-chev{display:none;}",
+            ":host([open]) #launcher .ic-chat{display:none;}",
+            ":host([open]) #launcher .ic-chev{display:grid;}",
+            // --- development badge: amber ring + DEV pill on dev-mode surfaces --
+            // Driven by the trusted token grant; makes a test embed unmistakable
+            // without touching the launcher's own accent color or icon.
+            "#launcher .dev-badge{display:none;}",
+            // The ring is the launcher's own positioned ::after (auto z-index), so
+            // the pill (z-index:1) paints on top and the ring passes behind it.
+            ":host([data-wpn-dev]) #launcher::after{content:'';position:absolute;inset:-5px;",
+            "border-radius:50%;border:3px solid var(--wpn-dev);pointer-events:none;}",
+            ":host([data-wpn-dev]) #launcher .dev-badge{display:block;position:absolute;z-index:1;",
+            "top:-1px;right:-20px;padding:2px 7px;border-radius:999px;",
+            "background:var(--wpn-dev);color:#3a2a00;",
+            "border:1px solid color-mix(in oklab,var(--wpn-dev) 62%,black);",
+            "font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;",
+            "font-size:9px;font-weight:800;line-height:1;letter-spacing:.08em;",
+            "box-shadow:0 2px 4px rgba(22,18,42,.28);pointer-events:none;white-space:nowrap;}",
+            // --- panel: frameless 384×640 rounded sheet ------------------------
+            "#panel{position:fixed;right:24px;bottom:100px;width:384px;height:640px;",
+            "max-width:calc(100vw - 40px);max-height:calc(100vh - 124px);background:#fff;",
+            "border-radius:18px;overflow:hidden;display:flex;flex-direction:column;",
+            "box-shadow:0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30);",
+            "z-index:2147483000;transform-origin:bottom right;animation:wpn-in .16s cubic-bezier(.2,.7,.3,1);}",
+            "#panel[hidden]{display:none;}",
+            "iframe{border:0;flex:1 1 auto;width:100%;height:100%;display:block;background:#fff;}",
+            "@keyframes wpn-in{from{opacity:0;transform:translateY(8px) scale(.96);}to{opacity:1;transform:none;}}",
+            // mobile: the panel fills the viewport.
+            "@media (max-width:480px){#panel{right:0;bottom:0;width:100vw;height:100dvh;",
+            "max-width:100vw;max-height:100dvh;border-radius:0;}#launcher{right:16px;bottom:16px;}}",
+            "@media (prefers-reduced-motion:reduce){#panel{animation:none;}#launcher{transition:none;}}",
+            "</style>",
+            `<button id="launcher" part="launcher" type="button" aria-label="Open assistant"${launcherHiddenAttribute}>`,
+            `  <span class="ic ic-chat">${LAUNCHER_CHAT_SVG}</span>`,
+            `  <span class="ic ic-chev">${LAUNCHER_CHEVRON_SVG}</span>`,
+            '  <span class="dev-badge" aria-hidden="true">DEV</span>',
+            "</button>",
+            `<div id="panel" role="dialog" aria-modal="false" aria-label="${escapeAttr(title)}" hidden>`,
+            `  <iframe id="frame" title="${escapeAttr(title)}"${microphoneAllowAttribute}></iframe>`,
+            "</div>",
+        ].join("");
+
+        this.iframe = shadow.getElementById("frame") as HTMLIFrameElement;
+        this.iframe.src = config.iframeSrc;
+        this.panel = shadow.getElementById("panel") ?? undefined;
+        this.launcher = (shadow.getElementById("launcher") as HTMLButtonElement) ?? undefined;
+        this.syncLauncherThemeVisibility();
+        this.syncDevelopmentMode();
+
+        this.launcher?.addEventListener("click", () => this.host.toggle());
+        if (this.host.hasAttribute("open")) this.setOpen(true);
+
+        this.shadowReady = true;
+    }
+
+    setOpen(isOpen: boolean): void {
+        if (this.panel) this.panel.hidden = !isOpen;
+        this.updateLauncherLabel();
+    }
+
+    /** Reflect open + development state on the launcher's accessible name. */
+    private updateLauncherLabel(): void {
+        const base = this.host.hasAttribute("open") ? "Close assistant" : "Open assistant";
+        this.launcher?.setAttribute(
+            "aria-label",
+            this.developmentMode ? `${base} (development surface)` : base,
+        );
+    }
+
+    /**
+     * Mark the launcher as a development-mode surface: an amber ring + "DEV" pill
+     * make a test embed unmistakable. Driven by the trusted token grant, so it
+     * appears once the embedded session is established — it never overrides the
+     * surface's own accent color or launcher icon.
+     */
+    setDevelopmentMode(developmentMode: boolean): void {
+        if (this.developmentMode === developmentMode) return;
+        this.developmentMode = developmentMode;
+        this.syncDevelopmentMode();
+    }
+
+    /** Reflect `developmentMode` onto the host attribute the badge CSS keys off. */
+    private syncDevelopmentMode(): void {
+        if (this.developmentMode) this.host.setAttribute("data-wpn-dev", "");
+        else this.host.removeAttribute("data-wpn-dev");
+        this.updateLauncherLabel();
+    }
+
+    /** Applies validated surface launcher theme tokens without rebuilding the iframe. */
+    private applyLauncherTheme(theme: {
+        accent?: string | null;
+        triggerColor?: string | null;
+        triggerIconColor?: string | null;
+        reveal?: boolean;
+    }): void {
+        const color = theme.triggerColor || theme.accent;
+        if (color && isHexColor(color)) {
+            this.host.style.setProperty("--wpn-accent", color.trim());
+        }
+
+        const iconColor = resolveLauncherIconColor(theme.triggerIconColor);
+        if (iconColor) {
+            this.host.style.setProperty("--wpn-launcher-icon", iconColor);
+        }
+
+        if (theme.reveal) {
+            this.revealLauncherTheme();
+        }
+    }
+
+    /**
+     * Surface display settings are trusted, but host-supplied launcher colors are
+     * authoritative for the SDK-owned launcher. Use surface colors only when the
+     * host did not configure a first-paint launcher color.
+     */
+    applySurfaceLauncherTheme(theme: {
+        accent?: string | null;
+        triggerColor?: string | null;
+        triggerIconColor?: string | null;
+        reveal?: boolean;
+    }): void {
+        if (this.hostConfiguredLauncherColor) {
+            if (theme.reveal) {
+                this.revealLauncherTheme();
+            }
+            return;
+        }
+
+        this.applyLauncherTheme(theme);
+    }
+
+    private syncLauncherThemeVisibility(): void {
+        if (this.launcherThemeReady) this.host.removeAttribute("launcher-theme-pending");
+        else this.host.setAttribute("launcher-theme-pending", "");
+        if (this.launcher) {
+            this.launcher.hidden = !this.launcherThemeReady;
+        }
+    }
+
+    revealLauncherTheme(): void {
+        this.launcherThemeReady = true;
+        this.syncLauncherThemeVisibility();
+    }
+
+}
