@@ -6,7 +6,7 @@
 // `/angular` tag. These live here once and take the framework tag as a param so
 // the wrappers can consume them instead of carrying their own copies.
 
-import type { SdkConfig } from "../protocol/types.js";
+import type { SdkConfig } from "../protocol/types/index.js";
 
 /**
  * The required `SdkConfig` fields that are missing/blank. `resolveConfig` reuses

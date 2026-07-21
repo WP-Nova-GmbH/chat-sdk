@@ -16,7 +16,7 @@ import type {
     SurfaceDisplaySettings,
     TokenEndpointResponse,
     TokenResult,
-} from "../protocol/types.js";
+} from "../protocol/types/index.js";
 
 /** Max attempts per token acquisition (initial + retries). */
 const MAX_ATTEMPTS = 3;

@@ -297,5 +297,5 @@ instead of wedging.
 All host ↔ iframe communication is `postMessage` with strict `event.origin` +
 `event.source` checks; the SDK targets the iframe's exact origin (never `*`).
 Request/response pairs carry a `correlationId`; errors are explicit `*_ERROR`
-frames (never a successful empty result). See `src/protocol/types.ts` for the full,
+frames (never a successful empty result). See `src/protocol/types/frames.ts` for the full,
 self-contained wire contract.

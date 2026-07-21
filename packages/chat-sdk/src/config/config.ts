@@ -1,7 +1,7 @@
 // Config normalization + protocol tunables for the SDK.
 
 import { DEFAULT_SETTLE, type SettleOptions } from "../page/settle.js";
-import { PROTOCOL_VERSION, type SdkConfig, type SiteRoute } from "../protocol/types.js";
+import { PROTOCOL_VERSION, type SdkConfig, type SiteRoute } from "../protocol/types/index.js";
 import { missingRequiredConfigFields } from "./diagnostics.js";
 
 /** Default base URL of the Nova-hosted iframe app. */

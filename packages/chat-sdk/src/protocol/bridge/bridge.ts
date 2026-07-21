@@ -1,27 +1,7 @@
-// postMessage bridge between the SDK (host page) and the Nova-hosted iframe.
-//
-// Hardening vs the POC:
-//   - Strict `event.origin` (must equal the iframe's exact origin) AND strict
-//     `event.source` (must be the iframe's contentWindow) checks on every frame.
-//   - Outbound postMessages target the validated iframe origin — NEVER "*".
-//   - A bounded timeout on the tool round-trip (replacing the POC's single
-//     global 1500 ms); on timeout we emit/return a typed `timeout` error rather
-//     than silently dropping. Snapshot capture is synchronous, so it has no
-//     timeout — a capture failure surfaces as a `capture_error` frame, not a
-//     `timeout`.
-//   - Typed `*_ERROR` frames distinct from a successful empty result (fixes the
-//     POC's `resolve(null)` ambiguity).
-//
-// The bridge is transport-only: it owns frame validation, correlation, and
-// timeouts. Capture/tool execution live in snapshot.ts / navigation.ts /
-// tools.ts; the caller wires them in via the handler callbacks.
-
-import type { ResolvedConfig } from "../config/config.js";
-import { TIMEOUTS } from "../config/config.js";
+import type { ResolvedConfig } from "../../config/config.js";
+import { TIMEOUTS } from "../../config/config.js";
 import {
-    type BridgeErrorCode,
     type ClientToolCall,
-    type ClientToolResult,
     type ClientToolSpec,
     EMBED_SOURCE,
     type EmbedFrame,
@@ -29,63 +9,10 @@ import {
     SDK_SOURCE,
     type SdkFrame,
     type SurfaceDisplaySettings,
-    type SurfaceThemeFrame,
-} from "./types.js";
-
-/** Callbacks the host wires into the bridge to service iframe requests. */
-export interface BridgeHandlers {
-    /** Capture a fresh page snapshot. Throws → mapped to a `capture_error`. */
-    onSnapshotRequest: () => PageContext;
-    /**
-     * Run a client tool (navigation or integrator). Returns the result + a
-     * fresh snapshot, or throws a typed error (NoHandler/HandlerThrew/Stale). The
-     * `signal` aborts when the bridge times the round-trip out, so a cooperating
-     * mutating handler can stop instead of completing after the error was posted.
-     */
-    onClientToolRequest: (call: ClientToolCall, signal: AbortSignal) => Promise<ClientToolResult>;
-    /** The embedded-session token expired; re-fetch + re-push AUTH_TOKEN. */
-    onAuthExpired: () => void;
-    /**
-     * The iframe announced READY; the host pushes the token + REGISTER_TOOLS.
-     * Return false to reject the iframe protocol and fail closed.
-     */
-    onReady: (minVersion?: number, maxVersion?: number) => boolean | undefined;
-    /** A confirmation decision arrived from the iframe (optional host hook). */
-    onConfirmationResult?: (correlationId: string, approved: boolean) => void;
-    /** The iframe's header asked to minimize; the host closes the panel. */
-    onMinimize?: () => void;
-    /** The iframe supplied validated surface theme values for SDK-owned chrome. */
-    onSurfaceTheme?: (
-        theme: Pick<SurfaceThemeFrame, "accent" | "triggerColor" | "triggerIconColor">,
-    ) => void;
-}
-
-/** A typed error carrying a `code` the bridge maps onto a `*_ERROR` frame. */
-interface CodedError {
-    code: BridgeErrorCode;
-    message: string;
-}
-
-function toCodedError(err: unknown): CodedError {
-    const code = (err as { code?: unknown })?.code;
-    const rawMessage = (err as { message?: unknown })?.message;
-    const message =
-        typeof rawMessage === "string"
-            ? rawMessage
-            : err instanceof Error
-              ? err.message
-              : String(err);
-    if (
-        code === "no_handler" ||
-        code === "stale_handle" ||
-        code === "capture_error" ||
-        code === "handler_threw" ||
-        code === "timeout"
-    ) {
-        return { code, message };
-    }
-    return { code: "handler_threw", message };
-}
+} from "../types/index.js";
+import { toCodedError } from "./errors.js";
+import type { BridgeHandlers } from "./handlers.js";
+import { withTimeout } from "./timeout.js";
 
 /**
  * Distributive `Omit` so each member of the `SdkFrame` discriminated union keeps
@@ -96,34 +23,6 @@ type FramePayload = SdkFrame extends infer F
         ? Omit<F, "source" | "protocolVersion">
         : never
     : never;
-
-/**
- * Run `run(signal)` against a per-type timeout. On timeout the signal is aborted
- * BEFORE the promise rejects, so a cooperating handler can stop a side effect
- * instead of completing after the bridge already posted a `timeout` error.
- */
-function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-        const controller = new AbortController();
-        const timer = setTimeout(() => {
-            controller.abort();
-            reject({
-                code: "timeout",
-                message: `bridge operation timed out after ${ms}ms`,
-            });
-        }, ms);
-        run(controller.signal).then(
-            (value) => {
-                clearTimeout(timer);
-                resolve(value);
-            },
-            (err) => {
-                clearTimeout(timer);
-                reject(err);
-            },
-        );
-    });
-}
 
 /**
  * How long a handled tool-call key is remembered for de-duplication after it

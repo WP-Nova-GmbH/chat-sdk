@@ -28,7 +28,7 @@
         "lint": "biome check --formatter-enabled=false ./src --error-on-warnings",
         "lint:fix": "biome check --formatter-enabled=false --write ./src",
         "check-types": "tsc --noEmit",
-        "test": "tsx --test --test-force-exit 'src/**/*.test.ts'"
+        "test": "tsx --test --test-concurrency=1 --test-force-exit 'src/**/*.test.ts'"
     },
     "author": "",
     "license": "MIT",

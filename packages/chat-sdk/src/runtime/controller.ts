@@ -1,8 +1,8 @@
 import { resolveConfig } from "../config/config.js";
 import { formatErrorMessage } from "../config/diagnostics.js";
-import type { SdkConfig, ToolDefinition, ToolHandler } from "../protocol/types.js";
+import type { SdkConfig, ToolDefinition, ToolHandler } from "../protocol/types/index.js";
 import { ToolRegistry } from "../tools/tools.js";
-import { defineElement, ELEMENT_TAG, type WpNovaChatElement } from "./element.js";
+import { defineElement, ELEMENT_TAG, type WpNovaChatElement } from "./element/index.js";
 
 /** Commands the queued `WpNova(...)` dispatcher accepts. */
 export type Command =

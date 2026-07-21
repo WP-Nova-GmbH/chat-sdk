@@ -6,7 +6,7 @@ export {
 } from "./config/diagnostics.js";
 export { DEFAULT_SETTLE, SETTLED_EVENT, type SettleOptions } from "./page/settle.js";
 // Consumer-facing types only. The postMessage wire/frame protocol stays internal
-// to the package (import from "./protocol/types.js" inside the SDK) so a wire refactor is
+// to the package (import from "./protocol/types/index.js" inside the SDK) so a wire refactor is
 // not a public SemVer-major and autocomplete is not flooded with ~45 frame types.
 export type {
     ClientToolResult,
@@ -16,7 +16,7 @@ export type {
     SurfaceDisplaySettings,
     ToolDefinition,
     ToolHandler,
-} from "./protocol/types.js";
+} from "./protocol/types/index.js";
 export {
     type Command,
     destroy,
@@ -33,4 +33,4 @@ export {
     unregisterToolHandler,
     WpNova,
 } from "./runtime/controller.js";
-export { defineElement, ELEMENT_TAG, WpNovaChatElement } from "./runtime/element.js";
+export { defineElement, ELEMENT_TAG, WpNovaChatElement } from "./runtime/element/index.js";
