@@ -1,5 +1,11 @@
 # @wp-nova/chat-sdk
 
+## 1.0.4
+
+### Patch Changes
+
+- 9022b06: Add an opt-in host-navigation readiness mode so post-navigation snapshots wait for explicit route data completion instead of accepting a transient DOM quiet state.
+
 ## 1.0.3
 
 ### Patch Changes
