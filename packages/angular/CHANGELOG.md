@@ -1,5 +1,12 @@
 # @wp-nova/chat-sdk-angular
 
+## 1.0.3
+
+### Patch Changes
+
+- Updated dependencies [7858288]
+  - @wp-nova/chat-sdk@1.0.3
+
 ## 1.0.2
 
 ### Patch Changes

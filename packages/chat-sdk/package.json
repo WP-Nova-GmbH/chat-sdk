@@ -1,6 +1,6 @@
 {
     "name": "@wp-nova/chat-sdk",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "private": false,
     "type": "module",
     "main": "./dist/index.cjs",

@@ -1,6 +1,6 @@
 {
     "name": "@wp-nova/chat-sdk-react",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "React provider and hooks for the Nova Chat SDK.",
     "license": "MIT",
     "private": false,
@@ -29,7 +29,7 @@
         "test": "vitest run --passWithNoTests"
     },
     "dependencies": {
-        "@wp-nova/chat-sdk": "1.0.2"
+        "@wp-nova/chat-sdk": "1.0.3"
     },
     "peerDependencies": {
         "react": ">=18 <20"
