@@ -11,8 +11,12 @@
 // unavailable-user state. A persistently-unavailable email must not tight-loop,
 // so failures get bounded retry + backoff + a cooldown.
 
-import { type ResolvedConfig, TIMEOUTS } from "./config.js";
-import type { SurfaceDisplaySettings, TokenEndpointResponse, TokenResult } from "./types.js";
+import { type ResolvedConfig, TIMEOUTS } from "../config/config.js";
+import type {
+    SurfaceDisplaySettings,
+    TokenEndpointResponse,
+    TokenResult,
+} from "../protocol/types.js";
 
 /** Max attempts per token acquisition (initial + retries). */
 const MAX_ATTEMPTS = 3;

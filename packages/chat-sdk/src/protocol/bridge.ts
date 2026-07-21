@@ -16,8 +16,8 @@
 // timeouts. Capture/tool execution live in snapshot.ts / navigation.ts /
 // tools.ts; the caller wires them in via the handler callbacks.
 
-import type { ResolvedConfig } from "./config.js";
-import { TIMEOUTS } from "./config.js";
+import type { ResolvedConfig } from "../config/config.js";
+import { TIMEOUTS } from "../config/config.js";
 import {
     type BridgeErrorCode,
     type ClientToolCall,

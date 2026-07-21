@@ -14,20 +14,20 @@
 // the same node (HMR / SPA re-mount) reuses the existing iframe + bridge instead
 // of re-creating them; the bridge's global message listener is started once.
 
-import { Bridge } from "./bridge.js";
-import { DEFAULT_ACCENT, type ResolvedConfig, resolveConfig } from "./config.js";
-import { executeNavigation, isNavigationAction } from "./navigation.js";
-import { DEFAULT_SETTLE } from "./settle.js";
-import { capturePageContext, clearHandleStamps } from "./snapshot.js";
-import { fetchToken } from "./token.js";
-import { ToolRegistry } from "./tools.js";
+import { fetchToken } from "../auth/token.js";
+import { DEFAULT_ACCENT, type ResolvedConfig, resolveConfig } from "../config/config.js";
+import { executeNavigation, isNavigationAction } from "../page/navigation.js";
+import { DEFAULT_SETTLE } from "../page/settle.js";
+import { capturePageContext, clearHandleStamps } from "../page/snapshot.js";
+import { Bridge } from "../protocol/bridge.js";
 import type {
     ClientToolCall,
     ClientToolResult,
     PageContext,
     SdkConfig,
     TokenResult,
-} from "./types.js";
+} from "../protocol/types.js";
+import { ToolRegistry } from "../tools/tools.js";
 
 /** Tag name of the custom element. */
 export const ELEMENT_TAG = "wp-nova-chat";

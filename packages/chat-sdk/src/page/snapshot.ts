@@ -43,7 +43,7 @@ import type {
     VisibleControl,
     VisibleLink,
     VisiblePageSnapshot,
-} from "./types.js";
+} from "../protocol/types.js";
 
 // --- Size budget (mirrors the POC's FIELD_VALUE_CAP / MARKDOWN_CAP) ----------
 

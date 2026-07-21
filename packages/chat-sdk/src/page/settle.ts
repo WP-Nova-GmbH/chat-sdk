@@ -7,8 +7,8 @@
 // window before the post-action capture, bounded by a hard cap so a page that
 // never goes quiet (tickers, animations) cannot stall the tool round-trip.
 
+import type { PageContext } from "../protocol/types.js";
 import { capturePageContext } from "./snapshot.js";
-import type { PageContext } from "./types.js";
 
 /** Tuning for the post-action DOM settle. Host-configurable via `SdkConfig.settle`. */
 export interface SettleOptions {

@@ -13,15 +13,15 @@
 //   - `REGISTER_TOOLS` is sent on `READY` and re-sent whenever the advertised
 //     tool set changes.
 
-import { isNavigationAction, StaleHandleError } from "./navigation.js";
-import { captureSettledPageContext, DEFAULT_SETTLE, type SettleOptions } from "./settle.js";
+import { isNavigationAction, StaleHandleError } from "../page/navigation.js";
+import { captureSettledPageContext, DEFAULT_SETTLE, type SettleOptions } from "../page/settle.js";
 import type {
     ClientToolCall,
     ClientToolResult,
     ClientToolSpec,
     ToolDefinition,
     ToolHandler,
-} from "./types.js";
+} from "../protocol/types.js";
 
 const TOOL_NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
 const MIN_DESCRIPTION_LENGTH = 20;

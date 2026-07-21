@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { ToolDefinition } from "../protocol/types.js";
 import { ToolRegistry } from "./tools.js";
-import type { ToolDefinition } from "./types.js";
 
 const ORIGINALS = {
     document: Object.getOwnPropertyDescriptor(globalThis, "document"),

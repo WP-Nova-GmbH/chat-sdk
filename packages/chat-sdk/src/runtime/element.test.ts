@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_ACCENT, type ResolvedConfig } from "./config.js";
+import { __resetTokenCooldownForTests } from "../auth/token.js";
+import { DEFAULT_ACCENT, type ResolvedConfig } from "../config/config.js";
 import type { WpNovaChatElement } from "./element.js";
-import { __resetTokenCooldownForTests } from "./token.js";
 
 const ORIGINALS = {
     HTMLElement: Object.getOwnPropertyDescriptor(globalThis, "HTMLElement"),

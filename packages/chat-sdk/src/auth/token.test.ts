@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ResolvedConfig } from "./config.js";
+import type { ResolvedConfig } from "../config/config.js";
 import { __resetTokenCooldownForTests, fetchToken } from "./token.js";
 
 const ORIGINALS = {

@@ -15,9 +15,9 @@
 //      continuation re-streams with a fresh snapshot and the agent re-targets
 //      rather than wedging on a dangling tool_call.
 
+import type { ClientToolCall, ClientToolResult } from "../protocol/types.js";
 import { captureSettledPageContext, DEFAULT_SETTLE, type SettleOptions } from "./settle.js";
 import { cssEscape, HANDLE_ATTR, resolveHandleNode } from "./snapshot.js";
-import type { ClientToolCall, ClientToolResult } from "./types.js";
 
 /** Built-in navigation action names the SDK can execute itself (no host handler). */
 export const NAVIGATION_ACTIONS = [

@@ -409,10 +409,10 @@ Confirm all of these before finishing:
 ## Useful Source Files When Working in Nova Repos
 
 ```text
-~/Dev/chat-sdk/packages/chat-sdk/src/types.ts
-~/Dev/chat-sdk/packages/chat-sdk/src/token.ts
-~/Dev/chat-sdk/packages/chat-sdk/src/navigation.ts
-~/Dev/chat-sdk/packages/chat-sdk/src/snapshot.ts
+~/Dev/chat-sdk/packages/chat-sdk/src/protocol/types.ts
+~/Dev/chat-sdk/packages/chat-sdk/src/auth/token.ts
+~/Dev/chat-sdk/packages/chat-sdk/src/page/navigation.ts
+~/Dev/chat-sdk/packages/chat-sdk/src/page/snapshot.ts
 ~/Dev/chat-sdk/packages/react/src/index.tsx
 ~/Dev/chat-sdk/packages/angular/src/lib/
 ~/Dev/nova-ark/apps/g8way/src/modules/auth/embed/embed-session.controller.ts

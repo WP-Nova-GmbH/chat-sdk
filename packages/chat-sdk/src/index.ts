@@ -1,4 +1,23 @@
 export {
+    buildDisabledMessage,
+    formatErrorMessage,
+    missingRequiredConfigFields,
+    reportOperationError,
+} from "./config/diagnostics.js";
+export { DEFAULT_SETTLE, SETTLED_EVENT, type SettleOptions } from "./page/settle.js";
+// Consumer-facing types only. The postMessage wire/frame protocol stays internal
+// to the package (import from "./protocol/types.js" inside the SDK) so a wire refactor is
+// not a public SemVer-major and autocomplete is not flooded with ~45 frame types.
+export type {
+    ClientToolResult,
+    PageContext,
+    SdkConfig,
+    SiteRoute,
+    SurfaceDisplaySettings,
+    ToolDefinition,
+    ToolHandler,
+} from "./protocol/types.js";
+export {
     type Command,
     destroy,
     init,
@@ -13,24 +32,5 @@ export {
     /** @deprecated Use unregisterTool for SDK-declared tools. */
     unregisterToolHandler,
     WpNova,
-} from "./controller.js";
-export {
-    buildDisabledMessage,
-    formatErrorMessage,
-    missingRequiredConfigFields,
-    reportOperationError,
-} from "./diagnostics.js";
-export { defineElement, ELEMENT_TAG, WpNovaChatElement } from "./element.js";
-export { DEFAULT_SETTLE, SETTLED_EVENT, type SettleOptions } from "./settle.js";
-// Consumer-facing types only. The postMessage wire/frame protocol stays internal
-// to the package (import from "./types.js" inside the SDK) so a wire refactor is
-// not a public SemVer-major and autocomplete is not flooded with ~45 frame types.
-export type {
-    ClientToolResult,
-    PageContext,
-    SdkConfig,
-    SiteRoute,
-    SurfaceDisplaySettings,
-    ToolDefinition,
-    ToolHandler,
-} from "./types.js";
+} from "./runtime/controller.js";
+export { defineElement, ELEMENT_TAG, WpNovaChatElement } from "./runtime/element.js";

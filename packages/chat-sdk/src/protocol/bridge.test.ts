@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { type ResolvedConfig, TIMEOUTS } from "../config/config.js";
 import { Bridge } from "./bridge.js";
-import { type ResolvedConfig, TIMEOUTS } from "./config.js";
 import type { EmbedFrame, SdkFrame } from "./types.js";
 import { EMBED_SOURCE, SDK_SOURCE } from "./types.js";
 
