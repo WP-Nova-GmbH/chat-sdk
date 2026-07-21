@@ -8,20 +8,31 @@ const REQUIRED_CONFIG = {
 };
 
 test("settle timings default and clamp host overrides", () => {
-    assert.deepEqual(resolveConfig(REQUIRED_CONFIG).settle, { quietMs: 200, maxWaitMs: 1600 });
+    assert.deepEqual(resolveConfig(REQUIRED_CONFIG).settle, {
+        quietMs: 200,
+        maxWaitMs: 1600,
+        waitForNavigationSignal: false,
+    });
     assert.deepEqual(
-        resolveConfig({ ...REQUIRED_CONFIG, settle: { quietMs: 5000, maxWaitMs: 10_000 } }).settle,
-        { quietMs: 1000, maxWaitMs: 5000 },
+        resolveConfig({
+            ...REQUIRED_CONFIG,
+            settle: {
+                quietMs: 5000,
+                maxWaitMs: 10_000,
+                waitForNavigationSignal: true,
+            },
+        }).settle,
+        { quietMs: 1000, maxWaitMs: 5000, waitForNavigationSignal: true },
     );
     // maxWaitMs can never undercut the quiet window.
     assert.deepEqual(
         resolveConfig({ ...REQUIRED_CONFIG, settle: { quietMs: 500, maxWaitMs: 100 } }).settle,
-        { quietMs: 500, maxWaitMs: 500 },
+        { quietMs: 500, maxWaitMs: 500, waitForNavigationSignal: false },
     );
     assert.deepEqual(
         resolveConfig({ ...REQUIRED_CONFIG, settle: { quietMs: Number.NaN, maxWaitMs: -5 } })
             .settle,
-        { quietMs: 200, maxWaitMs: 1600 },
+        { quietMs: 200, maxWaitMs: 1600, waitForNavigationSignal: false },
     );
 });
 

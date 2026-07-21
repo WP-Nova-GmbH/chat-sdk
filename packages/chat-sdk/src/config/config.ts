@@ -125,7 +125,11 @@ function resolveSettle(settle: SdkConfig["settle"]): SettleOptions {
         quietMs,
         SETTLE_MAX_WAIT_MS_MAX,
     );
-    return { quietMs, maxWaitMs };
+    return {
+        quietMs,
+        maxWaitMs,
+        waitForNavigationSignal: settle?.waitForNavigationSignal === true,
+    };
 }
 
 /**

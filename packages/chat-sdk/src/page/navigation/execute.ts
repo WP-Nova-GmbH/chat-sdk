@@ -196,9 +196,17 @@ export async function executeNavigation(
     }
 
     // Let the DOM settle before re-capturing so the fresh snapshot reflects the
-    // action — a mutation-quiet window bounded by a hard cap, ended early by the
-    // host's `wp-nova:settled` signal when it dispatches one.
-    return { result, snapshot: await captureSettledPageContext(safeSelectors, settle, signal) };
+    // action. Opted-in host-router navigation waits for the host's explicit
+    // readiness signal; other actions use the mutation-quiet window.
+    const navigation =
+        result && typeof result === "object" && "navigation" in result
+            ? (result.navigation as NavigationMode)
+            : undefined;
+    const requireHostSignal = settle.waitForNavigationSignal === true && navigation === "host";
+    return {
+        result,
+        snapshot: await captureSettledPageContext(safeSelectors, settle, signal, requireHostSignal),
+    };
 }
 
 /** Set a field's value and fire input/change so reactive frameworks update. */

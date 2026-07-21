@@ -119,7 +119,10 @@ function installSettleGlobals(clock: FakeClock): { listeners: Map<string, Set<Li
         configurable: true,
         value: StubMutationObserver,
     });
-    Object.defineProperty(globalThis, "setTimeout", { configurable: true, value: clock.setTimeout });
+    Object.defineProperty(globalThis, "setTimeout", {
+        configurable: true,
+        value: clock.setTimeout,
+    });
     Object.defineProperty(globalThis, "clearTimeout", {
         configurable: true,
         value: clock.clearTimeout,
@@ -210,6 +213,83 @@ test("the wp-nova:settled host event ends the wait early", async () => {
         assert.deepEqual(result, { settled: true });
         assert.equal(listeners.get(SETTLED_EVENT)?.size ?? 0, 0);
         assert.equal(clock.timers.size, 0);
+    } finally {
+        restoreGlobals();
+    }
+});
+
+test("host-signal mode ignores an early quiet window", async () => {
+    const clock = new FakeClock();
+    installSettleGlobals(clock);
+    try {
+        let result: { settled: boolean } | undefined;
+        void settleDom(
+            { quietMs: 200, maxWaitMs: 1600, waitForNavigationSignal: true },
+            undefined,
+            true,
+        ).then((settled) => {
+            result = settled;
+        });
+
+        clock.advance(800);
+        await flush();
+        assert.equal(result, undefined);
+
+        (globalThis as unknown as { window: Window }).window.dispatchEvent({
+            type: SETTLED_EVENT,
+        } as Event);
+        await flush();
+        assert.deepEqual(result, { settled: true });
+    } finally {
+        restoreGlobals();
+    }
+});
+
+test("host-signal mode still waits when MutationObserver is unavailable", async () => {
+    const clock = new FakeClock();
+    installSettleGlobals(clock);
+    Object.defineProperty(globalThis, "MutationObserver", {
+        configurable: true,
+        value: undefined,
+    });
+    try {
+        let result: { settled: boolean } | undefined;
+        void settleDom(
+            { quietMs: 200, maxWaitMs: 1600, waitForNavigationSignal: true },
+            undefined,
+            true,
+        ).then((settled) => {
+            result = settled;
+        });
+
+        clock.advance(800);
+        await flush();
+        assert.equal(result, undefined);
+
+        (globalThis as unknown as { window: Window }).window.dispatchEvent({
+            type: SETTLED_EVENT,
+        } as Event);
+        await flush();
+        assert.deepEqual(result, { settled: true });
+    } finally {
+        restoreGlobals();
+    }
+});
+
+test("host-signal mode marks a cap-hit capture as unsettled", async () => {
+    const clock = new FakeClock();
+    installSettleGlobals(clock);
+    try {
+        const captured = captureSettledPageContext(
+            [],
+            { quietMs: 50, maxWaitMs: 100, waitForNavigationSignal: true },
+            undefined,
+            true,
+        );
+
+        clock.advance(100);
+        const context = await captured;
+        assert.equal(context.snapshot?.unsettled, true);
     } finally {
         restoreGlobals();
     }

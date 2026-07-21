@@ -64,9 +64,16 @@ export interface SdkConfig {
      * max 1000); `maxWaitMs` is the hard cap on the wait (default 1600, max
      * 5000) — hitting it flags the snapshot `unsettled`. Hosts can end the wait
      * early by dispatching the `wp-nova:settled` window event once the view
-     * triggered by the last action has rendered its data.
+     * triggered by the last action has rendered its data. Set
+     * `waitForNavigationSignal` when host-router navigation must not accept a
+     * transient mutation-quiet state before route data has loaded; the hard cap
+     * remains the fallback and marks the snapshot unsettled.
      */
-    settle?: { quietMs?: number; maxWaitMs?: number };
+    settle?: {
+        quietMs?: number;
+        maxWaitMs?: number;
+        waitForNavigationSignal?: boolean;
+    };
     /** Protocol version the SDK speaks (defaults to PROTOCOL_VERSION). */
     protocolVersion?: number;
 }

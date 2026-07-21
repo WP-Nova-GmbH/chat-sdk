@@ -16,17 +16,24 @@ export interface SettleOptions {
     quietMs: number;
     /** Hard cap (ms) on the wait; hitting it flags the captured snapshot `unsettled`. */
     maxWaitMs: number;
+    /** For host-router navigation, wait for `wp-nova:settled` instead of DOM quiet. */
+    waitForNavigationSignal?: boolean;
 }
 
-export const DEFAULT_SETTLE: SettleOptions = { quietMs: 200, maxWaitMs: 1600 };
+export const DEFAULT_SETTLE: SettleOptions = {
+    quietMs: 200,
+    maxWaitMs: 1600,
+    waitForNavigationSignal: false,
+};
 
 /**
  * Window event a host page may dispatch to end the settle wait immediately:
  * `window.dispatchEvent(new CustomEvent("wp-nova:settled"))` once the view
  * triggered by the last action has rendered its data. The SDK listens ONLY
- * while a post-action settle wait is pending — events dispatched outside a
- * pending wait are ignored, so a missed or early signal is harmless (the
- * mutation quiet-window still resolves). `detail` is reserved for future use.
+ * while a post-action settle wait is pending. Events dispatched outside a
+ * pending wait are ignored. Normal settle mode still falls back to the DOM
+ * quiet window; explicit host-signal mode falls back to the hard cap and marks
+ * the resulting snapshot unsettled. `detail` is reserved for future use.
  */
 export const SETTLED_EVENT = "wp-nova:settled";
 
@@ -47,19 +54,25 @@ export function nextFrame(): Promise<void> {
 }
 
 /**
- * Wait for the DOM to go mutation-quiet. Resolves on the first of: quiet window
- * elapsed (settled), `wp-nova:settled` received (settled), cap hit (unsettled),
- * or abort (the round-trip was already discarded; don't linger). Falls back to
- * a two-frame wait — the pre-observer behavior — when MutationObserver or the
- * document is unavailable.
+ * Wait for the DOM to go mutation-quiet, or only for the host readiness event
+ * when `requireHostSignal` is true. Resolves on the first applicable condition:
+ * quiet window elapsed (settled), `wp-nova:settled` received (settled), cap hit
+ * (unsettled), or abort (the round-trip was already discarded; don't linger).
+ * Falls back to a two-frame wait — the pre-observer behavior — when
+ * MutationObserver or the document is unavailable.
  */
-export function settleDom(options: SettleOptions, signal?: AbortSignal): Promise<SettleResult> {
+export function settleDom(
+    options: SettleOptions,
+    signal?: AbortSignal,
+    requireHostSignal = false,
+): Promise<SettleResult> {
+    const hasWindow = typeof window !== "undefined";
     const canObserve =
         typeof MutationObserver === "function" &&
-        typeof window !== "undefined" &&
+        hasWindow &&
         typeof document !== "undefined" &&
         Boolean(document.documentElement);
-    if (!canObserve) {
+    if (!canObserve && !(requireHostSignal && hasWindow)) {
         return nextFrame()
             .then(() => nextFrame())
             .then(() => ({ settled: true }));
@@ -69,11 +82,12 @@ export function settleDom(options: SettleOptions, signal?: AbortSignal): Promise
         let done = false;
         let quietTimer: ReturnType<typeof setTimeout> | undefined;
         let capTimer: ReturnType<typeof setTimeout> | undefined;
+        let observer: MutationObserver | undefined;
 
         const finish = (settled: boolean): void => {
             if (done) return;
             done = true;
-            observer.disconnect();
+            observer?.disconnect();
             clearTimeout(quietTimer);
             clearTimeout(capTimer);
             window.removeEventListener(SETTLED_EVENT, onHostSettled);
@@ -89,17 +103,21 @@ export function settleDom(options: SettleOptions, signal?: AbortSignal): Promise
         const onHostSettled = (): void => finish(true);
         const onAbort = (): void => finish(true);
 
-        const observer = new MutationObserver(armQuietTimer);
         capTimer = setTimeout(() => finish(false), options.maxWaitMs);
-        observer.observe(document.documentElement, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            characterData: true,
-        });
+        if (canObserve) {
+            observer = new MutationObserver(() => {
+                if (!requireHostSignal) armQuietTimer();
+            });
+            observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                characterData: true,
+            });
+        }
         window.addEventListener(SETTLED_EVENT, onHostSettled, { once: true });
         signal?.addEventListener("abort", onAbort, { once: true });
-        armQuietTimer();
+        if (!requireHostSignal) armQuietTimer();
     });
 }
 
@@ -111,8 +129,9 @@ export async function captureSettledPageContext(
     safeSelectors: string[],
     options: SettleOptions,
     signal?: AbortSignal,
+    requireHostSignal = false,
 ): Promise<PageContext> {
-    const { settled } = await settleDom(options, signal);
+    const { settled } = await settleDom(options, signal, requireHostSignal);
     const pageContext = capturePageContext(safeSelectors);
     if (!settled && pageContext.snapshot) {
         pageContext.snapshot.unsettled = true;
