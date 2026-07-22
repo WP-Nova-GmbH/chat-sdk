@@ -161,7 +161,7 @@ test("live host theme changes reuse the bridge and iframe", () => {
     assert.deepEqual(sentThemes, ["dark"]);
     assert.deepEqual(panelShadows, [
         "0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30)",
-        "none",
+        "0 1px 2px rgba(0,0,0,.40),0 18px 44px -16px rgba(0,0,0,.60)",
     ]);
     assert.equal(element.resolved?.theme, "dark");
 });

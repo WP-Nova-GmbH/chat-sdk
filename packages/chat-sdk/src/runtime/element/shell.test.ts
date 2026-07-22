@@ -64,6 +64,7 @@ test("setConfig seeds host launcher colors before shadow render", () => {
     assert.deepEqual(appliedTheme, [
         ["--wpn-frame-background", "#ffffff"],
         ["--wpn-panel-shadow", "0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30)"],
+        ["--wpn-panel-border", "rgba(22,18,42,.08)"],
         ["--wpn-accent", "#276b55"],
         ["--wpn-launcher-icon", "#0f1117"],
     ]);
@@ -203,12 +204,15 @@ test("desktop panel reuses the launcher's bottom offset while mobile stays full 
     assert.equal(html.includes("max-height:calc(100vh - 48px)"), true);
     assert.equal(html.includes("#panel{right:0;bottom:0;width:100vw;height:100dvh"), true);
     assert.equal(html.includes("--wpn-frame-background:#0f1117"), true);
-    assert.equal(html.includes("--wpn-panel-shadow:none"), true);
+    assert.equal(
+        html.includes("--wpn-panel-shadow:0 1px 2px rgba(0,0,0,.40),0 18px 44px -16px rgba(0,0,0,.60)"),
+        true,
+    );
     assert.equal(html.includes("box-shadow:var(--wpn-panel-shadow)"), true);
     assert.equal(html.includes("0 22px 50px -18px"), false);
 });
 
-test("light panel keeps elevation while dark panel removes the black halo", () => {
+test("panel keeps theme-matched elevation and a hairline border", () => {
     const lightElement = makeElement() as {
         shadowRoot?: { innerHTML: string };
         shell: { render: (config: ResolvedConfig) => void };
@@ -222,12 +226,21 @@ test("light panel keeps elevation while dark panel removes the black halo", () =
         ),
         true,
     );
+    assert.equal(lightHtml.includes("--wpn-panel-border:rgba(22,18,42,.08)"), true);
+    assert.equal(lightHtml.includes("border:1px solid var(--wpn-panel-border)"), true);
 
     const darkElement = makeElement() as {
         shadowRoot?: { innerHTML: string };
         shell: { render: (config: ResolvedConfig) => void };
     };
     darkElement.shell.render(resolvedConfig({ theme: "dark" }));
+    const darkHtml = darkElement.shadowRoot?.innerHTML ?? "";
 
-    assert.equal(darkElement.shadowRoot?.innerHTML.includes("--wpn-panel-shadow:none"), true);
+    assert.equal(
+        darkHtml.includes(
+            "--wpn-panel-shadow:0 1px 2px rgba(0,0,0,.40),0 18px 44px -16px rgba(0,0,0,.60)",
+        ),
+        true,
+    );
+    assert.equal(darkHtml.includes("--wpn-panel-border:rgba(255,255,255,.12)"), true);
 });

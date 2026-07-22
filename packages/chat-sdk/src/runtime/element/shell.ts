@@ -7,11 +7,24 @@ const LAUNCHER_CHAT_SVG =
 /** Bubbling events emitted by a primary pointer/mouse button activation. */
 const LAUNCHER_ACTIVATION_EVENTS = ["pointerdown", "pointerup", "mousedown", "mouseup"] as const;
 
-/** Light surfaces retain elevation; dark surfaces avoid a black outer halo. */
+/**
+ * Both surfaces keep elevation, but the navy blur tuned for light host pages
+ * reads as a smudgy halo on dark ones — dark surfaces use a deeper, tighter
+ * near-black shadow instead.
+ */
 const LIGHT_PANEL_SHADOW = "0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30)";
+const DARK_PANEL_SHADOW = "0 1px 2px rgba(0,0,0,.40),0 18px 44px -16px rgba(0,0,0,.60)";
+
+/** Hairline ring that keeps the panel edge visible against same-tone host pages. */
+const LIGHT_PANEL_BORDER = "rgba(22,18,42,.08)";
+const DARK_PANEL_BORDER = "rgba(255,255,255,.12)";
 
 function resolvePanelShadow(theme: ResolvedConfig["theme"]): string {
-    return theme === "dark" ? "none" : LIGHT_PANEL_SHADOW;
+    return theme === "dark" ? DARK_PANEL_SHADOW : LIGHT_PANEL_SHADOW;
+}
+
+function resolvePanelBorder(theme: ResolvedConfig["theme"]): string {
+    return theme === "dark" ? DARK_PANEL_BORDER : LIGHT_PANEL_BORDER;
 }
 
 /** Minimal attribute escaping for values interpolated into the shadow markup. */
@@ -62,6 +75,7 @@ export class ChatShell {
             config.theme === "dark" ? "#0f1117" : "#ffffff",
         );
         this.host.style.setProperty("--wpn-panel-shadow", resolvePanelShadow(config.theme));
+        this.host.style.setProperty("--wpn-panel-border", resolvePanelBorder(config.theme));
         this.applyLauncherTheme({
             triggerColor: config.triggerColor,
             triggerIconColor: config.triggerIconColor,
@@ -98,6 +112,7 @@ export class ChatShell {
             : DEFAULT_ACCENT;
         const iconColor = resolveLauncherIconColor(config.triggerIconColor) ?? "#ffffff";
         const panelShadow = resolvePanelShadow(config.theme);
+        const panelBorder = resolvePanelBorder(config.theme);
         const title = config.title;
         this.syncLauncherThemeVisibility();
         const launcherHiddenAttribute = this.launcherThemeReady ? "" : " hidden";
@@ -106,7 +121,7 @@ export class ChatShell {
             "<style>",
             // `all:initial` resets inherited host styles but NOT custom properties,
             // so the accent token survives for the color-mix shadows below.
-            `:host{all:initial;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-frame-background:${config.theme === "dark" ? "#0f1117" : "#ffffff"};--wpn-panel-shadow:${panelShadow};--wpn-dev:#e8a91d;}`,
+            `:host{all:initial;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-frame-background:${config.theme === "dark" ? "#0f1117" : "#ffffff"};--wpn-panel-shadow:${panelShadow};--wpn-panel-border:${panelBorder};--wpn-dev:#e8a91d;}`,
             "*{box-sizing:border-box;}",
             // --- launcher: 60px accent circle, two-layer shadow ----------------
             "#launcher{position:fixed;right:24px;bottom:24px;width:60px;height:60px;border:0;",
@@ -139,6 +154,7 @@ export class ChatShell {
             "#panel{position:fixed;right:24px;bottom:24px;width:384px;height:640px;",
             "max-width:calc(100vw - 40px);max-height:calc(100vh - 48px);background:var(--wpn-frame-background);",
             "border-radius:18px;overflow:hidden;display:flex;flex-direction:column;",
+            "border:1px solid var(--wpn-panel-border);",
             "box-shadow:var(--wpn-panel-shadow);",
             "z-index:2147483000;transform-origin:bottom right;animation:wpn-in .16s cubic-bezier(.2,.7,.3,1);}",
             "#panel[hidden]{display:none;}",
@@ -146,7 +162,7 @@ export class ChatShell {
             "@keyframes wpn-in{from{opacity:0;transform:translateY(8px) scale(.96);}to{opacity:1;transform:none;}}",
             // mobile: the panel fills the viewport.
             "@media (max-width:480px){#panel{right:0;bottom:0;width:100vw;height:100dvh;",
-            "max-width:100vw;max-height:100dvh;border-radius:0;}#launcher{right:16px;bottom:16px;}}",
+            "max-width:100vw;max-height:100dvh;border-radius:0;border:0;}#launcher{right:16px;bottom:16px;}}",
             "@media (prefers-reduced-motion:reduce){#panel{animation:none;}#launcher{transition:none;}}",
             "</style>",
             `<button id="launcher" part="launcher" type="button" aria-label="Open assistant"${launcherHiddenAttribute}>`,
