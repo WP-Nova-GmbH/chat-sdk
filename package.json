@@ -27,7 +27,8 @@
         "test": "turbo run test",
         "version-packages": "changeset version",
         "check-angular-publishable": "node scripts/check-angular-publishable.mjs",
-        "release": "npm run build && npm run check-angular-publishable && node scripts/publish-packages.mjs"
+        "release": "npm run build && npm run check-angular-publishable && node scripts/publish-packages.mjs",
+        "publish": "npm run release"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.5",

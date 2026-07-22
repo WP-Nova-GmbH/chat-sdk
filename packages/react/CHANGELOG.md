@@ -1,5 +1,13 @@
 # @wp-nova/chat-sdk-react
 
+## 1.0.5
+
+### Patch Changes
+
+- 1c059dd: Preserve the embedded conversation while minimizing, contain launcher clicks, reclaim launcher space while open, add live host-page light/dark theme and launcher-color synchronization, and reject backslash-normalized protocol-relative site routes.
+- Updated dependencies [1c059dd]
+  - @wp-nova/chat-sdk@1.0.5
+
 ## 1.0.4
 
 ### Patch Changes

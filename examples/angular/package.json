@@ -1,7 +1,7 @@
 {
     "name": "@wp-nova/chat-sdk-example-angular",
     "private": true,
-    "version": "1.0.4",
+    "version": "1.0.5",
     "type": "module",
     "scripts": {
         "dev": "vite --host 127.0.0.1 --port 4312",
@@ -15,8 +15,8 @@
         "@angular/compiler": "^20.3.25",
         "@angular/core": "^20.3.0",
         "@angular/platform-browser": "^20.3.25",
-        "@wp-nova/chat-sdk": "1.0.4",
-        "@wp-nova/chat-sdk-angular": "1.0.4",
+        "@wp-nova/chat-sdk": "1.0.5",
+        "@wp-nova/chat-sdk-angular": "1.0.5",
         "rxjs": "^7.8.1",
         "tslib": "^2.8.1"
     },

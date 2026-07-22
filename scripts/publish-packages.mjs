@@ -1,11 +1,10 @@
-// Idempotent publisher for the linked @wp-nova/chat-sdk* packages.
+// Idempotent publisher for the fixed @wp-nova/chat-sdk* packages.
 //
 // Publishes ONLY package versions that are not already on the npm registry. The
-// three packages are `linked` (not `fixed`) in .changeset/config.json, so a
-// changeset may bump just one of them — e.g. an Angular-only patch while the core
-// and React packages stay put. Raw `npm publish` refuses to republish an existing
-// version (E403) and aborts the chain, so this script compares each manifest
-// version against the registry and skips what is already there. Re-runs are safe.
+// three packages are `fixed` in .changeset/config.json, so they are versioned as
+// one release set. Raw `npm publish` refuses to republish an existing version
+// (E403) and aborts the chain, so this script compares each manifest version
+// against the registry and skips what is already there. Re-runs are safe.
 //
 // Angular is published from its ng-packagr `dist` output, never the package root
 // (the root manifest deliberately has no exports — see check-angular-publishable.mjs).

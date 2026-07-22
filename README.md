@@ -61,7 +61,7 @@ accept `?surface=surf_...&baseUrl=http://localhost:5173&tokenEndpoint=/api/nova-
 
 ## Releases
 
-`npm run release` builds every package, runs `npm run check-angular-publishable`,
+`npm run publish` builds every package, runs `npm run check-angular-publishable`,
 and then runs `scripts/publish-packages.mjs`, which publishes each package from the
 directory that produces a resolvable npm tarball:
 
@@ -76,10 +76,9 @@ directory that produces a resolvable npm tarball:
   guards against publishing a malformed Angular artifact.
 
 Publishing is **idempotent**: each target is published only when its manifest
-version is not already on the npm registry. The three packages are `linked` (not
-`fixed`) in `.changeset/config.json`, so a changeset can bump just one of them —
-e.g. an Angular-only patch while the core and React packages stay put — and the
-release publishes exactly that package. Re-running a release is a safe no-op.
+version is not already on the npm registry. The three packages are `fixed` in
+`.changeset/config.json`, so a user-facing change keeps the core and wrappers on
+the same version. Re-running a release is a safe no-op.
 
 The normal release flow:
 
@@ -87,7 +86,7 @@ The normal release flow:
    (pick the bump level; the summary you write becomes the release note).
 2. Bump versions and update changelogs: `npm run version-packages`
    (`changeset version`), then commit the result.
-3. Publish — locally with `npm run release`, or in CI by pushing an `sdk-*` tag
+3. Publish — locally with `npm run publish`, or in CI by pushing an `sdk-*` tag
    (or running the **Release SDK** workflow manually). The CI workflow in
    `.github/workflows/release.yml` runs the same `scripts/publish-packages.mjs`
    over OIDC trusted publishing, so it needs no npm token. The tag value is only a
