@@ -64,6 +64,7 @@ init({ publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
 | `accent` | no | Pre-auth accent color. |
 | `triggerColor` | no | Launcher color; defaults to `accent`. |
 | `triggerIconColor` | no | `light`, `dark`, or hex. |
+| `theme` | no | Host page mode (`light` or `dark`); defaults to `light` and updates live. |
 | `safeValueSelectors` | no | Selectors that opt safe field values into snapshots. |
 | `voiceMode` | no | Enables voice and iframe microphone delegation. |
 | `routes` | no | Permission-filtered `{ path, description }[]`, max 100. |

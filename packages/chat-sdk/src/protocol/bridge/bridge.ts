@@ -103,6 +103,11 @@ export class Bridge {
         this.send({ type: "REGISTER_TOOLS", tools });
     }
 
+    /** Apply the host page's current color mode without navigating the iframe. */
+    sendHostTheme(theme: ResolvedConfig["theme"]): void {
+        this.send({ type: "HOST_THEME", theme });
+    }
+
     /** Stamp the shared envelope (source + protocolVersion) and post the frame. */
     private send(frame: FramePayload): void {
         this.post({

@@ -12,6 +12,7 @@ init({
   publicSurfaceId: "surf_...",
   tokenEndpoint: "/api/nova-token",
   baseUrl: "https://chat.wp-nova.ai",
+  theme: "dark",
   safeValueSelectors: ["#case-number", ".agent-safe-field"],
   routes: [
     { path: "/customers", description: "Customer lookup list with search" },
@@ -35,6 +36,7 @@ init({
 | `accent` | No | Pre-auth accent color for the SDK-owned launcher shell. |
 | `triggerColor` | No | Launcher button color. Defaults to `accent`. |
 | `triggerIconColor` | No | `light`, `dark`, or a custom hex color for the launcher icon. |
+| `theme` | No | Host page color mode copied into the iframe: `light` or `dark`. Defaults to `light`. |
 | `safeValueSelectors` | No | CSS selectors that opt field values into page snapshot capture. Field values still pass sensitivity checks. |
 | `voiceMode` | No | Enables the embedded voice button and delegates microphone access to the Nova iframe. Defaults to `false`. |
 | `routes` | No | Your site's navigable routes (`{ path, description }`), so the agent can navigate straight to a known page instead of hopping through visible links. See [Site routes](#site-routes). |
@@ -51,10 +53,18 @@ init({
   title: "Assistant",
   accent: "#8665e3",
   triggerIconColor: "light",
+  theme: "light",
 });
 ```
 
 If `accent` or `triggerColor` is not supplied, the SDK can wait for trusted surface theme data before showing the launcher. Supplying one of those colors gives a branded first paint before authentication completes.
+
+`theme` is separate from Nova surface colors. The SDK does not read a WP Chat
+theme cookie or infer the host application's state. Pass your page's current
+mode explicitly. Calling `init` again with a different `theme` sends the new
+mode to the existing iframe without navigating it, re-fetching the token
+endpoint, or losing the open conversation. Framework wrappers do the same when
+their `theme` config value changes.
 
 ## Site Routes
 
@@ -105,7 +115,7 @@ for the complete contract.
 
 The SDK is singleton-safe. Re-running `init` during HMR, route-level remounts, or duplicate script loads reuses the existing custom element.
 
-If `publicSurfaceId`, `baseUrl`, `voiceMode`, or `protocolVersion` changes, the element rebuilds the iframe and bridge, clears buffered auth, and fetches a fresh token before posting auth to the iframe. A direct `init` call also refreshes `routes` and `settle`. Treat settle options as mount-time configuration in framework integrations; the React wrapper observes route changes, but changing only `settle` does not trigger its re-initialization. Keep framework config objects stable and remount or re-initialize deliberately when readiness behavior must change.
+If `publicSurfaceId`, `baseUrl`, `voiceMode`, or `protocolVersion` changes, the element rebuilds the iframe and bridge, clears buffered auth, and fetches a fresh token before posting auth to the iframe. A `theme` change is applied live to the existing iframe. A direct `init` call also refreshes `routes` and `settle`. Treat settle options as mount-time configuration in framework integrations; the React wrapper observes route and theme changes, but changing only `settle` does not trigger its re-initialization. Keep framework config objects stable and remount or re-initialize deliberately when readiness behavior must change.
 
 ## Destroying the Embed
 

@@ -30,6 +30,7 @@ export function App() {
             config={{
                 publicSurfaceId: "surf_...",
                 tokenEndpoint: "/api/nova/embed-token",
+                theme: "dark",
                 routes: [
                     { path: "/customers", description: "Customer lookup list with search." },
                 ],
@@ -49,3 +50,6 @@ Install this package with `@wp-nova/chat-sdk`. Keep config/tool definitions
 stable, filter routes/tools with the signed-in user's permissions, and mount the
 provider above the route outlet. For async router destinations, connect
 `wp-nova:navigate` and dispatch `wp-nova:settled` after required data renders.
+Update `config.theme` from the host application's light/dark mode; changing only
+that field updates the existing iframe without re-fetching auth or resetting the
+conversation.

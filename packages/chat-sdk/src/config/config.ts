@@ -1,7 +1,12 @@
 // Config normalization + protocol tunables for the SDK.
 
 import { DEFAULT_SETTLE, type SettleOptions } from "../page/settle.js";
-import { PROTOCOL_VERSION, type SdkConfig, type SiteRoute } from "../protocol/types/index.js";
+import {
+    type HostTheme,
+    PROTOCOL_VERSION,
+    type SdkConfig,
+    type SiteRoute,
+} from "../protocol/types/index.js";
 import { missingRequiredConfigFields } from "./diagnostics.js";
 
 /** Default base URL of the Nova-hosted iframe app. */
@@ -51,6 +56,8 @@ export interface ResolvedConfig {
     triggerColor: string;
     /** Launcher icon color; supports "light", "dark", or a hex color. */
     triggerIconColor: string;
+    /** Host page color mode forwarded to the iframe; defaults to light. */
+    theme: HostTheme;
     /** True when the host config supplied a launcher/accent color for first paint. */
     hasFirstPaintLauncherColor: boolean;
     /** Per-surface safe-value selector allowlist (default-deny; empty by default). */
@@ -85,7 +92,10 @@ function resolveSiteRoutes(routes: SdkConfig["routes"]): SiteRoute[] {
     for (const route of routes) {
         const path = typeof route?.path === "string" ? route.path.trim() : "";
         const description = typeof route?.description === "string" ? route.description.trim() : "";
-        if (!path.startsWith("/") || path.startsWith("//") || seenPaths.has(path)) {
+        // URL parsing treats backslashes as slashes for special schemes, so
+        // `/\\evil.example/path` is protocol-relative just like `//evil.example/path`.
+        const normalizedSeparators = path.replace(/\\/g, "/");
+        if (!path.startsWith("/") || normalizedSeparators.startsWith("//") || seenPaths.has(path)) {
             console.warn(`[wp-nova] ignoring invalid or duplicate route ${JSON.stringify(route)}`);
             continue;
         }
@@ -170,6 +180,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
         accent: config.accent || DEFAULT_ACCENT,
         triggerColor,
         triggerIconColor: config.triggerIconColor || "light",
+        theme: config.theme === "dark" ? "dark" : "light",
         hasFirstPaintLauncherColor,
         safeValueSelectors: Array.isArray(config.safeValueSelectors)
             ? config.safeValueSelectors.filter((s) => typeof s === "string" && s.trim())

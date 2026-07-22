@@ -31,6 +31,7 @@ const CONFIG = {
     accent: "#8665e3",
     triggerColor: "#8665e3",
     triggerIconColor: "light",
+    theme: "light",
     hasFirstPaintLauncherColor: true,
     safeValueSelectors: [],
     voiceModeEnabled: false,

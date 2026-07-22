@@ -7,6 +7,9 @@ The SDK owns only the launcher and outer panel. The Nova-hosted iframe owns the 
 
 Surface display settings from Nova are the trusted source of truth after authentication. SDK config values are useful for the pre-auth first paint.
 
+The host page's light/dark mode is a separate input. It controls the iframe's
+color mode but does not replace the surface's title, logo, or accent.
+
 Choose the values before implementation:
 
 - visible chat title;
@@ -74,6 +77,30 @@ six-digit hex value rather than copying an unresolved CSS variable. When
 - a hex color such as `#ffffff`
 
 Invalid values are ignored and fall back to a readable default.
+
+## Host Page Light/Dark Mode
+
+Pass the host application's current theme explicitly:
+
+```ts
+const chatConfig = {
+  publicSurfaceId: "surf_...",
+  tokenEndpoint: "/api/nova-token",
+};
+
+function syncChatTheme(theme: "light" | "dark") {
+  init({ ...chatConfig, theme });
+}
+```
+
+Omitting `theme` always selects `light`. The SDK deliberately does not read the
+WP Chat theme cookie or guess from `prefers-color-scheme`; your application is
+the source of truth. When its theme changes, call `init` again (or update the
+React/Angular config value). The SDK sends a `HOST_THEME` frame to the existing
+iframe without re-fetching the token endpoint, so the current route and
+conversation remain intact. It also updates the panel and iframe background
+immediately to avoid a contrasting first-paint flash while the embedded app
+applies the frame.
 
 ## Development Mode Badge
 

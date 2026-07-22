@@ -163,6 +163,24 @@ describe("NovaChatProvider — R5 stable config", () => {
         expect(init).toHaveBeenCalledTimes(1);
         expect(retain).toHaveBeenCalledTimes(1);
     });
+
+    it("re-initializes in place when the host theme changes", async () => {
+        const root = await mount(
+            <NovaChatProvider config={{ ...config, theme: "light" }}>child</NovaChatProvider>,
+        );
+        expect(init).toHaveBeenCalledTimes(1);
+        expect(retain).toHaveBeenCalledTimes(1);
+
+        await rerender(
+            root,
+            <NovaChatProvider config={{ ...config, theme: "dark" }}>child</NovaChatProvider>,
+        );
+
+        expect(init).toHaveBeenCalledTimes(2);
+        expect(init).toHaveBeenLastCalledWith({ ...config, theme: "dark" });
+        expect(retain).toHaveBeenCalledTimes(1);
+        expect(release).not.toHaveBeenCalled();
+    });
 });
 
 describe("NovaChatProvider — R20 stable tools", () => {

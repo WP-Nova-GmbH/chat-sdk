@@ -4,6 +4,9 @@ import type { SiteRoute } from "./page.js";
 // SDK init config
 // ---------------------------------------------------------------------------
 
+/** Host-page color mode forwarded to the embedded chat UI. */
+export type HostTheme = "light" | "dark";
+
 /** Public configuration passed to `WpNova('init', config)` / `<wp-nova-chat>`. */
 export interface SdkConfig {
     /**
@@ -36,6 +39,11 @@ export interface SdkConfig {
     triggerColor?: string;
     /** Launcher icon color for the pre-auth shell: "light", "dark", or a hex color. */
     triggerIconColor?: string;
+    /**
+     * Host page color mode forwarded to the embedded chat. Defaults to "light".
+     * Re-running init with a new value updates the existing iframe in place.
+     */
+    theme?: HostTheme;
     /**
      * Per-surface safe-value selector allowlist. A field value is captured in
      * the Visible Page Snapshot ONLY when it opts in (via `data-wp-nova-include`

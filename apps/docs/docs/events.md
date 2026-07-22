@@ -12,6 +12,7 @@ The SDK sends frames only to the iframe's exact origin. The iframe accepts frame
 | Frame | Direction | Purpose |
 | --- | --- | --- |
 | `READY` | iframe to SDK | The iframe is ready to receive auth and tool registration data. It includes the protocol version range it supports. |
+| `HOST_THEME` | SDK to iframe | Applies the host page's current `light` or `dark` mode. Sent on `READY` and whenever live config changes. |
 | `AUTH_TOKEN` | SDK to iframe | Pushes a short-lived embedded-session token and optional trusted display settings. |
 | `AUTH_ERROR` | SDK to iframe | Reports a transport or malformed token-endpoint failure. |
 | `UNAVAILABLE` | SDK to iframe | Tells the iframe that the asserted email did not resolve to an active Nova tenant user. |
@@ -24,7 +25,7 @@ The SDK sends frames only to the iframe's exact origin. The iframe accepts frame
 | `CLIENT_TOOL_RESULT` | SDK to iframe | Returns the tool result and a fresh post-action snapshot. |
 | `CLIENT_TOOL_ERROR` | SDK to iframe | Returns typed failure details such as `no_handler`, `stale_handle`, `capture_error`, or `timeout`. |
 | `SURFACE_THEME` | iframe to SDK | Applies trusted surface theme values to SDK-owned launcher chrome. |
-| `MINIMIZE` | iframe to SDK | Closes the SDK-owned panel from the iframe header. |
+| `MINIMIZE` | iframe to SDK | Hides the SDK-owned panel from the iframe header without removing or navigating the iframe. |
 
 ## Token Refresh
 

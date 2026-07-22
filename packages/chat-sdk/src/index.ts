@@ -10,6 +10,7 @@ export { DEFAULT_SETTLE, SETTLED_EVENT, type SettleOptions } from "./page/settle
 // not a public SemVer-major and autocomplete is not flooded with ~45 frame types.
 export type {
     ClientToolResult,
+    HostTheme,
     PageContext,
     SdkConfig,
     SiteRoute,

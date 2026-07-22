@@ -159,6 +159,7 @@ export function NovaChatProvider({
         config.accent,
         config.triggerColor,
         config.triggerIconColor,
+        config.theme,
         config.safeValueSelectors,
         config.voiceMode,
         config.routes,

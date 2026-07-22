@@ -4,10 +4,6 @@ import { DEFAULT_ACCENT, type ResolvedConfig } from "../../config/config.js";
 const LAUNCHER_CHAT_SVG =
     '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
 
-/** Chevron-down shown in place of the chat glyph while the panel is open. */
-const LAUNCHER_CHEVRON_SVG =
-    '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
-
 /** Minimal attribute escaping for values interpolated into the shadow markup. */
 function escapeAttr(value: string): string {
     return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -48,7 +44,13 @@ export class ChatShell {
 
     applyConfig(config: ResolvedConfig): void {
         this.hostConfiguredLauncherColor = config.hasFirstPaintLauncherColor;
-        this.launcherThemeReady = config.hasFirstPaintLauncherColor;
+        // Once trusted surface settings have revealed the launcher, live config
+        // updates (such as a host theme change) must not hide it again.
+        this.launcherThemeReady ||= config.hasFirstPaintLauncherColor;
+        this.host.style.setProperty(
+            "--wpn-frame-background",
+            config.theme === "dark" ? "#0f1117" : "#ffffff",
+        );
         this.applyLauncherTheme({
             triggerColor: config.triggerColor,
             triggerIconColor: config.triggerIconColor,
@@ -92,7 +94,7 @@ export class ChatShell {
             "<style>",
             // `all:initial` resets inherited host styles but NOT custom properties,
             // so the accent token survives for the color-mix shadows below.
-            `:host{all:initial;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-dev:#e8a91d;}`,
+            `:host{all:initial;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-frame-background:${config.theme === "dark" ? "#0f1117" : "#ffffff"};--wpn-dev:#e8a91d;}`,
             "*{box-sizing:border-box;}",
             // --- launcher: 60px accent circle, two-layer shadow ----------------
             "#launcher{position:fixed;right:24px;bottom:24px;width:60px;height:60px;border:0;",
@@ -100,17 +102,12 @@ export class ChatShell {
             "display:grid;place-items:center;-webkit-tap-highlight-color:transparent;",
             "box-shadow:0 8px 24px -4px color-mix(in oklab,var(--wpn-accent) 35%,transparent),0 3px 8px rgba(22,18,42,.18);",
             "z-index:2147483000;transition:transform .18s cubic-bezier(.2,.7,.3,1),box-shadow .18s,background .18s;}",
-            "#launcher[hidden],:host([launcher-theme-pending]) #launcher{display:none;pointer-events:none;}",
+            "#launcher[hidden],:host([launcher-theme-pending]) #launcher,:host([open]) #launcher{display:none;pointer-events:none;}",
             "#launcher:hover{transform:translateY(-2px) scale(1.04);",
             "box-shadow:0 14px 34px -6px color-mix(in oklab,var(--wpn-accent) 45%,transparent),0 5px 12px rgba(22,18,42,.22);}",
             "#launcher:focus-visible{outline:none;transform:translateY(-2px) scale(1.04);",
             "box-shadow:0 14px 34px -6px color-mix(in oklab,var(--wpn-accent) 45%,transparent),0 5px 12px rgba(22,18,42,.22),0 0 0 3px color-mix(in oklab,var(--wpn-accent) 25%,transparent);}",
-            // open: darken the launcher and swap the chat glyph for a chevron.
-            ":host([open]) #launcher{background:color-mix(in oklab,var(--wpn-accent) 88%,black);}",
             "#launcher .ic{display:grid;place-items:center;}",
-            "#launcher .ic-chev{display:none;}",
-            ":host([open]) #launcher .ic-chat{display:none;}",
-            ":host([open]) #launcher .ic-chev{display:grid;}",
             // --- development badge: amber ring + DEV pill on dev-mode surfaces --
             // Driven by the trusted token grant; makes a test embed unmistakable
             // without touching the launcher's own accent color or icon.
@@ -127,13 +124,13 @@ export class ChatShell {
             "font-size:9px;font-weight:800;line-height:1;letter-spacing:.08em;",
             "box-shadow:0 2px 4px rgba(22,18,42,.28);pointer-events:none;white-space:nowrap;}",
             // --- panel: frameless 384×640 rounded sheet ------------------------
-            "#panel{position:fixed;right:24px;bottom:100px;width:384px;height:640px;",
-            "max-width:calc(100vw - 40px);max-height:calc(100vh - 124px);background:#fff;",
+            "#panel{position:fixed;right:24px;bottom:24px;width:384px;height:640px;",
+            "max-width:calc(100vw - 40px);max-height:calc(100vh - 48px);background:var(--wpn-frame-background);",
             "border-radius:18px;overflow:hidden;display:flex;flex-direction:column;",
             "box-shadow:0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30);",
             "z-index:2147483000;transform-origin:bottom right;animation:wpn-in .16s cubic-bezier(.2,.7,.3,1);}",
             "#panel[hidden]{display:none;}",
-            "iframe{border:0;flex:1 1 auto;width:100%;height:100%;display:block;background:#fff;}",
+            "iframe{border:0;flex:1 1 auto;width:100%;height:100%;display:block;background:var(--wpn-frame-background);}",
             "@keyframes wpn-in{from{opacity:0;transform:translateY(8px) scale(.96);}to{opacity:1;transform:none;}}",
             // mobile: the panel fills the viewport.
             "@media (max-width:480px){#panel{right:0;bottom:0;width:100vw;height:100dvh;",
@@ -142,7 +139,6 @@ export class ChatShell {
             "</style>",
             `<button id="launcher" part="launcher" type="button" aria-label="Open assistant"${launcherHiddenAttribute}>`,
             `  <span class="ic ic-chat">${LAUNCHER_CHAT_SVG}</span>`,
-            `  <span class="ic ic-chev">${LAUNCHER_CHEVRON_SVG}</span>`,
             '  <span class="dev-badge" aria-hidden="true">DEV</span>',
             "</button>",
             `<div id="panel" role="dialog" aria-modal="false" aria-label="${escapeAttr(title)}" hidden>`,
@@ -157,7 +153,12 @@ export class ChatShell {
         this.syncLauncherThemeVisibility();
         this.syncDevelopmentMode();
 
-        this.launcher?.addEventListener("click", () => this.host.toggle());
+        this.launcher?.addEventListener("click", (event) => {
+            // Shadow-DOM click events are composed and would otherwise bubble to
+            // host-page click-away/navigation handlers.
+            event.stopPropagation();
+            this.host.toggle();
+        });
         if (this.host.hasAttribute("open")) this.setOpen(true);
 
         this.shadowReady = true;
@@ -165,12 +166,13 @@ export class ChatShell {
 
     setOpen(isOpen: boolean): void {
         if (this.panel) this.panel.hidden = !isOpen;
+        this.syncLauncherThemeVisibility();
         this.updateLauncherLabel();
     }
 
-    /** Reflect open + development state on the launcher's accessible name. */
+    /** Reflect development state on the launcher's accessible name. */
     private updateLauncherLabel(): void {
-        const base = this.host.hasAttribute("open") ? "Close assistant" : "Open assistant";
+        const base = "Open assistant";
         this.launcher?.setAttribute(
             "aria-label",
             this.developmentMode ? `${base} (development surface)` : base,
@@ -243,7 +245,7 @@ export class ChatShell {
         if (this.launcherThemeReady) this.host.removeAttribute("launcher-theme-pending");
         else this.host.setAttribute("launcher-theme-pending", "");
         if (this.launcher) {
-            this.launcher.hidden = !this.launcherThemeReady;
+            this.launcher.hidden = !this.launcherThemeReady || this.host.hasAttribute("open");
         }
     }
 
@@ -251,5 +253,4 @@ export class ChatShell {
         this.launcherThemeReady = true;
         this.syncLauncherThemeVisibility();
     }
-
 }

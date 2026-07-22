@@ -40,6 +40,39 @@ test("UNAVAILABLE preserves access-request capability fields", () => {
     ]);
 });
 
+test("HOST_THEME sends the host color mode to the validated iframe origin", () => {
+    const posted: Array<{ frame: SdkFrame; origin: string }> = [];
+    const iframeWindow = {
+        postMessage(frame: SdkFrame, origin: string) {
+            posted.push({ frame, origin });
+        },
+    } as unknown as Window;
+    const bridge = new Bridge(
+        { iframeOrigin: "https://chat.example", protocolVersion: 2 } as ResolvedConfig,
+        {
+            onSnapshotRequest: () => ({ url: "https://host.example" }),
+            onClientToolRequest: async () => ({}),
+            onAuthExpired: () => undefined,
+            onReady: () => undefined,
+        },
+    );
+
+    bridge.setIframeWindow(iframeWindow);
+    bridge.sendHostTheme("dark");
+
+    assert.deepEqual(posted, [
+        {
+            frame: {
+                source: SDK_SOURCE,
+                protocolVersion: 2,
+                type: "HOST_THEME",
+                theme: "dark",
+            },
+            origin: "https://chat.example",
+        },
+    ]);
+});
+
 test("incompatible READY prevents later client tool execution", async () => {
     let listener: ((event: MessageEvent) => void) | undefined;
     const posted: Array<{ frame: SdkFrame; origin: string }> = [];

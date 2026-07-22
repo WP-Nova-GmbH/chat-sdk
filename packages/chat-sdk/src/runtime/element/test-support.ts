@@ -8,13 +8,15 @@ export const ORIGINALS = {
     setTimeout: Object.getOwnPropertyDescriptor(globalThis, "setTimeout"),
     clearTimeout: Object.getOwnPropertyDescriptor(globalThis, "clearTimeout"),
     location: Object.getOwnPropertyDescriptor(globalThis, "location"),
+    window: Object.getOwnPropertyDescriptor(globalThis, "window"),
 };
 
 class FakeElement {
     hidden = false;
     src = "";
+    contentWindow?: Window;
     private readonly attributes = new Map<string, string>();
-    private readonly listeners = new Map<string, Array<() => void>>();
+    private readonly listeners = new Map<string, Array<(event: Event) => void>>();
 
     setAttribute(name: string, value = ""): void {
         this.attributes.set(name, value);
@@ -24,10 +26,14 @@ class FakeElement {
         return this.attributes.get(name);
     }
 
-    addEventListener(name: string, listener: () => void): void {
+    addEventListener(name: string, listener: (event: Event) => void): void {
         const existing = this.listeners.get(name) ?? [];
         existing.push(listener);
         this.listeners.set(name, existing);
+    }
+
+    dispatch(name: string, event: Event): void {
+        for (const listener of this.listeners.get(name) ?? []) listener(event);
     }
 }
 
@@ -109,6 +115,7 @@ export function resolvedConfig(overrides: Partial<ResolvedConfig> = {}): Resolve
         accent: "#111111",
         triggerColor: "#111111",
         triggerIconColor: "light",
+        theme: "light",
         hasFirstPaintLauncherColor: true,
         safeValueSelectors: [],
         voiceModeEnabled: false,

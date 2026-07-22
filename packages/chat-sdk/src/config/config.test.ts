@@ -64,6 +64,11 @@ test("triggerColor is used directly for first-paint launcher theming", () => {
     assert.equal(config.hasFirstPaintLauncherColor, true);
 });
 
+test("host theme defaults to light and accepts an explicit dark mode", () => {
+    assert.equal(resolveConfig(REQUIRED_CONFIG).theme, "light");
+    assert.equal(resolveConfig({ ...REQUIRED_CONFIG, theme: "dark" }).theme, "dark");
+});
+
 test("voice mode is disabled by default and omitted from the iframe URL", () => {
     const config = resolveConfig(REQUIRED_CONFIG);
 
@@ -97,6 +102,7 @@ test("site routes keep only same-origin relative paths, deduped and trimmed", ()
                 { path: "  /customers/:customerId  ", description: "  Customer detail  " },
                 { path: "/orders", description: "duplicate" },
                 { path: "//evil.example/phish", description: "protocol-relative" },
+                { path: "/\\evil.example/phish", description: "backslash protocol-relative" },
                 { path: "https://evil.example", description: "absolute" },
                 { path: "no-slash", description: "relative" },
             ],
@@ -106,7 +112,7 @@ test("site routes keep only same-origin relative paths, deduped and trimmed", ()
             { path: "/orders", description: "All orders" },
             { path: "/customers/:customerId", description: "Customer detail" },
         ]);
-        assert.equal(warnings.length, 4);
+        assert.equal(warnings.length, 5);
     } finally {
         console.warn = originalWarn;
     }

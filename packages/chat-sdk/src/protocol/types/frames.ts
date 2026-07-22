@@ -13,6 +13,7 @@
 //   - Errors are EXPLICIT `*_ERROR` frames, never a successful-but-empty result
 //     (the POC's `resolve(null)` ambiguity is fixed here).
 
+import type { HostTheme } from "./config.js";
 import type { PageContext } from "./page.js";
 import type {
     ClientToolCall,
@@ -151,6 +152,16 @@ export interface AuthErrorFrame extends FrameBase {
     message: string;
 }
 
+/**
+ * Apply the host page's current color mode inside the embedded chat. This is
+ * independent of Nova surface branding and any cookie owned by the iframe.
+ */
+export interface HostThemeFrame extends FrameBase {
+    source: SdkSource;
+    type: "HOST_THEME";
+    theme: HostTheme;
+}
+
 /** Union of every frame the SDK sends to the iframe. */
 export type SdkFrame =
     | AuthTokenFrame
@@ -160,7 +171,8 @@ export type SdkFrame =
     | ClientToolErrorFrame
     | RegisterToolsFrame
     | UnavailableFrame
-    | AuthErrorFrame;
+    | AuthErrorFrame
+    | HostThemeFrame;
 
 // ---------------------------------------------------------------------------
 // Wire frames — iframe → SDK (source = "wp-nova-embed")

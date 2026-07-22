@@ -51,12 +51,27 @@ export class WpNovaChatElement extends HTMLElement {
     /** Apply config object (from WpNova('init')) — alternative to attributes. */
     setConfig(config: SdkConfig): void {
         const next = resolveConfig(config);
-        if (this.resolved && this.requiresFrameReset(this.resolved, next)) {
+        const current = this.resolved;
+        const requiresFrameReset = current ? this.requiresFrameReset(current, next) : false;
+        const tokenEndpointChanged = current?.tokenEndpoint !== next.tokenEndpoint;
+        if (requiresFrameReset) {
             this.resetFrame();
         }
         this.resolved = next;
         this.shell.applyConfig(next);
-        if (this.isConnected) this.boot();
+        if (current && current.theme !== next.theme && this.iframeReady) {
+            this.bridge?.sendHostTheme(next.theme);
+        }
+        if (!this.isConnected) return;
+
+        // Initial mount and iframe/protocol changes need the full boot path.
+        // Other live config changes reuse the current frame and bridge; only an
+        // auth-endpoint change needs a new token acquisition.
+        if (!current || requiresFrameReset || !this.shell.rendered || !this.bridge) {
+            this.boot();
+        } else if (tokenEndpointChanged) {
+            void this.acquireToken();
+        }
     }
 
     /** Share the queued snippet's registry so pre-init handlers survive mount. */
@@ -164,8 +179,9 @@ export class WpNovaChatElement extends HTMLElement {
                     return false;
                 }
                 this.iframeReady = true;
-                // Push the buffered auth outcome (token / unavailable / error) and
-                // the current SDK-declared tools now that the iframe can receive them.
+                // Establish host color mode before auth renders the conversation,
+                // then push buffered auth and the current SDK-declared tools.
+                bridge.sendHostTheme(this.resolved?.theme ?? config.theme);
                 this.pushAuthState();
                 bridge.sendRegisterTools(this.registry.advertisedTools());
                 return true;
