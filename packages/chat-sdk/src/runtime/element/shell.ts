@@ -4,6 +4,16 @@ import { DEFAULT_ACCENT, type ResolvedConfig } from "../../config/config.js";
 const LAUNCHER_CHAT_SVG =
     '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
 
+/** Bubbling events emitted by a primary pointer/mouse button activation. */
+const LAUNCHER_ACTIVATION_EVENTS = ["pointerdown", "pointerup", "mousedown", "mouseup"] as const;
+
+/** Light surfaces retain elevation; dark surfaces avoid a black outer halo. */
+const LIGHT_PANEL_SHADOW = "0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30)";
+
+function resolvePanelShadow(theme: ResolvedConfig["theme"]): string {
+    return theme === "dark" ? "none" : LIGHT_PANEL_SHADOW;
+}
+
 /** Minimal attribute escaping for values interpolated into the shadow markup. */
 function escapeAttr(value: string): string {
     return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -51,6 +61,7 @@ export class ChatShell {
             "--wpn-frame-background",
             config.theme === "dark" ? "#0f1117" : "#ffffff",
         );
+        this.host.style.setProperty("--wpn-panel-shadow", resolvePanelShadow(config.theme));
         this.applyLauncherTheme({
             triggerColor: config.triggerColor,
             triggerIconColor: config.triggerIconColor,
@@ -86,6 +97,7 @@ export class ChatShell {
             ? config.triggerColor.trim()
             : DEFAULT_ACCENT;
         const iconColor = resolveLauncherIconColor(config.triggerIconColor) ?? "#ffffff";
+        const panelShadow = resolvePanelShadow(config.theme);
         const title = config.title;
         this.syncLauncherThemeVisibility();
         const launcherHiddenAttribute = this.launcherThemeReady ? "" : " hidden";
@@ -94,7 +106,7 @@ export class ChatShell {
             "<style>",
             // `all:initial` resets inherited host styles but NOT custom properties,
             // so the accent token survives for the color-mix shadows below.
-            `:host{all:initial;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-frame-background:${config.theme === "dark" ? "#0f1117" : "#ffffff"};--wpn-dev:#e8a91d;}`,
+            `:host{all:initial;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-frame-background:${config.theme === "dark" ? "#0f1117" : "#ffffff"};--wpn-panel-shadow:${panelShadow};--wpn-dev:#e8a91d;}`,
             "*{box-sizing:border-box;}",
             // --- launcher: 60px accent circle, two-layer shadow ----------------
             "#launcher{position:fixed;right:24px;bottom:24px;width:60px;height:60px;border:0;",
@@ -127,7 +139,7 @@ export class ChatShell {
             "#panel{position:fixed;right:24px;bottom:24px;width:384px;height:640px;",
             "max-width:calc(100vw - 40px);max-height:calc(100vh - 48px);background:var(--wpn-frame-background);",
             "border-radius:18px;overflow:hidden;display:flex;flex-direction:column;",
-            "box-shadow:0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30);",
+            "box-shadow:var(--wpn-panel-shadow);",
             "z-index:2147483000;transform-origin:bottom right;animation:wpn-in .16s cubic-bezier(.2,.7,.3,1);}",
             "#panel[hidden]{display:none;}",
             "iframe{border:0;flex:1 1 auto;width:100%;height:100%;display:block;background:var(--wpn-frame-background);}",
@@ -153,12 +165,18 @@ export class ChatShell {
         this.syncLauncherThemeVisibility();
         this.syncDevelopmentMode();
 
-        this.launcher?.addEventListener("click", (event) => {
-            // Shadow-DOM click events are composed and would otherwise bubble to
-            // host-page click-away/navigation handlers.
-            event.stopPropagation();
-            this.host.toggle();
-        });
+        if (this.launcher) {
+            // Shadow-DOM activation events are composed. Contain the whole
+            // sequence, not just click: host drawers commonly dismiss on
+            // pointerdown/mousedown before the synthesized click is emitted.
+            for (const eventName of LAUNCHER_ACTIVATION_EVENTS) {
+                this.launcher.addEventListener(eventName, (event) => event.stopPropagation());
+            }
+            this.launcher.addEventListener("click", (event) => {
+                event.stopPropagation();
+                this.host.toggle();
+            });
+        }
         if (this.host.hasAttribute("open")) this.setOpen(true);
 
         this.shadowReady = true;

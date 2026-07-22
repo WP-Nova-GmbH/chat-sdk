@@ -102,6 +102,7 @@ test("READY protocol range must include the SDK protocol", () => {
 
 test("live host theme changes reuse the bridge and iframe", () => {
     const sentThemes: string[] = [];
+    const panelShadows: string[] = [];
     let stopped = false;
     let tokenAcquisitions = 0;
     const initial = resolveConfig({
@@ -120,7 +121,12 @@ test("live host theme changes reuse the bridge and iframe", () => {
         bridge?: typeof bridge;
         iframeReady: boolean;
         isConnected: boolean;
-        shell: { frame?: unknown; render: (config: ResolvedConfig) => void };
+        style: { setProperty: (name: string, value: string) => void };
+        shell: {
+            frame?: unknown;
+            applyConfig: (config: ResolvedConfig) => void;
+            render: (config: ResolvedConfig) => void;
+        };
         acquireToken: () => Promise<void>;
         setConfig: (config: {
             publicSurfaceId: string;
@@ -129,6 +135,10 @@ test("live host theme changes reuse the bridge and iframe", () => {
         }) => void;
     };
     element.resolved = initial;
+    element.style.setProperty = (name, value) => {
+        if (name === "--wpn-panel-shadow") panelShadows.push(value);
+    };
+    element.shell.applyConfig(initial);
     element.shell.render(initial);
     element.bridge = bridge;
     element.iframeReady = true;
@@ -149,6 +159,10 @@ test("live host theme changes reuse the bridge and iframe", () => {
     assert.equal(element.shell.frame, iframe);
     assert.equal(tokenAcquisitions, 0);
     assert.deepEqual(sentThemes, ["dark"]);
+    assert.deepEqual(panelShadows, [
+        "0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30)",
+        "none",
+    ]);
     assert.equal(element.resolved?.theme, "dark");
 });
 

@@ -63,6 +63,7 @@ test("setConfig seeds host launcher colors before shadow render", () => {
     assert.equal(element.shell.rendered, false);
     assert.deepEqual(appliedTheme, [
         ["--wpn-frame-background", "#ffffff"],
+        ["--wpn-panel-shadow", "0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30)"],
         ["--wpn-accent", "#276b55"],
         ["--wpn-launcher-icon", "#0f1117"],
     ]);
@@ -119,9 +120,9 @@ test("render passes a valid hex triggerColor through to the shadow style", () =>
     assert.equal(element.shadowRoot?.innerHTML.includes("--wpn-accent:#abcdef"), true);
 });
 
-test("launcher click is contained inside the SDK shadow UI", () => {
+test("launcher activation events are contained inside the SDK shadow UI", () => {
     let toggles = 0;
-    let stopped = false;
+    const stopped: string[] = [];
     const element = makeElement() as {
         shadowRoot?: {
             getElementById: (id: string) => {
@@ -136,13 +137,16 @@ test("launcher click is contained inside the SDK shadow UI", () => {
     };
     element.shell.render(resolvedConfig());
 
-    element.shadowRoot?.getElementById("launcher").dispatch("click", {
-        stopPropagation: () => {
-            stopped = true;
-        },
-    } as Event);
+    const launcher = element.shadowRoot?.getElementById("launcher");
+    for (const eventName of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+        launcher?.dispatch(eventName, {
+            stopPropagation: () => {
+                stopped.push(eventName);
+            },
+        } as Event);
+    }
 
-    assert.equal(stopped, true);
+    assert.deepEqual(stopped, ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]);
     assert.equal(toggles, 1);
 });
 
@@ -199,4 +203,31 @@ test("desktop panel reuses the launcher's bottom offset while mobile stays full 
     assert.equal(html.includes("max-height:calc(100vh - 48px)"), true);
     assert.equal(html.includes("#panel{right:0;bottom:0;width:100vw;height:100dvh"), true);
     assert.equal(html.includes("--wpn-frame-background:#0f1117"), true);
+    assert.equal(html.includes("--wpn-panel-shadow:none"), true);
+    assert.equal(html.includes("box-shadow:var(--wpn-panel-shadow)"), true);
+    assert.equal(html.includes("0 22px 50px -18px"), false);
+});
+
+test("light panel keeps elevation while dark panel removes the black halo", () => {
+    const lightElement = makeElement() as {
+        shadowRoot?: { innerHTML: string };
+        shell: { render: (config: ResolvedConfig) => void };
+    };
+    lightElement.shell.render(resolvedConfig({ theme: "light" }));
+    const lightHtml = lightElement.shadowRoot?.innerHTML ?? "";
+
+    assert.equal(
+        lightHtml.includes(
+            "--wpn-panel-shadow:0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30)",
+        ),
+        true,
+    );
+
+    const darkElement = makeElement() as {
+        shadowRoot?: { innerHTML: string };
+        shell: { render: (config: ResolvedConfig) => void };
+    };
+    darkElement.shell.render(resolvedConfig({ theme: "dark" }));
+
+    assert.equal(darkElement.shadowRoot?.innerHTML.includes("--wpn-panel-shadow:none"), true);
 });
