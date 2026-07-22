@@ -9,8 +9,9 @@ title: API-Referenz
 
 ```ts
 WpNova("init", config);
-WpNova("registerToolHandler", name, handler);
-WpNova("unregisterToolHandler", name);
+WpNova("registerTool", definition);
+WpNova("unregisterTool", name);
+WpNova("destroy");
 ```
 
 ### npm-Helper
@@ -19,8 +20,11 @@ WpNova("unregisterToolHandler", name);
 import {
   WpNova,
   init,
-  registerToolHandler,
-  unregisterToolHandler,
+  registerTool,
+  unregisterTool,
+  destroy,
+  DEFAULT_SETTLE,
+  SETTLED_EVENT,
   defineElement,
   ELEMENT_TAG,
   WpNovaChatElement,
@@ -41,7 +45,22 @@ export interface SdkConfig {
   triggerIconColor?: "light" | "dark" | string;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
+  routes?: Array<{ path: string; description: string }>;
+  settle?: {
+    quietMs?: number;
+    maxWaitMs?: number;
+    waitForNavigationSignal?: boolean;
+  };
   protocolVersion?: number;
+}
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  mutating: boolean;
+  confirmationCopy?: string;
+  handler: ToolHandler;
 }
 
 export type ToolHandler = (
@@ -49,6 +68,13 @@ export type ToolHandler = (
   opts?: { signal?: AbortSignal },
 ) => unknown | Promise<unknown>;
 ```
+
+`registerToolHandler` bleibt nur als veralteter, ausführungsbezogener
+Kompatibilitäts-Helper verfügbar. Ein solcher Handler wird dem Agenten nicht
+angeboten.
+
+Ein Post-Action-Snapshot kann `truncated`, `partial` oder `unsettled` sein
+und enthält die validierten `siteRoutes`.
 
 ### Nicht verfügbarer Benutzer
 

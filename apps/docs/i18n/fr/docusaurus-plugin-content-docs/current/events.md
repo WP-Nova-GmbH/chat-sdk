@@ -18,9 +18,15 @@ Le protocole de bridge est volontairement explicite. Chaque frame porte un tag d
 | `CLIENT_TOOL_REQUEST` | iframe vers SDK | Demande une action de navigation intégrée ou un outil enregistré. |
 | `CLIENT_TOOL_RESULT` | SDK vers iframe | Renvoie le résultat de l’outil et un instantané frais. |
 | `CLIENT_TOOL_ERROR` | SDK vers iframe | Renvoie des détails d’échec typés comme `no_handler` ou `timeout`. |
+| `REGISTER_TOOLS` | SDK vers iframe | Annonce les spécifications d’outils SDK actuellement enregistrées. |
 
 ### Renouvellement du token
 
 Le SDK renouvelle proactivement vers 80 % de `expires_in` et réactivement lorsque l’iframe émet `AUTH_EXPIRED`.
 
 Les échecs de transport sont retentés avec backoff et cooldown. Une réponse utilisateur indisponible est terminale et envoyée à l’iframe sous la forme `UNAVAILABLE`.
+
+Les SPA utilisent aussi `wp-nova:navigate` pour le routeur same-origin et
+`wp-nova:settled` pour signaler que la vue cible est rendue. Si la limite
+post-action est atteinte, l’instantané est `unsettled` et Nova peut appeler
+`refresh_context`.

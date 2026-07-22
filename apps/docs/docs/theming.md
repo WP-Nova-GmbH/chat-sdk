@@ -7,6 +7,16 @@ The SDK owns only the launcher and outer panel. The Nova-hosted iframe owns the 
 
 Surface display settings from Nova are the trusted source of truth after authentication. SDK config values are useful for the pre-auth first paint.
 
+Choose the values before implementation:
+
+- visible chat title;
+- primary/accent color for the iframe;
+- launcher background (often the same as the product primary color);
+- launcher icon contrast (`light`, `dark`, or an explicit hex);
+- authenticated logo.
+
+Do not confuse the visible title with an internal surface/integration name.
+
 ## Surface Display Settings
 
 Configure these in the Embedded Chat Surface:
@@ -49,6 +59,11 @@ init({
 ```
 
 If `accent` or `triggerColor` is supplied, the launcher can render on-brand immediately. Otherwise, the launcher can wait for trusted surface theme data.
+
+The SDK's fallback accent is Nova purple. Products with a different design
+system should pass their actual primary color explicitly—prefer a stable
+six-digit hex value rather than copying an unresolved CSS variable. When
+`triggerColor` is omitted, it falls back to `accent`.
 
 ## Launcher Icon Color
 

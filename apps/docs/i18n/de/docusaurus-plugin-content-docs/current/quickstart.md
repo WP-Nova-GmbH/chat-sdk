@@ -5,7 +5,9 @@ title: Schnellstart
 
 ## Schnellstart
 
-Wähle den Script-Tag, wenn du die kleinste Integrationsfläche möchtest, oder npm, wenn die Host-App bereits gebündelt wird.
+Plane vor dem Einbau Authentifizierung, berechtigte Benutzer/Module,
+Page Reading/Navigation/Tools, Host-Tools, Routen, Datenschutz, Readiness und
+Primärfarbe. Wähle danach den Script-Tag oder npm.
 
 ### Script Tag
 
@@ -25,8 +27,19 @@ Das Queue-Snippet erlaubt dir, Tools zu registrieren, bevor die SDK-Datei gelade
     d.head.appendChild(j);
   })(window, document, "script");
 
-  WpNova("registerToolHandler", "create_ticket", function (args) {
-    return window.app.createTicket(args);
+  WpNova("registerTool", {
+    name: "create_ticket",
+    description: "Erstellt ein Support-Ticket für den sichtbaren Kundenkontext.",
+    inputSchema: {
+      type: "object",
+      properties: { title: { type: "string" } },
+      required: ["title"]
+    },
+    mutating: true,
+    confirmationCopy: "Dieses Ticket erstellen?",
+    handler: function (args) {
+      return window.app.createTicket(args);
+    }
   });
 
   WpNova("init", {
@@ -43,10 +56,19 @@ npm install @wp-nova/chat-sdk
 ```
 
 ```ts
-import { init, registerToolHandler } from "@wp-nova/chat-sdk";
+import { init, registerTool } from "@wp-nova/chat-sdk";
 
-registerToolHandler("create_ticket", async (args) => {
-  return myApp.createTicket(args);
+registerTool({
+  name: "create_ticket",
+  description: "Erstellt ein Support-Ticket für den sichtbaren Kundenkontext.",
+  inputSchema: {
+    type: "object",
+    properties: { title: { type: "string" } },
+    required: ["title"],
+  },
+  mutating: true,
+  confirmationCopy: "Dieses Ticket erstellen?",
+  handler: async (args) => myApp.createTicket(args),
 });
 
 init({
@@ -55,9 +77,14 @@ init({
 });
 ```
 
+Tools sind optional. Der vollständige Vertrag und der Handler leben gemeinsam
+in `registerTool`; Nova Admin aktiviert/deaktiviert SDK-definierte Page Tools
+nur für die Surface. Registriere Tools und Routen ausschließlich für die
+Berechtigungen des aktuellen Benutzers.
+
 ### Token Endpoint
 
-Dein Endpoint erhält `{ publicSurfaceId, origin }` vom SDK und sollte den authentifizierten serverseitigen Benutzer verwenden, nicht eine vom Browser behauptete E-Mail-Adresse.
+Dein Endpoint erhält `{ publicSurfaceId, origin }` vom SDK und sollte den authentifizierten serverseitigen Benutzer verwenden, nicht eine vom Browser behauptete E-Mail-Adresse. Prüfe Surface-ID sowie Body- und Header-Origin gegen die erwartete App-Konfiguration und verwende ein Timeout. Bei einer Bearer-SPA muss die App vorher eine kurze, opake `HttpOnly`-Server-Session erzeugen, weil der SDK-Fetch keinen eigenen Bearer-Header übernimmt.
 
 ```ts
 app.post("/api/nova-token", async (req, res) => {
@@ -99,3 +126,11 @@ Antwort keinen Chat-Token:
 Gib Status und Antworttext unverändert weiter. `message_is_custom: false` erlaubt
 dem iframe, Novas integrierte Nachricht in der aktiven UI-Sprache anzuzeigen;
 benutzerdefinierter Administrator-Text ist mit `true` markiert.
+
+### Routen und Readiness
+
+Übermittle bei Bedarf berechtigungsgefilterte `routes`. In einer SPA fängt der
+Host `wp-nova:navigate` ab. Wenn Routendaten asynchron laden, setze
+`settle.waitForNavigationSignal: true` und sende `wp-nova:settled` erst nach
+gerenderter Zielroute samt benötigten Daten. Ein Timeout markiert den Snapshot
+als `unsettled`, damit Nova `refresh_context` verwenden kann.

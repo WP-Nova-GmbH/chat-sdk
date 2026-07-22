@@ -13,6 +13,13 @@ init({
   tokenEndpoint: "/api/nova-token",
   baseUrl: "https://chat.wp-nova.ai",
   safeValueSelectors: ["#case-number", ".agent-safe-field"],
+  routes: [
+    { path: "/customers", description: "Customer lookup list with search" },
+  ],
+  settle: {
+    maxWaitMs: 5000,
+    waitForNavigationSignal: true,
+  },
 });
 ```
 
@@ -31,6 +38,7 @@ init({
 | `safeValueSelectors` | No | CSS selectors that opt field values into page snapshot capture. Field values still pass sensitivity checks. |
 | `voiceMode` | No | Enables the embedded voice button and delegates microphone access to the Nova iframe. Defaults to `false`. |
 | `routes` | No | Your site's navigable routes (`{ path, description }`), so the agent can navigate straight to a known page instead of hopping through visible links. See [Site routes](#site-routes). |
+| `settle` | No | Post-action snapshot readiness: `quietMs`, `maxWaitMs`, and `waitForNavigationSignal`. See [Post-action snapshots](#post-action-snapshots). |
 | `protocolVersion` | No | Bridge protocol override for compatibility testing. Do not set in normal integrations. |
 
 ## Defaults
@@ -50,30 +58,29 @@ If `accent` or `triggerColor` is not supplied, the SDK can wait for trusted surf
 
 ## Site Routes
 
-Without a route list, the agent only knows the links visible on the current page: navigating to any other page means guessing URLs or hopping page by page, and every hop is a full agent round-trip. Declaring `routes` lets a "take me to X" request resolve to a single direct navigation.
-
-```ts
-init({
-  publicSurfaceId: "surf_...",
-  tokenEndpoint: "/api/nova-token",
-  routes: [
-    { path: "/orders", description: "All orders with status, search, and filters" },
-    { path: "/orders/:orderId", description: "Order detail; open an order from /orders" },
-    { path: "/settings/profile", description: "The signed-in user's profile and preferences" },
-  ],
-});
-```
-
-Rules and behavior:
+Routes let the agent reach known pages that are not linked in the current snapshot.
 
 - Only same-origin paths with a leading `/` are accepted; anything else is dropped with a console warning. At most 100 routes are used.
-- For parameterized routes, keep the `:param` placeholder and say in the description where real ids come from. The agent is instructed never to invent placeholder values — it opens the listed index page instead.
+- Keep each path and description within Nova's 300-character bound.
+- Keep `:param` placeholders and describe where real ids come from.
 - Declare only routes the current user can actually reach. Filter by role/permissions before calling `init`, and re-init when access changes.
 - Routes are carried with every page capture and re-validated server-side; they are used when the surface has page reading enabled.
 
-## Token Endpoint Request
+For permission filtering, parameter-id guidance, semantic controls, and router
+integration, read [Navigation and async pages](./navigation.md).
 
-The SDK request body is intentionally small:
+## Post-Action Snapshots
+
+After an action or tool, the SDK waits for DOM quiet before recapturing.
+`quietMs` defaults to 200 (range 0–1000); `maxWaitMs` defaults to 1600
+(range `quietMs`–5000). A cap-hit snapshot is marked `unsettled`.
+
+For a host router whose destination loads data asynchronously, set
+`waitForNavigationSignal: true` and dispatch `wp-nova:settled` only after the
+requested route has committed and its required data has rendered. See
+[Navigation and async pages](./navigation.md#require-an-explicit-async-route-signal).
+
+## Token Endpoint Request
 
 ```json
 {
@@ -82,38 +89,23 @@ The SDK request body is intentionally small:
 }
 ```
 
-The SDK includes cookies with `credentials: "include"` so your backend can authenticate the current user. Do not add `email`, `userId`, or the integration secret to the browser config or request body.
+The request includes cookies. Do not add identity or the integration secret to browser config or the body.
 
-Your backend should call Nova with the authenticated user's email and pass through either:
+If the host app authenticates API calls with a browser-held bearer token instead
+of a same-origin cookie, first exchange that trusted bearer identity for a
+short-lived, opaque `HttpOnly` backend session that the token endpoint can read.
+The SDK does not inherit custom authorization headers. See
+[Select the authentication pattern](./planning.md#select-the-authentication-pattern).
 
-```json
-{ "access_token": "<embedded-session token>", "expires_in": 900 }
-```
-
-or the complete unresolved response:
-
-```json
-{
-  "unavailable": true,
-  "email": "person@example.com",
-  "message": "No Nova account found.",
-  "message_is_custom": false,
-  "access_request_token": "<purpose-scoped capability>",
-  "access_request_expires_in": 3600
-}
-```
-
-Nova uses `message_is_custom: false` for the localizable built-in message and
-`true` for administrator-authored surface copy that must be preserved verbatim.
-
-Do not rewrite the upstream status or select only known fields: forward the full
-Nova response so additive unresolved-user capabilities reach the iframe.
+The backend reads the trusted email and passes Nova's token or unavailable-user
+response through unchanged. See the [Quickstart](./quickstart.md#step-2-add-the-token-endpoint)
+for the complete contract.
 
 ## Re-initialization
 
 The SDK is singleton-safe. Re-running `init` during HMR, route-level remounts, or duplicate script loads reuses the existing custom element.
 
-If `publicSurfaceId`, `baseUrl`, `voiceMode`, or `protocolVersion` changes, the element rebuilds the iframe and bridge, clears buffered auth, and fetches a fresh token before posting auth to the iframe.
+If `publicSurfaceId`, `baseUrl`, `voiceMode`, or `protocolVersion` changes, the element rebuilds the iframe and bridge, clears buffered auth, and fetches a fresh token before posting auth to the iframe. A direct `init` call also refreshes `routes` and `settle`. Treat settle options as mount-time configuration in framework integrations; the React wrapper observes route changes, but changing only `settle` does not trigger its re-initialization. Keep framework config objects stable and remount or re-initialize deliberately when readiness behavior must change.
 
 ## Destroying the Embed
 

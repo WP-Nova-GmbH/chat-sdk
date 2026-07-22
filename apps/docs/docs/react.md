@@ -21,6 +21,17 @@ const novaConfig = {
   publicSurfaceId: import.meta.env.VITE_NOVA_PUBLIC_SURFACE_ID,
   tokenEndpoint: "/api/nova-token",
   baseUrl: import.meta.env.VITE_NOVA_BASE_URL,
+  routes: [
+    { path: "/customers", description: "Customer lookup list with search" },
+    {
+      path: "/customers/:customerId",
+      description: "Customer detail; obtain customerId from /customers",
+    },
+  ],
+  settle: {
+    maxWaitMs: 5000,
+    waitForNavigationSignal: true,
+  },
 };
 
 export function App() {
@@ -39,34 +50,23 @@ Only expose browser-safe values through `VITE_*` or equivalent public env variab
 If your tools are stable inside one component, pass them through the `tools` prop:
 
 ```tsx
-import { useMemo } from "react";
 import { NovaChatProvider, type NovaToolDefinition } from "@wp-nova/chat-sdk-react";
 
-export function App() {
-  const tools = useMemo<NovaToolDefinition[]>(
-    () => [
-      {
-        name: "create_ticket",
-        description: "Creates a support ticket from the current customer context.",
-        inputSchema: {
-          type: "object",
-          properties: { title: { type: "string" } },
-          required: ["title"],
-        },
-        mutating: true,
-        confirmationCopy: "Create this ticket?",
-        handler: async (args) => {
-        const ticket = await crm.createTicket({
-          title: String(args.title ?? "Follow up"),
-          priority: String(args.priority ?? "normal"),
-        });
-          return { ok: true, ticketId: ticket.id, ticketUrl: ticket.url };
-      },
-      },
-    ],
-    [],
-  );
+const createTicketTool: NovaToolDefinition = {
+  name: "create_ticket",
+  description: "Creates a support ticket from the current customer context.",
+  inputSchema: {
+    type: "object",
+    properties: { title: { type: "string" } },
+    required: ["title"],
+  },
+  mutating: true,
+  confirmationCopy: "Create this ticket?",
+  handler: async (args) => crm.createTicket({ title: String(args.title ?? "Follow up") }),
+};
+const tools = [createTicketTool] as const;
 
+export function App() {
   return (
     <NovaChatProvider config={novaConfig} tools={tools}>
       <Routes />
@@ -83,35 +83,21 @@ Use `useNovaTool` when a tool belongs to a feature component and should unregist
 import { useNovaTool } from "@wp-nova/chat-sdk-react";
 
 function CustomerTools() {
-  useNovaTool({
-    name: "set_customer_status",
-    description: "Changes the status for the current customer in the CRM.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        customerId: { type: "string" },
-        status: { type: "string", enum: ["active", "review", "paused"] },
-      },
-      required: ["status"],
-    },
-    mutating: true,
-    confirmationCopy: "Change this customer status?",
-    handler: async (args) => {
-      const customerId = String(args.customerId ?? "");
-      const status = String(args.status ?? "review");
-      await crm.updateCustomer(customerId, { status });
-      return { ok: true, customerId, status };
-    },
-  });
+  useNovaTool(createTicketTool);
 
   return null;
 }
 ```
 
-Mutating tools are confirmed in the iframe before the SDK calls your handler.
-Handlers may accept an optional second argument, `{ signal }`, an `AbortSignal`
-the SDK aborts when the bridge times the tool round-trip out, so long-running or
-mutating handlers can cancel in-flight work: `handler: async (args, { signal } = {}) => { ... }`.
+`createTicketTool` can be the same `NovaToolDefinition` used in the `tools` prop.
+See [Tools and guided workflows](./tools.md) for confirmation, abort, and handler rules.
+
+Keep definitions and handlers referentially stable with `useMemo`/`useCallback`
+so renders do not churn registration. Filter routes and tools with the signed-in
+user's permissions. If React Router destinations load data asynchronously,
+handle `wp-nova:navigate` and signal `wp-nova:settled` after the exact route
+and its required queries have rendered. See
+[Navigation and async pages](./navigation.md).
 
 ## Conditional Mounting
 
@@ -124,3 +110,8 @@ Use `enabled={false}` when a user, tenant, or environment should not mount chat.
 ```
 
 When disabled, the wrapper removes the launcher and unregisters wrapper-owned handlers.
+
+For bearer-authenticated SPAs, do not pass the bearer token into SDK config.
+Bootstrap a short-lived `HttpOnly` backend session before enabling the provider;
+the SDK's token request carries cookies, not the host app's custom authorization
+header. See [Plan your integration](./planning.md#select-the-authentication-pattern).

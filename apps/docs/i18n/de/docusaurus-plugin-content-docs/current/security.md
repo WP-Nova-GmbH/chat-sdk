@@ -16,7 +16,11 @@ Das SDK ist um eine enge Vertrauensgrenze im Browser herum entworfen.
 
 ### Verantwortlichkeiten des Token-Endpoints
 
-Dein Backend muss den aktuellen Benutzer über deine eigene Session authentifizieren. Es sollte Nova mit einem serverseitigen Secret aufrufen und entweder die Token-Antwort oder die Antwort für einen nicht verfügbaren Benutzer zurückgeben.
+Dein Backend muss den aktuellen Benutzer über deine eigene Session
+authentifizieren. Prüfe die angefragte Public Surface ID sowie Body-Origin und
+tatsächlichen `Origin`-Header gegen die erwartete App-Konfiguration. Rufe Nova
+mit einem serverseitigen Secret und Timeout auf, setze `Cache-Control: no-store`
+und reiche Token- oder Unavailable-Antwort vollständig durch.
 
 Die Antwort für nicht verfügbare Benutzer kann eine zweckgebundene
 `access_request_token`-Berechtigung enthalten. Sie kann ausschließlich eine
@@ -26,6 +30,19 @@ iframe, Novas integrierten Text zu lokalisieren; `true` bewahrt den von
 Administratoren verfassten Surface-Text.
 
 Vertraue für die Token-Ausstellung keiner E-Mail-Adresse und keiner Benutzer-ID, die vom Browser geliefert wird.
+
+Der SDK-Fetch enthält Cookies, aber keinen anwendungsspezifischen Bearer-Header.
+Eine Bearer-SPA sollte daher über einen separat geschützten Endpoint eine kurze,
+opake `HttpOnly`-Session erzeugen, die der Token-Endpoint auflöst und beim
+Logout widerruft.
+
+### Tool-Berechtigungen
+
+SDK-Code deklariert Tools vollständig über `registerTool`; die Surface hat nur
+einen Page-Tools-Freigabeschalter. Nova validiert die Definition und entscheidet
+serverseitig, ob die iframe-Bestätigung erforderlich ist. Registriere ein Tool
+nur, wenn der aktuelle Benutzer auch die zugrunde liegende UI/API-Aktion
+ausführen darf. Backend-Autorisierung bleibt Pflicht.
 
 ### CSP und Framing
 

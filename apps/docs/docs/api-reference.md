@@ -23,9 +23,14 @@ import {
   destroy,
   registerTool,
   unregisterTool,
+  retain,
+  release,
   defineElement,
   ELEMENT_TAG,
   WpNovaChatElement,
+  DEFAULT_SETTLE,
+  SETTLED_EVENT,
+  type SettleOptions,
 } from "@wp-nova/chat-sdk";
 ```
 
@@ -46,6 +51,11 @@ export interface SdkConfig {
   safeValueSelectors?: string[];
   voiceMode?: boolean;
   routes?: SiteRoute[];
+  settle?: {
+    quietMs?: number;
+    maxWaitMs?: number;
+    waitForNavigationSignal?: boolean;
+  };
   protocolVersion?: number;
 }
 
@@ -63,6 +73,11 @@ Required fields:
 Every other field is optional. Notably, `voiceMode` (default `false`) enables the
 embedded voice button and delegates microphone access to the Nova iframe. See
 [Configuration](./configuration.md) for the full options table.
+
+`settle` controls post-action snapshot readiness. Defaults are
+`quietMs: 200`, `maxWaitMs: 1600`, and
+`waitForNavigationSignal: false`. See
+[Navigation and async pages](./navigation.md).
 
 ## Page Tools
 
@@ -82,32 +97,17 @@ export interface ToolDefinition {
 }
 ```
 
-```ts
-registerTool({
-  name: "create_ticket",
-  description: "Creates a support ticket from the current customer context.",
-  inputSchema: {
-    type: "object",
-    properties: { title: { type: "string" } },
-    required: ["title"],
-  },
-  mutating: true,
-  confirmationCopy: "Create this ticket?",
-  handler: async (args) => {
-    return crm.createTicket({
-      title: String(args.title ?? ""),
-    });
-  },
-});
-
-unregisterTool("create_ticket");
-```
-
 Handler results must be JSON-serializable. The SDK captures a fresh snapshot
 after a successful handler. Handler failures are reported as typed bridge errors.
 The optional `opts.signal` is an `AbortSignal` the SDK aborts when the bridge times
 the tool round-trip out, so a cooperating handler can stop a long-running or
 mutating action.
+
+Registration validates that the name matches `^[a-z][a-z0-9_]*$`, does not
+collide with a built-in action, the description is at least 20 characters,
+`inputSchema` is a plain object, `mutating` is boolean, and mutating tools
+have non-empty `confirmationCopy`. Nova applies additional bounded size and
+complexity checks. See [Tools and guided workflows](./tools.md).
 
 `registerToolHandler(name, handler)` and `unregisterToolHandler(name)` remain
 available as deprecated execution-only compatibility helpers. Handler-only tools
@@ -179,6 +179,7 @@ export interface PageContext {
     meta?: Record<string, string>;
   };
   aiFields?: Record<string, string | undefined>;
+  siteRoutes?: SiteRoute[];
   snapshot?: VisiblePageSnapshot;
 }
 
@@ -192,10 +193,28 @@ export interface VisiblePageSnapshot {
   handles?: ElementHandle[];
   truncated?: boolean;
   partial?: boolean;
+  // The post-action settle wait hit its hard cap.
+  unsettled?: boolean;
 }
 ```
 
 Handles are valid only for the snapshot that issued them. Every tool result returns a fresh snapshot with re-issued handles.
+
+## Post-Action Settle API
+
+```ts
+export interface SettleOptions {
+  quietMs: number;
+  maxWaitMs: number;
+  waitForNavigationSignal?: boolean;
+}
+
+export const DEFAULT_SETTLE: SettleOptions;
+export const SETTLED_EVENT = "wp-nova:settled";
+```
+
+`quietMs` is clamped to 0–1000 and `maxWaitMs` to
+`quietMs`–5000. A capped wait sets `VisiblePageSnapshot.unsettled`.
 
 ## Custom Element
 
@@ -210,14 +229,14 @@ console.log(ELEMENT_TAG); // "wp-nova-chat"
 
 ## Browser Events
 
-For same-origin navigation, the SDK dispatches a cancelable event before falling back to document navigation:
+`wp-nova:navigate` is a cancelable `CustomEvent<{ url: string }>` sent before
+same-origin document navigation. `wp-nova:settled` ends a pending post-action
+wait after the requested route and data render. See
+[Navigation and async pages](./navigation.md) for the router adapter.
 
-```ts
-window.addEventListener("wp-nova:navigate", (event) => {
-  const url = (event as CustomEvent<{ url: string }>).detail.url;
-  router.navigate(new URL(url).pathname);
-  event.preventDefault();
-});
-```
+## Shared Mount Lifecycle
 
-Use this in SPAs that want Nova navigation actions to route through the app router.
+`retain()` and `release()` are primarily for framework-wrapper authors. Pair
+every retained mount with a release; the singleton element is removed only when
+the last mount releases. Application integrations normally use the React or
+Angular wrapper, or call `init()` and `destroy()` directly.

@@ -5,24 +5,41 @@ title: Donner à l’agent l’accès au DOM
 
 ## Donner à l’agent l’accès au DOM
 
-Nova ne peut pas exécuter de JavaScript arbitraire dans la page hôte. Il peut uniquement demander les capacités exposées par le SDK via les instantanés de page, les actions de navigation intégrées et les handlers d’outils que vous enregistrez.
+Nova ne peut pas exécuter de JavaScript arbitraire dans la page hôte. Il utilise
+uniquement les instantanés visibles, les actions de page autorisées par la
+surface et les outils hôte entièrement enregistrés par le SDK.
 
-### Enregistrer des handlers d’outils
+### Enregistrer des outils définis par le SDK
 
 ```ts
-import { registerToolHandler, unregisterToolHandler } from "@wp-nova/chat-sdk";
+import { registerTool, unregisterTool } from "@wp-nova/chat-sdk";
 
-registerToolHandler("set_customer_status", async (args) => {
-  const customerId = String(args.customerId);
-  const status = String(args.status);
-  await crm.updateCustomer(customerId, { status });
-  return { ok: true, customerId, status };
+registerTool({
+  name: "set_customer_status",
+  description: "Modifie le statut du client visible dans le CRM.",
+  inputSchema: {
+    type: "object",
+    properties: { status: { type: "string" } },
+    required: ["status"],
+  },
+  mutating: true,
+  confirmationCopy: "Modifier ce statut client ?",
+  handler: async (args) => {
+    const status = String(args.status);
+    await crm.updateCustomer(status);
+    return { ok: true, status };
+  },
 });
 
-unregisterToolHandler("set_customer_status");
+unregisterTool("set_customer_status");
 ```
 
-L’ensemble des outils que l’agent peut demander est déclaré côté serveur sur la surface intégrée. L’enregistrement dans le navigateur fournit seulement les callbacks d’exécution correspondants.
+L’enregistrement contient nom, description, JSON Schema, indicateur de mutation,
+texte de confirmation et handler. La surface conserve seulement l’autorisation
+des Page Tools SDK. Les actions intégrées sont `navigate`, `click`,
+`open_record`, `set_filter`, `scroll_to` et `refresh_context` ;
+`click` et `open_record` sont confirmés. `request_user_input` appartient à
+l’iframe et ne s’enregistre jamais dans l’hôte.
 
 ### Instantanés de page
 
@@ -37,3 +54,6 @@ Les valeurs de saisie sont omises sauf si elles sont explicitement autorisées e
 - Les mots de passe, inputs cachés, fichiers, champs de paiement, tokens, secrets et champs sensibles similaires sont toujours exclus.
 
 Utilisez `data-wp-nova-ignore` sur tout sous-arbre que l’assistant ne doit pas voir.
+
+Utilisez de vrais liens/boutons libellés. Un `onClick` React sur une ligne de
+table générique peut être invisible dans l’instantané.

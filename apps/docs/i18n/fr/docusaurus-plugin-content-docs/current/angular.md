@@ -39,9 +39,23 @@ export class AppComponent {
   private readonly nova = inject(NovaChatService);
 
   constructor() {
-    this.nova.registerToolHandler("show_toast", async (args) => {
-      return { ok: true, message: String(args["message"] ?? "") };
+    this.nova.registerTool({
+      name: "show_toast",
+      description: "Affiche un message bref et non persistant dans la page hôte.",
+      inputSchema: {
+        type: "object",
+        properties: { message: { type: "string" } },
+        required: ["message"],
+      },
+      mutating: false,
+      handler: async (args) => {
+        return { ok: true, message: String(args["message"] ?? "") };
+      },
     });
   }
 }
 ```
+
+Sinon, `<wp-nova-chat-mount [tools]="tools" />` reçoit des définitions
+complètes. Filtrez routes/outils par permissions et émettez
+`wp-nova:settled` après le rendu des données de la route Angular.

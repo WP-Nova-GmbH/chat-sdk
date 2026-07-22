@@ -42,7 +42,7 @@ Bridge errors are explicit frames, not empty success responses.
 | Code | Meaning |
 | --- | --- |
 | `timeout` | A tool/navigation response exceeded the allowed round-trip time. |
-| `no_handler` | The surface declared a tool, but the browser did not register a matching handler. |
+| `no_handler` | Nova requested an SDK-defined tool, but the browser no longer has a matching registered handler. |
 | `stale_handle` | The page changed and the target handle no longer resolves. The agent can retry from a fresh snapshot. |
 | `capture_error` | Snapshot capture failed while reading the page. |
 | `handler_threw` | A registered tool handler threw or rejected. |
@@ -52,3 +52,18 @@ Unavailable users are not represented as transport errors. A `{ "unavailable": t
 ## Protocol Skew
 
 The iframe announces `minProtocolVersion` and `maxProtocolVersion` in `READY`. If a pinned customer SDK is outside the iframe's supported protocol range, the SDK refuses later bridge work and reports a visible protocol error instead of executing incompatible messages.
+
+## Host Browser Events
+
+Two window events integrate an SPA router with the SDK:
+
+- `wp-nova:navigate` is cancelable. The host prevents it after accepting the
+  same-origin destination and routes with its own router.
+- `wp-nova:settled` tells a pending post-action wait that the destination/tool
+  view has finished rendering. When
+  `settle.waitForNavigationSignal: true`, a host-handled navigation waits for
+  this event rather than accepting a temporary mutation-quiet window.
+
+If the hard wait cap is reached, the SDK returns a snapshot with
+`unsettled: true`; Nova can call `refresh_context`. See
+[Navigation and async pages](./navigation.md).

@@ -39,9 +39,24 @@ export class AppComponent {
   private readonly nova = inject(NovaChatService);
 
   constructor() {
-    this.nova.registerToolHandler("show_toast", async (args) => {
-      return { ok: true, message: String(args["message"] ?? "") };
+    this.nova.registerTool({
+      name: "show_toast",
+      description: "Zeigt eine kurze, nicht persistente Nachricht im Host an.",
+      inputSchema: {
+        type: "object",
+        properties: { message: { type: "string" } },
+        required: ["message"],
+      },
+      mutating: false,
+      handler: async (args) => {
+        return { ok: true, message: String(args["message"] ?? "") };
+      },
     });
   }
 }
 ```
+
+Alternativ erhält `<wp-nova-chat-mount [tools]="tools" />` vollständige
+Tool-Definitionen. Filtere Routen/Tools nach Berechtigungen und signalisiere
+asynchron geladene Router-Ziele erst nach dem Rendern mit
+`wp-nova:settled`.

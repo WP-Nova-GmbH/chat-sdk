@@ -21,6 +21,13 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
                 "End-to-end surface setup, backend token endpoint, SDK install, tools, and smoke tests.",
         },
         {
+            title: "Plan your integration",
+            docId: "planning",
+            section: "Getting started",
+            description:
+                "Decide auth, capabilities, tools, routes, privacy, readiness, and branding before coding.",
+        },
+        {
             title: "Configuration",
             docId: "configuration",
             section: "Guides",
@@ -33,6 +40,20 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             section: "Guides",
             description:
                 "Visible Page Snapshots, safe field values, built-in page actions, and page tools.",
+        },
+        {
+            title: "Navigation and async pages",
+            docId: "navigation",
+            section: "Guides",
+            description:
+                "Route manifests, SPA router integration, post-action settling, and async readiness.",
+        },
+        {
+            title: "Tools and guided workflows",
+            docId: "tools",
+            section: "Guides",
+            description:
+                "Built-in controls, SDK-defined tools, grounded choices, validation, and safe mutations.",
         },
         {
             title: "Events",
@@ -71,7 +92,8 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             title: "Angular",
             docId: "angular",
             section: "Reference",
-            description: "Use @wp-nova/chat-sdk-angular services, providers, and standalone component.",
+            description:
+                "Use @wp-nova/chat-sdk-angular services, providers, and standalone component.",
         },
         {
             title: "Release and CDN",
@@ -95,6 +117,13 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             description: "Per Script-Tag oder npm installieren und WpNova initialisieren.",
         },
         {
+            title: "Integration planen",
+            docId: "planning",
+            section: "Einstieg",
+            description:
+                "Authentifizierung, Fähigkeiten, Tools, Routen, Datenschutz, Readiness und Branding vor dem Code festlegen.",
+        },
+        {
             title: "Konfiguration",
             docId: "configuration",
             section: "Anleitungen",
@@ -106,6 +135,20 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             docId: "dom-access",
             section: "Anleitungen",
             description: "Tool-Handler registrieren und sichere Seiten-Snapshots bereitstellen.",
+        },
+        {
+            title: "Navigation und asynchrone Seiten",
+            docId: "navigation",
+            section: "Anleitungen",
+            description:
+                "Routenmanifest, SPA-Router, Post-Action-Settling und explizite Readiness.",
+        },
+        {
+            title: "Tools und geführte Workflows",
+            docId: "tools",
+            section: "Anleitungen",
+            description:
+                "Eingebaute Aktionen, SDK-Tools, fundierte Auswahlen und sichere Mutationen.",
         },
         {
             title: "Ereignisse",
@@ -168,6 +211,13 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             description: "Installer par balise script ou npm et initialiser WpNova.",
         },
         {
+            title: "Planifier l'intégration",
+            docId: "planning",
+            section: "Premiers pas",
+            description:
+                "Décider de l'authentification, des capacités, outils, routes, données privées, readiness et couleurs.",
+        },
+        {
             title: "Configuration",
             docId: "configuration",
             section: "Guides",
@@ -179,6 +229,19 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             docId: "dom-access",
             section: "Guides",
             description: "Enregistrer des handlers d'outils et exposer des instantanés sûrs.",
+        },
+        {
+            title: "Navigation et pages asynchrones",
+            docId: "navigation",
+            section: "Guides",
+            description:
+                "Manifeste de routes, routeur SPA, attente post-action et disponibilité explicite.",
+        },
+        {
+            title: "Outils et workflows guidés",
+            docId: "tools",
+            section: "Guides",
+            description: "Actions intégrées, outils SDK, choix fondés et mutations sûres.",
         },
         {
             title: "Événements",

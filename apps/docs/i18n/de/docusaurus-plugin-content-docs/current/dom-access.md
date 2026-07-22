@@ -5,24 +5,41 @@ title: Dem Agenten DOM-Zugriff geben
 
 ## Dem Agenten DOM-Zugriff geben
 
-Nova kann auf der Host-Seite kein beliebiges JavaScript ausführen. Es kann nur Fähigkeiten anfordern, die das SDK über Seiten-Snapshots, eingebaute Navigationsaktionen und von dir registrierte Tool-Handler bereitstellt.
+Nova kann auf der Host-Seite kein beliebiges JavaScript ausführen. Es kann nur
+Sichtbare Seiten-Snapshots, von der Surface erlaubte Seitenaktionen und
+vollständig per SDK registrierte Host-Tools verwenden.
 
-### Tool-Handler registrieren
+### SDK-definierte Tools registrieren
 
 ```ts
-import { registerToolHandler, unregisterToolHandler } from "@wp-nova/chat-sdk";
+import { registerTool, unregisterTool } from "@wp-nova/chat-sdk";
 
-registerToolHandler("set_customer_status", async (args) => {
-  const customerId = String(args.customerId);
-  const status = String(args.status);
-  await crm.updateCustomer(customerId, { status });
-  return { ok: true, customerId, status };
+registerTool({
+  name: "set_customer_status",
+  description: "Ändert den Status des sichtbaren Kunden im CRM.",
+  inputSchema: {
+    type: "object",
+    properties: { status: { type: "string" } },
+    required: ["status"],
+  },
+  mutating: true,
+  confirmationCopy: "Diesen Kundenstatus ändern?",
+  handler: async (args) => {
+    const status = String(args.status);
+    await crm.updateCustomer(status);
+    return { ok: true, status };
+  },
 });
 
-unregisterToolHandler("set_customer_status");
+unregisterTool("set_customer_status");
 ```
 
-Welche Tools der Agent anfragen darf, wird serverseitig auf der Embedded Surface definiert. Die Registrierung im Browser stellt nur die passenden Ausführungs-Callbacks bereit.
+Die Registrierung enthält Name, Beschreibung, JSON Schema, Mutationsflag,
+Bestätigungstext und Handler. Die Surface speichert nur, ob SDK-definierte Page
+Tools erlaubt sind. Eingebaute Aktionen sind `navigate`, `click`,
+`open_record`, `set_filter`, `scroll_to` und `refresh_context`;
+`click` und `open_record` werden bestätigt. `request_user_input` gehört zum
+iframe und wird nie als Host-Tool registriert.
 
 ### Seiten-Snapshots
 
@@ -37,3 +54,6 @@ Eingabewerte werden ausgelassen, sofern sie nicht ausdrücklich erlaubt sind und
 - Passwörter, versteckte Inputs, Dateien, Zahlungsfelder, Tokens, Secrets und ähnliche sensible Felder werden immer ausgeschlossen.
 
 Verwende `data-wp-nova-ignore` für jeden Teilbaum, den der Assistent nicht sehen soll.
+
+Verwende echte beschriftete Links/Buttons. Ein React-`onClick` auf einer
+generischen Tabellenzeile kann für den Snapshot unsichtbar sein.
