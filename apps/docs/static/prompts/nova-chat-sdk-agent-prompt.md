@@ -176,9 +176,11 @@ init({
 ```
 
 Only `publicSurfaceId` and `tokenEndpoint` are required. Other browser-safe
-options include `title`, `accent`, `triggerColor`, `triggerIconColor`, `mount`,
-`safeValueSelectors`, `voiceMode`, `routes`, and `settle`. Enable voice only when
-requested and allow the iframe microphone in Permissions Policy.
+options include `title`, `accent`, `triggerColor`, `triggerColorLight`,
+`triggerColorDark`, `triggerIconColor`, `theme`, `mount`, `safeValueSelectors`,
+`voiceMode`, `routes`, and `settle`. Theme-specific trigger colors override
+`triggerColor` only in their matching host mode. Enable voice only when requested
+and allow the iframe microphone in Permissions Policy.
 
 Mount once above the route outlet and enable only after required config and
 trusted session bootstrap are ready. Keep React config/tools referentially

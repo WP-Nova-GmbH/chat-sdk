@@ -64,6 +64,51 @@ test("triggerColor is used directly for first-paint launcher theming", () => {
     assert.equal(config.hasFirstPaintLauncherColor, true);
 });
 
+test("active theme-specific trigger colors override the legacy triggerColor", () => {
+    const shared = {
+        ...REQUIRED_CONFIG,
+        accent: "#333333",
+        triggerColor: "#444444",
+        triggerColorLight: "#eeeeee",
+        triggerColorDark: "#111111",
+    };
+
+    assert.equal(resolveConfig({ ...shared, theme: "light" }).triggerColor, "#eeeeee");
+    assert.equal(resolveConfig({ ...shared, theme: "dark" }).triggerColor, "#111111");
+});
+
+test("theme-specific trigger colors fall back through triggerColor and accent", () => {
+    assert.equal(
+        resolveConfig({
+            ...REQUIRED_CONFIG,
+            theme: "dark",
+            triggerColorLight: "#eeeeee",
+            triggerColor: "#444444",
+            accent: "#333333",
+        }).triggerColor,
+        "#444444",
+    );
+    assert.equal(
+        resolveConfig({
+            ...REQUIRED_CONFIG,
+            theme: "dark",
+            triggerColorLight: "#eeeeee",
+            accent: "#333333",
+        }).triggerColor,
+        "#333333",
+    );
+});
+
+test("only the active theme's launcher color enables first-paint reveal", () => {
+    const config = {
+        ...REQUIRED_CONFIG,
+        triggerColorDark: "#111111",
+    };
+
+    assert.equal(resolveConfig({ ...config, theme: "light" }).hasFirstPaintLauncherColor, false);
+    assert.equal(resolveConfig({ ...config, theme: "dark" }).hasFirstPaintLauncherColor, true);
+});
+
 test("host theme defaults to light and accepts an explicit dark mode", () => {
     assert.equal(resolveConfig(REQUIRED_CONFIG).theme, "light");
     assert.equal(resolveConfig({ ...REQUIRED_CONFIG, theme: "dark" }).theme, "dark");

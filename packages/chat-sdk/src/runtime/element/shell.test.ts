@@ -41,7 +41,7 @@ test("setConfig seeds host launcher colors before shadow render", () => {
     const appliedTheme: Array<[string, string]> = [];
     const element = makeElement() as {
         style: { setProperty: (name: string, value: string) => void };
-        shell: { rendered: boolean };
+        shell: { rendered: boolean; launcherThemeReady: boolean };
         setConfig: (config: {
             publicSurfaceId: string;
             tokenEndpoint: string;
@@ -68,6 +68,41 @@ test("setConfig seeds host launcher colors before shadow render", () => {
         ["--wpn-accent", "#276b55"],
         ["--wpn-launcher-icon", "#0f1117"],
     ]);
+});
+
+test("setConfig seeds the active theme-specific launcher color before shadow render", () => {
+    const appliedTheme: Array<[string, string]> = [];
+    const element = makeElement() as {
+        style: { setProperty: (name: string, value: string) => void };
+        shell: { rendered: boolean; launcherThemeReady: boolean };
+        setConfig: (config: {
+            publicSurfaceId: string;
+            tokenEndpoint: string;
+            theme: "dark";
+            triggerColor: string;
+            triggerColorLight: string;
+            triggerColorDark: string;
+        }) => void;
+    };
+    element.style.setProperty = (name, value) => {
+        appliedTheme.push([name, value]);
+    };
+
+    element.setConfig({
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token",
+        theme: "dark",
+        triggerColor: "#444444",
+        triggerColorLight: "#eeeeee",
+        triggerColorDark: "#111111",
+    });
+
+    assert.equal(element.shell.rendered, false);
+    assert.equal(element.shell.launcherThemeReady, true);
+    assert.equal(
+        appliedTheme.some(([name, value]) => name === "--wpn-accent" && value === "#111111"),
+        true,
+    );
 });
 
 test("render omits microphone delegation unless voice mode is enabled", () => {
@@ -205,7 +240,9 @@ test("desktop panel reuses the launcher's bottom offset while mobile stays full 
     assert.equal(html.includes("#panel{right:0;bottom:0;width:100vw;height:100dvh"), true);
     assert.equal(html.includes("--wpn-frame-background:#0f1117"), true);
     assert.equal(
-        html.includes("--wpn-panel-shadow:0 1px 2px rgba(0,0,0,.40),0 18px 44px -16px rgba(0,0,0,.60)"),
+        html.includes(
+            "--wpn-panel-shadow:0 1px 2px rgba(0,0,0,.40),0 18px 44px -16px rgba(0,0,0,.60)",
+        ),
         true,
     );
     assert.equal(html.includes("box-shadow:var(--wpn-panel-shadow)"), true);

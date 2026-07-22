@@ -47,6 +47,8 @@ export interface SdkConfig {
   title?: string;
   accent?: string;
   triggerColor?: string;
+  triggerColorLight?: string;
+  triggerColorDark?: string;
   triggerIconColor?: "light" | "dark" | string;
   theme?: "light" | "dark";
   safeValueSelectors?: string[];

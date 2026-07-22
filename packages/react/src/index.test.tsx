@@ -181,6 +181,31 @@ describe("NovaChatProvider — R5 stable config", () => {
         expect(retain).toHaveBeenCalledTimes(1);
         expect(release).not.toHaveBeenCalled();
     });
+
+    it("re-initializes in place when a theme-specific launcher color changes", async () => {
+        const root = await mount(
+            <NovaChatProvider config={{ ...config, theme: "dark", triggerColorDark: "#111111" }}>
+                child
+            </NovaChatProvider>,
+        );
+        expect(init).toHaveBeenCalledTimes(1);
+
+        await rerender(
+            root,
+            <NovaChatProvider config={{ ...config, theme: "dark", triggerColorDark: "#222222" }}>
+                child
+            </NovaChatProvider>,
+        );
+
+        expect(init).toHaveBeenCalledTimes(2);
+        expect(init).toHaveBeenLastCalledWith({
+            ...config,
+            theme: "dark",
+            triggerColorDark: "#222222",
+        });
+        expect(retain).toHaveBeenCalledTimes(1);
+        expect(release).not.toHaveBeenCalled();
+    });
 });
 
 describe("NovaChatProvider — R20 stable tools", () => {

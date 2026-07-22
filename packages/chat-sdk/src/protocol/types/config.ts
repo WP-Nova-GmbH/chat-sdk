@@ -37,6 +37,10 @@ export interface SdkConfig {
      * the launcher uses `accent`.
      */
     triggerColor?: string;
+    /** Light-mode launcher color. Overrides `triggerColor` while `theme` is "light". */
+    triggerColorLight?: string;
+    /** Dark-mode launcher color. Overrides `triggerColor` while `theme` is "dark". */
+    triggerColorDark?: string;
     /** Launcher icon color for the pre-auth shell: "light", "dark", or a hex color. */
     triggerIconColor?: string;
     /**

@@ -57,16 +57,27 @@ init({
   tokenEndpoint: "/api/nova-token",
   accent: "#9A72F8",
   triggerColor: "#7E54E4",
+  triggerColorLight: "#7E54E4",
+  triggerColorDark: "#A991F2",
   triggerIconColor: "light",
 });
 ```
 
-If `accent` or `triggerColor` is supplied, the launcher can render on-brand immediately. Otherwise, the launcher can wait for trusted surface theme data.
+If `accent`, `triggerColor`, or the active mode's theme-specific color is
+supplied, the launcher can render on-brand immediately. Otherwise, the launcher
+can wait for trusted surface theme data.
 
 The SDK's fallback accent is Nova purple. Products with a different design
 system should pass their actual primary color explicitly—prefer a stable
 six-digit hex value rather than copying an unresolved CSS variable. When
 `triggerColor` is omitted, it falls back to `accent`.
+
+Use `triggerColorLight` and `triggerColorDark` when the launcher needs different
+contrast against each host-page mode. The active mode-specific value overrides
+the legacy `triggerColor`; an omitted mode falls back to `triggerColor`, then
+`accent`. Existing integrations that only pass `triggerColor` remain unchanged.
+Changing `theme` or either mode-specific color updates the current launcher in
+place without replacing the iframe or re-fetching auth.
 
 ## Launcher Icon Color
 

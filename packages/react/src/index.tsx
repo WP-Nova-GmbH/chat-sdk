@@ -158,6 +158,8 @@ export function NovaChatProvider({
         config.title,
         config.accent,
         config.triggerColor,
+        config.triggerColorLight,
+        config.triggerColorDark,
         config.triggerIconColor,
         config.theme,
         config.safeValueSelectors,

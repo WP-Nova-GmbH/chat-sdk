@@ -35,6 +35,8 @@ init({
 | `title` | No | Pre-auth launcher/panel title shown before trusted surface display settings arrive. |
 | `accent` | No | Pre-auth accent color for the SDK-owned launcher shell. |
 | `triggerColor` | No | Launcher button color. Defaults to `accent`. |
+| `triggerColorLight` | No | Light-mode launcher color. Overrides `triggerColor` while `theme` is `light`. |
+| `triggerColorDark` | No | Dark-mode launcher color. Overrides `triggerColor` while `theme` is `dark`. |
 | `triggerIconColor` | No | `light`, `dark`, or a custom hex color for the launcher icon. |
 | `theme` | No | Host page color mode copied into the iframe: `light` or `dark`. Defaults to `light`. |
 | `safeValueSelectors` | No | CSS selectors that opt field values into page snapshot capture. Field values still pass sensitivity checks. |
@@ -57,7 +59,16 @@ init({
 });
 ```
 
-If `accent` or `triggerColor` is not supplied, the SDK can wait for trusted surface theme data before showing the launcher. Supplying one of those colors gives a branded first paint before authentication completes.
+If none of `accent`, `triggerColor`, or the active mode's theme-specific color is
+supplied, the SDK can wait for trusted surface theme data before showing the
+launcher. Supplying one of those colors gives a branded first paint before
+authentication completes.
+
+For theme-specific launcher colors, the active mode resolves in this order:
+`triggerColorLight` or `triggerColorDark`, then the backward-compatible
+`triggerColor`, then `accent`, then Nova purple. Only a color configured for the
+active mode enables immediate first-paint reveal; the other mode's color alone
+does not expose the launcher before trusted surface theming arrives.
 
 `theme` is separate from Nova surface colors. The SDK does not read a WP Chat
 theme cookie or infer the host application's state. Pass your page's current

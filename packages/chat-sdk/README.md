@@ -63,6 +63,8 @@ init({ publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
 | `title` | no | Pre-auth panel title. |
 | `accent` | no | Pre-auth accent color. |
 | `triggerColor` | no | Launcher color; defaults to `accent`. |
+| `triggerColorLight` | no | Light-mode launcher color; overrides `triggerColor`. |
+| `triggerColorDark` | no | Dark-mode launcher color; overrides `triggerColor`. |
 | `triggerIconColor` | no | `light`, `dark`, or hex. |
 | `theme` | no | Host page mode (`light` or `dark`); defaults to `light` and updates live. |
 | `safeValueSelectors` | no | Selectors that opt safe field values into snapshots. |

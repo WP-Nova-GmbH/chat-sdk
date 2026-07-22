@@ -109,6 +109,9 @@ test("live host theme changes reuse the bridge and iframe", () => {
         publicSurfaceId: "surf_1",
         tokenEndpoint: "/token",
         theme: "light",
+        triggerColor: "#444444",
+        triggerColorLight: "#eeeeee",
+        triggerColorDark: "#111111",
     });
     const bridge = {
         sendHostTheme: (theme: string) => sentThemes.push(theme),
@@ -132,11 +135,16 @@ test("live host theme changes reuse the bridge and iframe", () => {
             publicSurfaceId: string;
             tokenEndpoint: string;
             theme: "light" | "dark";
+            triggerColor: string;
+            triggerColorLight: string;
+            triggerColorDark: string;
         }) => void;
     };
     element.resolved = initial;
+    const launcherColors: string[] = [];
     element.style.setProperty = (name, value) => {
         if (name === "--wpn-panel-shadow") panelShadows.push(value);
+        if (name === "--wpn-accent") launcherColors.push(value);
     };
     element.shell.applyConfig(initial);
     element.shell.render(initial);
@@ -152,6 +160,9 @@ test("live host theme changes reuse the bridge and iframe", () => {
         publicSurfaceId: "surf_1",
         tokenEndpoint: "/token",
         theme: "dark",
+        triggerColor: "#444444",
+        triggerColorLight: "#eeeeee",
+        triggerColorDark: "#111111",
     });
 
     assert.equal(stopped, false);
@@ -159,6 +170,9 @@ test("live host theme changes reuse the bridge and iframe", () => {
     assert.equal(element.shell.frame, iframe);
     assert.equal(tokenAcquisitions, 0);
     assert.deepEqual(sentThemes, ["dark"]);
+    assert.equal(launcherColors[0], "#eeeeee");
+    assert.equal(launcherColors[launcherColors.length - 1], "#111111");
+    assert.equal(launcherColors.includes("#444444"), false);
     assert.deepEqual(panelShadows, [
         "0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30)",
         "0 1px 2px rgba(0,0,0,.40),0 18px 44px -16px rgba(0,0,0,.60)",

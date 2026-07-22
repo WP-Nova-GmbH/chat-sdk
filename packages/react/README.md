@@ -31,6 +31,8 @@ export function App() {
                 publicSurfaceId: "surf_...",
                 tokenEndpoint: "/api/nova/embed-token",
                 theme: "dark",
+                triggerColorLight: "#7E54E4",
+                triggerColorDark: "#A991F2",
                 routes: [
                     { path: "/customers", description: "Customer lookup list with search." },
                 ],

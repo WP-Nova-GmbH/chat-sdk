@@ -52,7 +52,7 @@ export interface ResolvedConfig {
     mount?: string | HTMLElement;
     title: string;
     accent: string;
-    /** Launcher/open-button color; falls back to `accent`. */
+    /** Active-theme launcher/open-button color; falls back to the legacy color/accent. */
     triggerColor: string;
     /** Launcher icon color; supports "light", "dark", or a hex color. */
     triggerIconColor: string;
@@ -166,8 +166,13 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
     if (voiceModeEnabled) {
         url.searchParams.set("voice", "1");
     }
-    const triggerColor = config.triggerColor || config.accent || DEFAULT_ACCENT;
-    const hasFirstPaintLauncherColor = Boolean(config.triggerColor || config.accent);
+    const theme: HostTheme = config.theme === "dark" ? "dark" : "light";
+    const themeTriggerColor = theme === "dark" ? config.triggerColorDark : config.triggerColorLight;
+    const triggerColor =
+        themeTriggerColor || config.triggerColor || config.accent || DEFAULT_ACCENT;
+    const hasFirstPaintLauncherColor = Boolean(
+        themeTriggerColor || config.triggerColor || config.accent,
+    );
 
     return {
         publicSurfaceId: config.publicSurfaceId,
@@ -180,7 +185,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
         accent: config.accent || DEFAULT_ACCENT,
         triggerColor,
         triggerIconColor: config.triggerIconColor || "light",
-        theme: config.theme === "dark" ? "dark" : "light",
+        theme,
         hasFirstPaintLauncherColor,
         safeValueSelectors: Array.isArray(config.safeValueSelectors)
             ? config.safeValueSelectors.filter((s) => typeof s === "string" && s.trim())
