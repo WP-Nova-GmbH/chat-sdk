@@ -81,7 +81,9 @@ their `theme` config value changes.
 
 Routes let the agent reach known pages that are not linked in the current snapshot.
 
-- Only same-origin paths with a leading `/` are accepted; anything else is dropped with a console warning. At most 100 routes are used.
+- Only same-origin paths with a leading `/` are accepted. Absolute URLs and
+  protocol-relative variants such as `//host/path` and `/\host/path` are
+  dropped with a console warning. At most 100 routes are used.
 - Keep each path and description within Nova's 300-character bound.
 - Keep `:param` placeholders and describe where real ids come from.
 - Declare only routes the current user can actually reach. Filter by role/permissions before calling `init`, and re-init when access changes.
@@ -126,7 +128,27 @@ for the complete contract.
 
 The SDK is singleton-safe. Re-running `init` during HMR, route-level remounts, or duplicate script loads reuses the existing custom element.
 
-If `publicSurfaceId`, `baseUrl`, `voiceMode`, or `protocolVersion` changes, the element rebuilds the iframe and bridge, clears buffered auth, and fetches a fresh token before posting auth to the iframe. A `theme` change is applied live to the existing iframe. A direct `init` call also refreshes `routes` and `settle`. Treat settle options as mount-time configuration in framework integrations; the React wrapper observes route and theme changes, but changing only `settle` does not trigger its re-initialization. Keep framework config objects stable and remount or re-initialize deliberately when readiness behavior must change.
+If `publicSurfaceId`, `baseUrl`, `voiceMode`, or `protocolVersion` changes, the
+element rebuilds the iframe and bridge, clears buffered auth, and fetches a
+fresh token before posting auth to the iframe. A `tokenEndpoint` change fetches
+fresh auth through the existing iframe. Theme and launcher color changes apply
+to the current element; a `theme` update additionally sends
+`HOST_THEME` to the existing iframe without fetching auth.
+
+A direct `init` call also refreshes `routes` and `settle`. Treat settle options
+as mount-time configuration in framework integrations; the React wrapper
+observes route and theme changes, but changing only `settle` does not trigger
+its re-initialization. Keep framework config objects stable and remount or
+re-initialize deliberately when readiness behavior must change.
+
+## Panel Lifecycle
+
+Opening chat hides the launcher and lets the panel use the freed bottom-right
+space. Minimizing from the iframe header hides the panel but keeps the iframe
+mounted, preserving its route and conversation. The SDK also contains launcher
+pointer, mouse, and click events inside its shadow root so host-page
+outside-click handlers do not react to the same activation. No host integration
+code is required for these behaviors.
 
 ## Destroying the Embed
 

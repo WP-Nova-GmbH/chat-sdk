@@ -18,7 +18,7 @@ Eine zuverlässige Integration beginnt mit Produkt-, Sicherheits- und Navigation
 | Geführte Auswahl | In welchen Abläufen muss der Agent aus Kunden, Lieferanten, Kategorien oder anderen aktuellen Optionen auswählen? | Schreibgeschützte Lookup-Tools, die eine begrenzte Auswahl zurückgeben; Nova rendert `request_user_input` im iframe. |
 | Site-Routen | Soll der Agent Routen kennen, die auf der aktuellen Seite nicht sichtbar sind? Welche Rollen dürfen die einzelnen Routen erreichen und woher stammen Parameter-IDs? | `SdkConfig.routes`, gefiltert für den angemeldeten Benutzer. |
 | SPA-Bereitschaft | Muss die Navigation auf Loader, Queries, Lazy Chunks oder Übergänge warten? Woran ist erkennbar, dass das Ziel bereit ist? | `wp-nova:navigate`, `settle.waitForNavigationSignal` und `wp-nova:settled`. |
-| Erscheinungsbild | Welche sichtbaren Werte sollen Titel, Primär-/Akzentfarbe, Launcher-Farbe, Icon-Farbe und Logo haben? | Anzeigeeinstellungen der Surface sowie browsersichere SDK-Konfiguration für den ersten Render. |
+| Erscheinungsbild | Welche Werte sollen Titel, Primär-/Akzentfarbe, Launcher- und Icon-Farben sowie Logo haben? Woher stammt der Hell-/Dunkelmodus des Hosts, und braucht der Launcher modusspezifische Farben? | Anzeigeeinstellungen der Surface sowie browsersichere Werte für `theme`, Farben beim ersten Render und Live-Synchronisierung des Host-Themes. |
 | Spracheingabe | Soll das Embed Spracheingabe anbieten und erlaubt die Permissions Policy des Hosts dem iframe den Mikrofonzugriff? | `voiceMode` und `Permissions-Policy`. |
 | Mount-Lebenszyklus | Wo befindet sich die persistente App-Shell? Wann soll der Chat deaktiviert oder zerstört werden? | Root-Provider/-Komponente; bei gewöhnlichen SPA-Routenwechseln nicht neu mounten. |
 | Verifizierung | Welche zugeordneten und nicht zugeordneten Benutzer, Rollen, Routen, Tools und sensiblen Seiten decken das tatsächliche Risiko ab? | Automatisierte Tests und Browser-Smoke-Testmatrix. |
@@ -73,7 +73,11 @@ Konkrete Verträge findest du unter [Tools und geführte Abläufe](./tools.md).
 
 - Erstelle Routen aus Router-Konstanten, filtere sie anhand der UI-Berechtigungen und behandle sie als Kontext statt als Autorisierung. Siehe [Navigation](./navigation.md).
 - Prüfe ganze Familien sensibler Seiten und nicht nur einen einzelnen Bildschirm; schließe ganze private Teilbäume aus. Gib nur erforderliche unbedenkliche Werte frei.
-- Lege für den ersten Render die tatsächliche Primär-/Akzentfarbe und den Icon-Kontrast des Produkts fest; nach der Authentifizierung bleiben die Surface-Einstellungen maßgeblich. Siehe [Design-Anpassung](./theming.md).
+- Lege für den ersten Render Primär-/Akzentfarbe, Icon-Kontrast, Host-`theme`
+  und gegebenenfalls modusspezifische Launcher-Farben fest. Halte `theme` mit
+  der Host-Anwendung synchron; nach der Authentifizierung bleiben die
+  Surface-Einstellungen maßgeblich. Siehe
+  [Design-Anpassung](./theming.md).
 
 ## Definition of Done
 

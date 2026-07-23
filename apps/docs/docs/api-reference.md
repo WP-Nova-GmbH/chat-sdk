@@ -30,6 +30,7 @@ import {
   WpNovaChatElement,
   DEFAULT_SETTLE,
   SETTLED_EVENT,
+  type HostTheme,
   type SettleOptions,
 } from "@wp-nova/chat-sdk";
 ```
@@ -39,6 +40,8 @@ import {
 ## SdkConfig
 
 ```ts
+export type HostTheme = "light" | "dark";
+
 export interface SdkConfig {
   publicSurfaceId: string;
   tokenEndpoint: string;
@@ -50,7 +53,7 @@ export interface SdkConfig {
   triggerColorLight?: string;
   triggerColorDark?: string;
   triggerIconColor?: "light" | "dark" | string;
-  theme?: "light" | "dark";
+  theme?: HostTheme;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
   routes?: SiteRoute[];
@@ -76,10 +79,9 @@ Required fields:
 Every other field is optional. `theme` defaults to `light` and forwards the host
 page's current color mode to the iframe without reading an iframe-owned cookie.
 Changing it through another `init` call updates the existing iframe in place
-without acquiring a new token.
-Notably, `voiceMode` (default `false`) enables the
-embedded voice button and delegates microphone access to the Nova iframe. See
-[Configuration](./configuration.md) for the full options table.
+without acquiring a new token. Notably, `voiceMode` (default `false`) enables
+the embedded voice button and delegates microphone access to the Nova iframe.
+See [Configuration](./configuration.md) for the full options table.
 
 `settle` controls post-action snapshot readiness. Defaults are
 `quietMs: 200`, `maxWaitMs: 1600`, and

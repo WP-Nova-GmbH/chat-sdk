@@ -26,7 +26,9 @@ init({
 
 Règles applicables aux routes :
 
-- Les chemins sont de même origine et commencent par un seul `/` ; `//host/path` et les URL absolues sont rejetés.
+- Les chemins sont de même origine et commencent par un seul `/` ; les URL
+  absolues et les variantes relatives au protocole telles que `//host/path` ou
+  `/\host/path` sont rejetées.
 - Les chemins en double sont supprimés et au maximum 100 entrées sont transmises.
 - Chaque chemin et chaque description doivent respecter la limite Nova de 300 caractères.
 - Utilisez des placeholders `:param` dans les modèles. Ne placez jamais de faux identifiants dans le chemin.

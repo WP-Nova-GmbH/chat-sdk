@@ -59,3 +59,10 @@ export class AppComponent {
 Sinon, `<wp-nova-chat-mount [tools]="tools" />` reçoit des définitions
 complètes. Filtrez routes/outils par permissions et émettez
 `wp-nova:settled` après le rendu des données de la route Angular.
+
+Si le thème hôte peut changer après l’amorçage, liez la `SdkConfig` actuelle à
+l’input `config` du composant ou appelez
+`NovaChatService.init(updatedConfig)`. Un changement de `theme` met à jour le
+lanceur, le panneau et l’iframe existante sans récupérer de nouveau token ni
+perdre la conversation. `triggerColorLight` et `triggerColorDark` mettent le
+lanceur existant à jour sans remontage.

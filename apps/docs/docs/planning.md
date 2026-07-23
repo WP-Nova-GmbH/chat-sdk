@@ -18,7 +18,7 @@ A reliable integration starts with product, security, and navigation decisions. 
 | Guided choices | Which workflows require the agent to choose from customers, suppliers, categories, or other live options? | Read-only lookup tools that return bounded choices; Nova renders `request_user_input` in the iframe. |
 | Site routes | Should the agent know routes that are not visible on the current page? Which roles can reach each route, and where do parameter ids come from? | `SdkConfig.routes`, filtered for the signed-in user. |
 | SPA readiness | Does navigation wait for loaders, queries, lazy chunks, or transitions? What proves the destination is ready? | `wp-nova:navigate`, `settle.waitForNavigationSignal`, and `wp-nova:settled`. |
-| Appearance | What are the visible title, primary/accent color, launcher color, icon color, and logo? | Surface display settings plus browser-safe first-paint SDK config. |
+| Appearance | What are the visible title, primary/accent color, launcher and icon colors, logo, host light/dark source, and any per-mode launcher colors? | Surface display settings plus browser-safe `theme`, first-paint colors, and live host-theme synchronization. |
 | Voice | Should the embed expose voice, and does the host Permissions Policy allow the iframe microphone? | `voiceMode` and `Permissions-Policy`. |
 | Mount lifecycle | Where is the persistent app shell? When should chat be disabled or destroyed? | Root provider/component; do not remount on ordinary SPA route changes. |
 | Verification | Which mapped and unmapped users, roles, routes, tools, and sensitive pages cover the real risk? | Automated tests and the browser smoke matrix. |
@@ -73,7 +73,10 @@ See [Tools and guided workflows](./tools.md) for concrete contracts.
 
 - Build routes from router constants, filter them with UI permissions, and treat them as context rather than authorization. See [Navigation](./navigation.md).
 - Review sensitive page families—not only one screen—and ignore whole private subtrees. Opt in only required safe values.
-- Set the product's real primary/accent and icon contrast for first paint; authenticated surface settings remain authoritative. See [Theming](./theming.md).
+- Set the product's real primary/accent, icon contrast, host `theme`, and any
+  per-mode launcher colors for first paint. Keep `theme` synchronized with the
+  host application; authenticated surface settings remain authoritative. See
+  [Theming](./theming.md).
 
 ## Definition of done
 

@@ -28,12 +28,15 @@ import {
   defineElement,
   ELEMENT_TAG,
   WpNovaChatElement,
+  type HostTheme,
 } from "@wp-nova/chat-sdk";
 ```
 
 ### Types
 
 ```ts
+export type HostTheme = "light" | "dark";
+
 export interface SdkConfig {
   publicSurfaceId: string;
   tokenEndpoint: string;
@@ -42,7 +45,10 @@ export interface SdkConfig {
   title?: string;
   accent?: string;
   triggerColor?: string;
+  triggerColorLight?: string;
+  triggerColorDark?: string;
   triggerIconColor?: "light" | "dark" | string;
+  theme?: HostTheme;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
   routes?: Array<{ path: string; description: string }>;
@@ -68,6 +74,13 @@ export type ToolHandler = (
   opts?: { signal?: AbortSignal },
 ) => unknown | Promise<unknown>;
 ```
+
+Seuls `publicSurfaceId` et `tokenEndpoint` sont obligatoires. Par défaut,
+`theme` vaut `light` et transmet à l’iframe le mode clair/sombre actuel de la
+page hôte. Un nouvel appel à `init` avec une autre valeur met à jour l’iframe
+existante sans récupérer de nouveau token ni réinitialiser la conversation.
+`triggerColorLight` et `triggerColorDark` remplacent `triggerColor` uniquement
+dans leur mode respectif.
 
 `registerToolHandler` reste uniquement comme helper de compatibilité obsolète,
 limité à l’exécution. Un handler seul n’est pas proposé à l’agent.

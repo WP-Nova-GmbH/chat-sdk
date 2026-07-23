@@ -26,7 +26,8 @@ init({
 
 Route rules:
 
-- Paths are same-origin and start with one `/`; `//host/path` and absolute URLs are rejected.
+- Paths are same-origin and start with one `/`; absolute URLs and
+  protocol-relative variants such as `//host/path` or `/\host/path` are rejected.
 - Duplicate paths are removed and at most 100 entries are carried.
 - Keep each path and description within Nova's 300-character bound.
 - Use `:param` placeholders in patterns. Never put fake ids in the path.
