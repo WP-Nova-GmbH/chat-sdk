@@ -18,7 +18,7 @@ Une intégration fiable commence par des décisions sur le produit, la sécurit�
 | Choix guidés | Quels workflows exigent que l’agent choisisse parmi des clients, des fournisseurs, des catégories ou d’autres options dynamiques ? | Outils de recherche en lecture seule qui renvoient un nombre limité de choix ; Nova affiche `request_user_input` dans l’iframe. |
 | Routes du site | L’agent doit-il connaître des routes qui ne sont pas visibles sur la page actuelle ? Quels rôles peuvent atteindre chaque route et d’où proviennent les identifiants des paramètres ? | `SdkConfig.routes`, filtré pour l’utilisateur connecté. |
 | Préparation de la SPA | La navigation attend-elle des loaders, des requêtes, des chunks chargés à la demande ou des transitions ? Qu’est-ce qui prouve que la destination est prête ? | `wp-nova:navigate`, `settle.waitForNavigationSignal` et `wp-nova:settled`. |
-| Apparence | Quels sont le titre visible, la couleur principale/d’accent, la couleur du lanceur, la couleur de l’icône et le logo ? | Paramètres d’affichage de la surface et configuration SDK sûre pour le navigateur au premier affichage. |
+| Apparence | Quels sont le titre, la couleur principale/d’accent, les couleurs du lanceur et de l’icône, et le logo ? Quelle est la source du mode clair/sombre de l’hôte, et faut-il des couleurs de lanceur propres à chaque mode ? | Paramètres d’affichage de la surface, valeurs navigateur sûres pour `theme` et les couleurs au premier affichage, et synchronisation en direct du thème hôte. |
 | Voix | L’intégration doit-elle proposer le mode vocal et la Permissions Policy de l’hôte autorise-t-elle l’iframe à utiliser le microphone ? | `voiceMode` et `Permissions-Policy`. |
 | Cycle de vie du montage | Où se trouve le shell persistant de l’application ? Quand le chat doit-il être désactivé ou détruit ? | Provider/composant racine ; ne le remontez pas lors des changements de route SPA ordinaires. |
 | Vérification | Quels utilisateurs associés ou non, rôles, routes, outils et pages sensibles couvrent les risques réels ? | Tests automatisés et matrice de tests de bon fonctionnement dans le navigateur. |
@@ -73,7 +73,11 @@ Consultez [Outils et workflows guidés](./tools.md) pour des contrats concrets.
 
 - Construisez les routes à partir des constantes du routeur, filtrez-les selon les autorisations de l’interface et traitez-les comme du contexte plutôt que comme une autorisation. Consultez [Navigation](./navigation.md).
 - Examinez les familles de pages sensibles, pas seulement un écran, et ignorez les sous-arbres privés entiers. N’autorisez explicitement que les valeurs sûres requises.
-- Définissez la véritable couleur principale/d’accent du produit et le contraste de l’icône au premier affichage ; les paramètres authentifiés de la surface restent prioritaires. Consultez [Personnalisation du thème](./theming.md).
+- Définissez la couleur principale/d’accent, le contraste de l’icône, le
+  `theme` de l’hôte et, si nécessaire, les couleurs du lanceur propres à chaque
+  mode pour le premier affichage. Maintenez `theme` synchronisé avec
+  l’application hôte ; les paramètres authentifiés de la surface restent
+  prioritaires. Consultez [Personnalisation du thème](./theming.md).
 
 ## Critères de finalisation
 

@@ -109,9 +109,10 @@ WP Chat theme cookie or guess from `prefers-color-scheme`; your application is
 the source of truth. When its theme changes, call `init` again (or update the
 React/Angular config value). The SDK sends a `HOST_THEME` frame to the existing
 iframe without re-fetching the token endpoint, so the current route and
-conversation remain intact. It also updates the panel and iframe background
-immediately to avoid a contrasting first-paint flash while the embedded app
-applies the frame.
+conversation remain intact. It also updates the panel and iframe background,
+theme-matched elevation, and hairline border immediately. This avoids a
+contrasting first-paint flash and keeps the panel edge visible against a
+same-tone host page while the embedded app applies the frame.
 
 ## Development Mode Badge
 

@@ -86,6 +86,12 @@ export class AppComponent {
 
 The component registers SDK tool definitions in `tools` and unregisters old names when the input changes or the component is destroyed.
 
+If the host theme can change after bootstrap, bind the current `SdkConfig` to
+the component's `config` input or call `NovaChatService.init(updatedConfig)`.
+Updating `theme` applies to the existing launcher, panel, and iframe without a
+new token request or conversation reset. `triggerColorLight` and
+`triggerColorDark` update the existing launcher without remounting.
+
 ## Service API
 
 Use `NovaChatService` when registration belongs in a service or feature initializer:

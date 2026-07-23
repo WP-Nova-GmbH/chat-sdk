@@ -52,3 +52,9 @@ Halte Konfiguration, Routen und Tool-Definitionen mit
 `useMemo`/`useCallback` stabil, filtere sie nach Berechtigungen und mounte
 den Provider oberhalb des Route-Outlets. Asynchrone Routen müssen nach
 `wp-nova:navigate` mit `wp-nova:settled` ihre Readiness signalisieren.
+
+Leite `config.theme` aus dem aktuellen Hell-/Dunkelzustand der Host-Anwendung
+ab. Bei einer Änderung aktualisiert der Provider Launcher, Panel und bestehendes
+iframe ohne neuen Token-Abruf oder Verlust der Konversation.
+`triggerColorLight` und `triggerColorDark` aktualisieren den vorhandenen
+Launcher, ohne ihn neu zu mounten.

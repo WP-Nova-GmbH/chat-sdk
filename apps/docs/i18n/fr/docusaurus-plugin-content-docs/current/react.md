@@ -51,3 +51,9 @@ Le provider s’initialise une seule fois côté client. Les outils gérés par 
 Stabilisez config, routes et définitions avec `useMemo`/`useCallback`,
 filtrez-les par permissions et montez le provider au-dessus de l’outlet. Les
 routes asynchrones doivent émettre `wp-nova:settled` après leur rendu.
+
+Dérivez `config.theme` de l’état clair/sombre actuel de l’application hôte. En
+cas de changement, le provider met à jour le lanceur, le panneau et l’iframe
+existante sans récupérer de nouveau token ni perdre la conversation.
+`triggerColorLight` et `triggerColorDark` mettent le lanceur existant à jour
+sans remontage.

@@ -26,7 +26,9 @@ init({
 
 Regeln für Routen:
 
-- Pfade sind Same-Origin und beginnen mit genau einem `/`; `//host/path` und absolute URLs werden abgelehnt.
+- Pfade sind Same-Origin und beginnen mit genau einem `/`; absolute URLs sowie
+  protokollrelative Varianten wie `//host/path` oder `/\host/path` werden
+  abgelehnt.
 - Doppelte Pfade werden entfernt und höchstens 100 Einträge übernommen.
 - Halte jeden Pfad und jede Beschreibung innerhalb der Nova-Grenze von 300 Zeichen.
 - Verwende in Mustern `:param`-Platzhalter. Trage niemals erfundene IDs in den Pfad ein.

@@ -16,7 +16,10 @@ Toutes les options sont transmises à `WpNova("init", config)` ou au helper `ini
 | `title` | non | Titre du lanceur et du panneau avant authentification. |
 | `accent` | non | Couleur d’accent avant authentification. |
 | `triggerColor` | non | Couleur du lanceur/bouton d’ouverture. Par défaut : `accent`. |
+| `triggerColorLight` | non | Couleur du lanceur en mode clair ; remplace alors `triggerColor`. |
+| `triggerColorDark` | non | Couleur du lanceur en mode sombre ; remplace alors `triggerColor`. |
 | `triggerIconColor` | non | `light`, `dark` ou une couleur hexadécimale. |
+| `theme` | non | Mode actuel de la page hôte : `light` ou `dark`. Par défaut : `light`. |
 | `safeValueSelectors` | non | Sélecteurs CSS qui autorisent la capture des valeurs de champ dans les instantanés. |
 | `voiceMode` | non | Active la voix et délègue le microphone à l’iframe Nova. |
 | `routes` | non | Routes du site filtrées par permissions, sous forme `{ path, description }`. |
@@ -33,8 +36,23 @@ init({
   title: "Assistant",
   accent: "#8665e3",
   triggerIconColor: "light",
+  theme: "light",
 });
 ```
+
+Si ni `accent`, ni `triggerColor`, ni la couleur propre au mode actif ne sont
+définis, le SDK peut masquer le lanceur jusqu’à la réception des données de
+thème fiables de la surface. Sa couleur est résolue dans cet ordre :
+`triggerColorLight` ou `triggerColorDark`, `triggerColor`, `accent`, puis le
+violet Nova. Seule une couleur définie pour le mode actif permet un premier
+affichage immédiat.
+
+`theme` est distinct des réglages d’affichage de la surface Nova. Transmettez
+explicitement le mode actuel de l’application hôte ; le SDK ne lit pas de
+cookie WP Chat et ne déduit pas ce mode. Un nouvel appel à `init` avec un
+`theme` différent met à jour le lanceur, le panneau et l’iframe existante sans
+récupérer de nouveau token ni réinitialiser la conversation. Il en va de même
+si la valeur de configuration change dans un wrapper de framework.
 
 ### Routes et navigation asynchrone
 
@@ -56,9 +74,11 @@ init({
 });
 ```
 
-Les routes commencent par un seul `/`, sont dédupliquées et limitées à 100.
-Le chemin et la description sont limités à 300 caractères chacun. N’envoyez
-que celles que l’utilisateur courant peut atteindre.
+Les routes commencent par un seul `/`. Les URL absolues et les variantes
+relatives au protocole telles que `//host/path` ou `/\host/path` sont rejetées.
+Les routes sont dédupliquées et limitées à 100 ; le chemin et la description
+sont limités à 300 caractères chacun. N’envoyez que celles que l’utilisateur
+courant peut atteindre.
 
 Par défaut, après une action, le SDK attend 200 ms sans mutation DOM, avec une
 limite de 1600 ms. Si la limite est atteinte, l’instantané porte
@@ -85,6 +105,22 @@ utilisateurs non associés :
 Nova utilise `message_is_custom: false` pour son message intégré traduisible et
 `true` pour le texte de surface rédigé par un administrateur.
 
-### Reinitialisation
+### Réinitialisation
 
-Le SDK est compatible singleton. Relancer `init` pendant le HMR ou un remount au niveau d’une route réutilise le Custom Element existant. Si `publicSurfaceId`, `baseUrl`, `voiceMode` ou `protocolVersion` change, l’élément reconstruit l’iframe et le bridge, puis récupère un nouveau token avant de poster l’authentification.
+Le SDK est compatible singleton. Relancer `init` pendant le HMR ou un remontage
+au niveau d’une route réutilise le Custom Element existant. Si
+`publicSurfaceId`, `baseUrl`, `voiceMode` ou `protocolVersion` change, l’élément
+reconstruit l’iframe et le bridge, puis récupère un nouveau token. Une
+modification de `tokenEndpoint` récupère de nouvelles données
+d’authentification pour l’iframe existante. Les changements de `theme` ou de
+couleurs du lanceur s’appliquent en direct ; un nouveau `theme` est également
+transmis à l’iframe existante via `HOST_THEME`.
+
+### Cycle de vie du panneau
+
+À l’ouverture, le lanceur est masqué et le panneau utilise l’espace ainsi
+libéré en bas à droite. Réduire le panneau depuis l’en-tête de l’iframe le
+masque sans démonter l’iframe, ce qui conserve sa route et la conversation. Le
+SDK contient aussi les événements pointer, souris et clic du lanceur dans son
+Shadow DOM afin que les handlers de clic extérieur de la page hôte ne réagissent
+pas à la même activation. Aucun code d’intégration n’est requis.

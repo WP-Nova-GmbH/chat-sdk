@@ -60,3 +60,10 @@ Alternativ erhält `<wp-nova-chat-mount [tools]="tools" />` vollständige
 Tool-Definitionen. Filtere Routen/Tools nach Berechtigungen und signalisiere
 asynchron geladene Router-Ziele erst nach dem Rendern mit
 `wp-nova:settled`.
+
+Wenn sich das Host-Theme nach dem Bootstrap ändern kann, binde die aktuelle
+`SdkConfig` an den `config`-Input der Komponente oder rufe
+`NovaChatService.init(updatedConfig)` auf. Ein geändertes `theme` aktualisiert
+Launcher, Panel und bestehendes iframe ohne neuen Token-Abruf oder Verlust der
+Konversation. `triggerColorLight` und `triggerColorDark` aktualisieren den
+vorhandenen Launcher ohne Remount.

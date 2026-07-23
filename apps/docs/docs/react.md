@@ -45,6 +45,13 @@ export function App() {
 
 Only expose browser-safe values through `VITE_*` or equivalent public env variables. Keep `NOVA_INTEGRATION_SECRET` on the backend.
 
+Derive `config.theme` from the host application's current `light`/`dark` state.
+When it changes, the provider re-initializes the singleton in place: the core
+updates the existing launcher, panel, and iframe without a new token request or
+conversation reset. Changes to `triggerColorLight` and `triggerColorDark`
+update the existing launcher without remounting. Keep the config memoized as
+described below.
+
 ## Registering Tools with Definitions
 
 If your tools are stable inside one component, pass them through the `tools` prop:

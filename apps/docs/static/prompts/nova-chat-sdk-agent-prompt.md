@@ -21,7 +21,8 @@ Identify:
 - environment, proxy, Docker/build/deployment conventions;
 - routes plus tenant/role/module/resource permissions;
 - app services, validators, query caches, and UI actions suitable for tools;
-- primary design tokens, sensitive page families, and existing privacy markers;
+- primary design tokens, the app's authoritative light/dark state, sensitive
+  page families, and existing privacy markers;
 - type, unit, integration, and browser-test setup.
 
 Reuse the app's auth, permissions, services, validation, routing, error, cache,
@@ -47,7 +48,8 @@ Confirm:
    index/detail/settings routes, descriptions, id sources, and permission rules?
    What route-specific state proves an async destination is rendered?
 5. **Appearance:** visible title, primary/accent, launcher and icon colors, logo,
-   and whether SDK first paint must match the product.
+   the source of host light/dark state, any per-mode launcher colors, and whether
+   SDK first paint must match the product.
 6. **Other options:** voice mode, mount location, safe values, ignored regions,
    and small `data-ai-context` facts.
 7. **Delivery:** exact production/staging/local origins, npm vs pinned CDN,
@@ -167,6 +169,9 @@ init({
   tokenEndpoint: "/api/nova-token",
   baseUrl: import.meta.env.VITE_NOVA_BASE_URL || "https://chat.wp-nova.ai",
   accent: resolvedProductPrimaryColor,
+  triggerColorLight: resolvedLightModeLauncherColor,
+  triggerColorDark: resolvedDarkModeLauncherColor,
+  theme: resolvedHostTheme,
   routes: permissionFilteredRoutes,
   settle: {
     maxWaitMs: 5000,
@@ -182,15 +187,23 @@ options include `title`, `accent`, `triggerColor`, `triggerColorLight`,
 `triggerColor` only in their matching host mode. Enable voice only when requested
 and allow the iframe microphone in Permissions Policy.
 
+Use the host application's existing theme state as the source of truth. Do not
+read a WP Chat cookie or add a separate `prefers-color-scheme` listener when the
+app already owns this state. Keep `theme` current through the framework config
+or another `init` call. Theme changes update the existing iframe and shell;
+mode-specific launcher-color changes update the existing launcher. Neither
+requires re-fetching auth or resetting the conversation.
+
 Mount once above the route outlet and enable only after required config and
 trusted session bootstrap are ready. Keep React config/tools referentially
 stable. In Angular, `provideNovaChat` only provides config: import the standalone
 `NovaChatComponent` where `<wp-nova-chat-mount>` is used. Use `environment.ts`
 instead of `import.meta.env` with the standard Angular CLI builder.
 
-Never remount for ordinary route changes. Revoke the host-side session on logout.
-Use published package versions; never repack different bytes under an existing
-version.
+Never remount for ordinary route changes. Opening chat hides the launcher;
+minimizing from the iframe header must leave the iframe mounted so its route and
+conversation persist. Revoke the host-side session on logout. Use published
+package versions; never repack different bytes under an existing version.
 
 ## Tools and guided choices
 
@@ -280,9 +293,11 @@ rows/generic containers may not appear as actionable snapshot controls.
 ## Routes and async readiness
 
 Build `routes` from router constants. Use same-origin paths beginning with one
-`/`; maximum 100 routes, with path and description each at most 300 characters.
-Keep `:param` placeholders, describe where ids come from, and filter by tenant,
-module, role, and resource permissions. Routes provide context, not authorization.
+`/`; reject absolute URLs and protocol-relative variants such as `//host/path`
+and `/\host/path`. Use at most 100 routes, with path and description each at
+most 300 characters. Keep `:param` placeholders, describe where ids come from,
+and filter by tenant, module, role, and resource permissions. Routes provide
+context, not authorization.
 
 For an SPA, preserve path, query, and hash and prevent only accepted navigation:
 
@@ -324,6 +339,10 @@ Before finishing, verify:
 - async navigation returns loaded destination content, not a stale snapshot;
 - ignored/sensitive content is absent and semantic controls are discoverable;
 - token refresh, logout, deployment proxy/env, and launcher branding work;
+- changing host light/dark mode updates the existing launcher, panel, and iframe
+  without another token request or conversation reset;
+- opening hides the launcher, minimizing preserves the iframe conversation, and
+  host outside-click handlers do not react to launcher activation;
 - typecheck, focused tests, lint, build, and browser/E2E checks pass.
 
 ## Distinctive failure modes
@@ -334,5 +353,6 @@ Before finishing, verify:
 | Tool returns `no_handler` | Keep the complete `registerTool` definition registered for that user/scope. |
 | URL changes but snapshot is old | Require host navigation signal and send `wp-nova:settled` after route data renders. |
 | Visible row cannot be opened | Add a real labeled link/button; a container click handler is insufficient. |
+| Chat stays light or resets when the host theme changes | Pass the app's live `theme` through the existing config; do not remount the provider or component. |
 | Pinned `sdk.js` returns 404 or fails SRI | Verify the deployed version and matching `.sri`; self-host the released bundle for local work. |
 | Angular package import fails on 1.0.0 | Upgrade to 1.0.1+; the first publish lacked package entry points. |
