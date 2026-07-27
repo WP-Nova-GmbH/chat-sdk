@@ -2,6 +2,7 @@ import { Component } from "@angular/core";
 import { NovaChatComponent, type SdkConfig, type ToolDefinition } from "@wp-nova/chat-sdk-angular";
 
 type StayStatus = "Inquiry" | "Reserved" | "In house" | "Follow up";
+type PresentationMode = "popover" | "sidebar";
 
 interface Stay {
     id: string;
@@ -322,7 +323,7 @@ export class AppComponent {
     banner = "Rain clearing by 17:00; courtyard dinner can stay outside.";
     events: LogEvent[] = [createEvent("system", "Angular concierge example loaded.")];
     settings = readInitialSettings();
-    presentationMode: "popover" | "sidebar" = "popover";
+    presentationMode: PresentationMode = "popover";
     sdkConfig = buildSdkConfig(this.settings, this.presentationMode);
     tools: ToolDefinition[] = [
         {
@@ -573,7 +574,7 @@ function readInitialSettings(): SdkSettings {
     };
 }
 
-function buildSdkConfig(settings: SdkSettings, presentationMode: "popover" | "sidebar"): SdkConfig {
+function buildSdkConfig(settings: SdkSettings, presentationMode: PresentationMode): SdkConfig {
     return {
         publicSurfaceId: settings.publicSurfaceId,
         tokenEndpoint: settings.tokenEndpoint,

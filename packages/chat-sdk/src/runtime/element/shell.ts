@@ -1,4 +1,8 @@
-import { DEFAULT_ACCENT, type ResolvedConfig } from "../../config/config.js";
+import {
+    DEFAULT_ACCENT,
+    DEFAULT_SIDEBAR_WIDTH,
+    type ResolvedConfig,
+} from "../../config/config.js";
 
 /** Message-circle glyph used by the settings preview and SDK launcher. */
 const LAUNCHER_CHAT_SVG =
@@ -8,33 +12,28 @@ const LAUNCHER_CHAT_SVG =
 const LAUNCHER_ACTIVATION_EVENTS = ["pointerdown", "pointerup", "mousedown", "mouseup"] as const;
 
 /**
- * Both surfaces keep elevation, but the navy blur tuned for light host pages
- * reads as a smudgy halo on dark ones — dark surfaces use a deeper, tighter
- * near-black shadow instead.
+ * Theme-matched tokens for SDK-owned chrome. The navy elevation used on light
+ * pages reads as a smudgy halo on dark ones, so dark surfaces use tighter,
+ * near-black shadows and a light hairline border.
  */
-const LIGHT_PANEL_SHADOW = "0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30)";
-const DARK_PANEL_SHADOW = "0 1px 2px rgba(0,0,0,.40),0 18px 44px -16px rgba(0,0,0,.60)";
-const LIGHT_SIDEBAR_SHADOW = "-14px 0 32px -26px rgba(22,18,42,.38)";
-const DARK_SIDEBAR_SHADOW = "-14px 0 32px -26px rgba(0,0,0,.72)";
-
-/** Hairline ring that keeps the panel edge visible against same-tone host pages. */
-const LIGHT_PANEL_BORDER = "rgba(22,18,42,.08)";
-const DARK_PANEL_BORDER = "rgba(255,255,255,.12)";
+const SHELL_THEME = {
+    light: {
+        frameBackground: "#ffffff",
+        panelShadow:
+            "0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30)",
+        panelBorder: "rgba(22,18,42,.08)",
+        sidebarShadow: "-14px 0 32px -26px rgba(22,18,42,.38)",
+    },
+    dark: {
+        frameBackground: "#0f1117",
+        panelShadow: "0 1px 2px rgba(0,0,0,.40),0 18px 44px -16px rgba(0,0,0,.60)",
+        panelBorder: "rgba(255,255,255,.12)",
+        sidebarShadow: "-14px 0 32px -26px rgba(0,0,0,.72)",
+    },
+} as const;
 
 /** Main-content space kept available before a requested sidebar falls back. */
 export const MIN_SIDEBAR_MAIN_CONTENT_WIDTH = 384;
-
-function resolvePanelShadow(theme: ResolvedConfig["theme"]): string {
-    return theme === "dark" ? DARK_PANEL_SHADOW : LIGHT_PANEL_SHADOW;
-}
-
-function resolvePanelBorder(theme: ResolvedConfig["theme"]): string {
-    return theme === "dark" ? DARK_PANEL_BORDER : LIGHT_PANEL_BORDER;
-}
-
-function resolveSidebarShadow(theme: ResolvedConfig["theme"]): string {
-    return theme === "dark" ? DARK_SIDEBAR_SHADOW : LIGHT_SIDEBAR_SHADOW;
-}
 
 /** Minimal attribute escaping for values interpolated into the shadow markup. */
 function escapeAttr(value: string): string {
@@ -65,7 +64,7 @@ export class ChatShell {
     private developmentMode = false;
     private hostConfiguredLauncherColor = false;
     private presentationMode: ResolvedConfig["presentationMode"] = "popover";
-    private sidebarWidth = 384;
+    private sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
     private effectivePresentationMode: ResolvedConfig["presentationMode"] = "popover";
     private observedContainer?: HTMLElement;
     private resizeObserver?: ResizeObserver;
@@ -99,6 +98,7 @@ export class ChatShell {
     }
 
     applyConfig(config: ResolvedConfig): void {
+        const theme = SHELL_THEME[config.theme];
         this.hostConfiguredLauncherColor = config.hasFirstPaintLauncherColor;
         this.launcherEnabled = config.launcherEnabled;
         this.presentationMode = config.presentationMode;
@@ -106,13 +106,10 @@ export class ChatShell {
         // Once trusted surface settings have revealed the launcher, live config
         // updates (such as a host theme change) must not hide it again.
         this.launcherThemeReady ||= config.hasFirstPaintLauncherColor;
-        this.host.style.setProperty(
-            "--wpn-frame-background",
-            config.theme === "dark" ? "#0f1117" : "#ffffff",
-        );
-        this.host.style.setProperty("--wpn-panel-shadow", resolvePanelShadow(config.theme));
-        this.host.style.setProperty("--wpn-panel-border", resolvePanelBorder(config.theme));
-        this.host.style.setProperty("--wpn-sidebar-shadow", resolveSidebarShadow(config.theme));
+        this.host.style.setProperty("--wpn-frame-background", theme.frameBackground);
+        this.host.style.setProperty("--wpn-panel-shadow", theme.panelShadow);
+        this.host.style.setProperty("--wpn-panel-border", theme.panelBorder);
+        this.host.style.setProperty("--wpn-sidebar-shadow", theme.sidebarShadow);
         this.host.style.setProperty("--wpn-sidebar-width", `${config.sidebarWidth}px`);
         this.host.setAttribute("data-wpn-presentation", config.presentationMode);
         this.configureResponsivePresentation();
@@ -141,7 +138,7 @@ export class ChatShell {
         this.launcherEnabled = true;
         this.developmentMode = false;
         this.presentationMode = "popover";
-        this.sidebarWidth = 384;
+        this.sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
         this.effectivePresentationMode = "popover";
         this.host.removeAttribute("data-wpn-dev");
         this.host.removeAttribute("data-wpn-presentation");
@@ -158,8 +155,7 @@ export class ChatShell {
             ? config.triggerColor.trim()
             : DEFAULT_ACCENT;
         const iconColor = resolveLauncherIconColor(config.triggerIconColor) ?? "#ffffff";
-        const panelShadow = resolvePanelShadow(config.theme);
-        const panelBorder = resolvePanelBorder(config.theme);
+        const theme = SHELL_THEME[config.theme];
         const title = config.title;
         this.syncLauncherThemeVisibility();
         const launcherHiddenAttribute =
@@ -169,7 +165,7 @@ export class ChatShell {
             "<style>",
             // `all:initial` resets inherited host styles but NOT custom properties,
             // so the accent token survives for the color-mix shadows below.
-            `:host{all:initial;display:block;inline-size:0;min-inline-size:0;block-size:0;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-frame-background:${config.theme === "dark" ? "#0f1117" : "#ffffff"};--wpn-panel-shadow:${panelShadow};--wpn-panel-border:${panelBorder};--wpn-sidebar-shadow:${resolveSidebarShadow(config.theme)};--wpn-sidebar-width:${config.sidebarWidth}px;--wpn-dev:#e8a91d;}`,
+            `:host{all:initial;display:block;inline-size:0;min-inline-size:0;block-size:0;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-frame-background:${theme.frameBackground};--wpn-panel-shadow:${theme.panelShadow};--wpn-panel-border:${theme.panelBorder};--wpn-sidebar-shadow:${theme.sidebarShadow};--wpn-sidebar-width:${config.sidebarWidth}px;--wpn-dev:#e8a91d;}`,
             "*{box-sizing:border-box;}",
             // --- launcher: 60px accent circle, two-layer shadow ----------------
             "#launcher{position:fixed;right:24px;bottom:24px;width:60px;height:60px;border:0;",

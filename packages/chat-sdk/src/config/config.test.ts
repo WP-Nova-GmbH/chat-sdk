@@ -140,16 +140,15 @@ test("presentation defaults to the backward-compatible pop-over", () => {
 });
 
 test("sidebar presentation defaults and clamps numeric widths", () => {
+    const sidebar = resolveConfig({
+        ...REQUIRED_CONFIG,
+        presentation: { mode: "sidebar" },
+    });
+
     assert.deepEqual(
         {
-            mode: resolveConfig({
-                ...REQUIRED_CONFIG,
-                presentation: { mode: "sidebar" },
-            }).presentationMode,
-            width: resolveConfig({
-                ...REQUIRED_CONFIG,
-                presentation: { mode: "sidebar" },
-            }).sidebarWidth,
+            mode: sidebar.presentationMode,
+            width: sidebar.sidebarWidth,
         },
         { mode: "sidebar", width: DEFAULT_SIDEBAR_WIDTH },
     );

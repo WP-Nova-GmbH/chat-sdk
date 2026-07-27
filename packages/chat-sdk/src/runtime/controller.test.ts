@@ -30,7 +30,7 @@ interface TestController {
     retain: () => void;
     release: () => void;
     resolveMountTarget: (
-        config: { mount?: string | HTMLElement },
+        mount: string | HTMLElement | undefined,
         presentationMode: "popover" | "sidebar",
     ) => HTMLElement;
     subscribeOpenChange: (listener: (open: boolean) => void) => () => void;
@@ -265,13 +265,13 @@ test("sidebar mount resolution requires an explicit, resolvable layout container
         },
     });
 
-    assert.equal(controller.resolveMountTarget({ mount: "#nova-layout" }, "sidebar"), layout);
+    assert.equal(controller.resolveMountTarget("#nova-layout", "sidebar"), layout);
     assert.throws(
-        () => controller.resolveMountTarget({}, "sidebar"),
+        () => controller.resolveMountTarget(undefined, "sidebar"),
         /requires an explicit `mount` layout container/,
     );
     assert.throws(
-        () => controller.resolveMountTarget({ mount: "#missing" }, "sidebar"),
+        () => controller.resolveMountTarget("#missing", "sidebar"),
         /could not resolve its `mount` selector "#missing"/,
     );
 });
@@ -289,6 +289,6 @@ test("pop-over keeps the body fallback for omitted or unresolved mounts", () => 
         },
     });
 
-    assert.equal(controller.resolveMountTarget({}, "popover"), body);
-    assert.equal(controller.resolveMountTarget({ mount: "#missing" }, "popover"), body);
+    assert.equal(controller.resolveMountTarget(undefined, "popover"), body);
+    assert.equal(controller.resolveMountTarget("#missing", "popover"), body);
 });

@@ -84,62 +84,51 @@ export interface ResolvedConfig {
     protocolVersion: number;
 }
 
-function resolvePresentation(
-    presentation: SdkConfig["presentation"],
-): Pick<ResolvedConfig, "presentationMode" | "sidebarWidth"> {
+type ResolvedPresentation = Pick<ResolvedConfig, "presentationMode" | "sidebarWidth">;
+
+function resolvedPresentation(
+    presentationMode: ResolvedConfig["presentationMode"],
+    sidebarWidth = DEFAULT_SIDEBAR_WIDTH,
+): ResolvedPresentation {
+    return { presentationMode, sidebarWidth };
+}
+
+function resolvePresentation(presentation: SdkConfig["presentation"]): ResolvedPresentation {
     if (presentation == null) {
-        return {
-            presentationMode: "popover",
-            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
-        };
+        return resolvedPresentation("popover");
     }
     if (typeof presentation !== "object") {
         console.warn(
             `[wp-nova] ignoring invalid presentation ${JSON.stringify(presentation)}; using popover`,
         );
-        return {
-            presentationMode: "popover",
-            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
-        };
+        return resolvedPresentation("popover");
     }
 
     const mode = (presentation as { mode?: unknown }).mode;
     if (mode == null || mode === "popover") {
-        return {
-            presentationMode: "popover",
-            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
-        };
+        return resolvedPresentation("popover");
     }
     if (mode !== "sidebar") {
         console.warn(
             `[wp-nova] ignoring invalid presentation mode ${JSON.stringify(mode)}; using popover`,
         );
-        return {
-            presentationMode: "popover",
-            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
-        };
+        return resolvedPresentation("popover");
     }
 
     const width = (presentation as { width?: unknown }).width;
     if (width == null) {
-        return {
-            presentationMode: "sidebar",
-            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
-        };
+        return resolvedPresentation("sidebar");
     }
     if (typeof width !== "number" || !Number.isFinite(width)) {
         console.warn(
             `[wp-nova] ignoring invalid sidebar width ${JSON.stringify(width)}; using ${DEFAULT_SIDEBAR_WIDTH}px`,
         );
-        return {
-            presentationMode: "sidebar",
-            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
-        };
+        return resolvedPresentation("sidebar");
     }
-    return {
-        presentationMode: "sidebar",
-        sidebarWidth: Math.min(Math.max(width, SIDEBAR_WIDTH_MIN), SIDEBAR_WIDTH_MAX),
-    };
+    return resolvedPresentation(
+        "sidebar",
+        Math.min(Math.max(width, SIDEBAR_WIDTH_MIN), SIDEBAR_WIDTH_MAX),
+    );
 }
 
 /**

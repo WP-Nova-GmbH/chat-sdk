@@ -146,30 +146,31 @@ class SdkController {
         try {
             assertBrowserRuntime();
             const resolved = resolveConfig(config);
-            const mountTarget = this.resolveMountTarget(config, resolved.presentationMode);
+            const mountTarget = this.resolveMountTarget(resolved.mount, resolved.presentationMode);
             defineElement();
 
-            if (!this.element) {
-                const existing = document.querySelector(ELEMENT_TAG) as WpNovaChatElement | null;
-                const element =
-                    existing ?? (document.createElement(ELEMENT_TAG) as WpNovaChatElement);
+            const initialMount = !this.element;
+            const element =
+                this.element ??
+                (document.querySelector(ELEMENT_TAG) as WpNovaChatElement | null) ??
+                (document.createElement(ELEMENT_TAG) as WpNovaChatElement);
+            if (initialMount) {
                 element.setRegistry(this.registry);
                 element.addEventListener(OPEN_CHANGE_EVENT, this.onElementOpenChange);
-                element.moveTo(mountTarget);
-                element.setConfig(config);
-                this.element = element;
-                if (this.hasPendingOpenState) {
-                    if (this.openState) element.open();
-                    else element.close();
-                    this.hasPendingOpenState = false;
-                } else {
-                    this.updateOpenState(element.isOpen);
-                }
-                return;
             }
 
-            this.element.moveTo(mountTarget);
-            this.element.setConfig(config);
+            element.moveTo(mountTarget);
+            element.setConfig(config);
+            if (!initialMount) return;
+
+            this.element = element;
+            if (this.hasPendingOpenState) {
+                if (this.openState) element.open();
+                else element.close();
+                this.hasPendingOpenState = false;
+            } else {
+                this.updateOpenState(element.isOpen);
+            }
         } catch (error) {
             console.error(`[wp-nova] chat launcher was not mounted: ${formatErrorMessage(error)}`);
             throw error;
@@ -198,10 +199,9 @@ class SdkController {
     }
 
     private resolveMountTarget(
-        config: SdkConfig,
+        mount: SdkConfig["mount"],
         presentationMode: "popover" | "sidebar",
     ): HTMLElement {
-        const mount = config.mount;
         let target: HTMLElement | null = null;
         if (typeof mount === "string") {
             target = document.querySelector(mount);
