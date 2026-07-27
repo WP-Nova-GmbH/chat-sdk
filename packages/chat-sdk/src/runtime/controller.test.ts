@@ -11,6 +11,7 @@ class FakeHTMLElement {}
 interface TestController {
     hasPendingOpenState: boolean;
     mountRefs: number;
+    openChangeListeners: Set<(open: boolean) => void>;
     openState: boolean;
     element?: {
         close?: () => void;
@@ -21,6 +22,7 @@ interface TestController {
     };
     close: () => void;
     isOpen: () => boolean;
+    onElementOpenChange: (event: Event) => void;
     open: () => void;
     retain: () => void;
     release: () => void;
@@ -55,6 +57,7 @@ function freshController(): TestController {
         | undefined;
     assert.ok(controller, "expected the global SDK controller to exist");
     controller.mountRefs = 0;
+    controller.openChangeListeners.clear();
     controller.openState = false;
     controller.hasPendingOpenState = false;
     controller.element = {
@@ -154,9 +157,15 @@ test("open, close and toggle are idempotent and publish real transitions", () =>
         },
         open() {
             elementOpen = true;
+            controller.onElementOpenChange({
+                detail: { open: true },
+            } as unknown as Event);
         },
         close() {
             elementOpen = false;
+            controller.onElementOpenChange({
+                detail: { open: false },
+            } as unknown as Event);
         },
         destroy() {
             elementOpen = false;
@@ -179,6 +188,45 @@ test("open, close and toggle are idempotent and publish real transitions", () =>
     unsubscribe();
     controller.open();
     assert.deepEqual(changes, [true, false]);
+});
+
+test("a failing open-state listener does not block the element or other subscribers", () => {
+    const controller = freshController();
+    const changes: boolean[] = [];
+    let elementOpen = false;
+    const originalError = console.error;
+    const errors: unknown[][] = [];
+    console.error = (...args: unknown[]) => void errors.push(args);
+    controller.element = {
+        get isOpen() {
+            return elementOpen;
+        },
+        open() {
+            elementOpen = true;
+            controller.onElementOpenChange({
+                detail: { open: true },
+            } as unknown as Event);
+        },
+        destroy() {
+            controller.element = undefined;
+        },
+        removeEventListener() {},
+    };
+    controller.subscribeOpenChange(() => {
+        throw new Error("consumer failure");
+    });
+    controller.subscribeOpenChange((open) => changes.push(open));
+
+    try {
+        controller.open();
+    } finally {
+        console.error = originalError;
+    }
+
+    assert.equal(elementOpen, true);
+    assert.equal(controller.isOpen(), true);
+    assert.deepEqual(changes, [true]);
+    assert.equal(String(errors[0]?.[0]).includes("consumer failure"), true);
 });
 
 test("an open request made before init is retained for the eventual element", () => {

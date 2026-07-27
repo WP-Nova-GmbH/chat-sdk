@@ -94,15 +94,21 @@ class SdkController {
     };
 
     open(): void {
-        if (!this.element) this.hasPendingOpenState = true;
+        if (this.element) {
+            this.element.open();
+            return;
+        }
+        this.hasPendingOpenState = true;
         this.updateOpenState(true);
-        this.element?.open();
     }
 
     close(): void {
-        if (!this.element) this.hasPendingOpenState = true;
+        if (this.element) {
+            this.element.close();
+            return;
+        }
+        this.hasPendingOpenState = true;
         this.updateOpenState(false);
-        this.element?.close();
     }
 
     toggle(): void {
@@ -180,7 +186,15 @@ class SdkController {
     private updateOpenState(open: boolean): void {
         if (this.openState === open) return;
         this.openState = open;
-        for (const listener of this.openChangeListeners) listener(open);
+        for (const listener of this.openChangeListeners) {
+            try {
+                listener(open);
+            } catch (error) {
+                console.error(
+                    `[wp-nova] open-state listener failed: ${formatErrorMessage(error)}`,
+                );
+            }
+        }
     }
 
     private mountInto(element: HTMLElement, mount?: string | HTMLElement): void {
