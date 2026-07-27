@@ -52,6 +52,65 @@ conversation reset. Changes to `triggerColorLight` and `triggerColorDark`
 update the existing launcher without remounting. Keep the config memoized as
 described below.
 
+## Switchable Pop-over and Sidebar
+
+Use a stable grid/flex mount and include `presentation` in the provider config.
+The React wrapper treats presentation content as meaningful config, so changing
+the mode or width re-runs core `init()` without replacing the iframe:
+
+```tsx
+import { useMemo, useState } from "react";
+import { NovaChatProvider } from "@wp-nova/chat-sdk-react";
+
+export function App() {
+  const [mode, setMode] = useState<"popover" | "sidebar">("popover");
+  const config = useMemo(
+    () => ({
+      ...novaConfig,
+      mount: "#nova-layout",
+      presentation:
+        mode === "sidebar"
+          ? ({ mode: "sidebar", width: 420 } as const)
+          : ({ mode: "popover" } as const),
+    }),
+    [mode],
+  );
+
+  return (
+    <NovaChatProvider config={config}>
+      <div
+        id="nova-layout"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) auto",
+          minHeight: "100dvh",
+          alignItems: "stretch",
+        }}
+      >
+        <main style={{ minWidth: 0 }}>
+          <button
+            type="button"
+            onClick={() =>
+              setMode((current) =>
+                current === "popover" ? "sidebar" : "popover"
+              )
+            }
+          >
+            Switch presentation
+          </button>
+          <Routes />
+        </main>
+      </div>
+    </NovaChatProvider>
+  );
+}
+```
+
+The mount must exist before the provider effect runs. Keep it stable across
+mode changes so Nova remains the final layout child; the host controls column
+order and vertical sizing. See [Configuration: Presentation](./configuration.md#presentation)
+for width validation and responsive fallback.
+
 ## Custom Launcher
 
 The built-in launcher is enabled by default. Set `launcher: false` and render a

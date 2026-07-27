@@ -39,6 +39,7 @@ import {
   WpNovaChatElement,
   DEFAULT_SETTLE,
   SETTLED_EVENT,
+  type ChatPresentation,
   type HostTheme,
   type SettleOptions,
 } from "@wp-nova/chat-sdk";
@@ -75,11 +76,16 @@ bubbling `wp-nova:open-change` event with `{ open: boolean }` in `detail`.
 ```ts
 export type HostTheme = "light" | "dark";
 
+export type ChatPresentation =
+  | { mode?: "popover" }
+  | { mode: "sidebar"; width?: number };
+
 export interface SdkConfig {
   publicSurfaceId: string;
   tokenEndpoint: string;
   baseUrl?: string;
   mount?: string | HTMLElement;
+  presentation?: ChatPresentation;
   title?: string;
   accent?: string;
   triggerColor?: string;
@@ -116,6 +122,12 @@ Changing it through another `init` call updates the existing iframe in place
 without acquiring a new token. Notably, `voiceMode` (default `false`) enables
 the embedded voice button and delegates microphone access to the Nova iframe.
 See [Configuration](./configuration.md) for the full options table.
+
+`presentation` defaults to `{ mode: "popover" }`. Sidebar width defaults to
+`384`, numeric values are clamped to `320–640`, and invalid runtime widths warn
+and fall back to `384`. Sidebar mode requires an explicit, resolvable `mount`.
+Its effective mode falls back to pop-over whenever the mount is narrower than
+`sidebarWidth + 384px`.
 
 `settle` controls post-action snapshot readiness. Defaults are
 `quietMs: 200`, `maxWaitMs: 1600`, and
@@ -261,7 +273,16 @@ export const SETTLED_EVENT = "wp-nova:settled";
 
 ## Custom Element
 
-The SDK defines `<wp-nova-chat>` lazily and idempotently. You can pre-place the element in the DOM, but most integrations should let `init` create and mount it.
+The SDK defines `<wp-nova-chat>` lazily and idempotently. You can pre-place the
+element in the DOM, but most integrations should let `init` create and mount
+it. The element reflects requested and responsive presentation as
+`data-wpn-presentation` and `data-wpn-effective-presentation`; the validated
+width is available internally as `--wpn-sidebar-width`.
+
+An effective sidebar panel is a labelled `complementary` region. An effective
+pop-over keeps its non-modal `dialog` semantics. `data-wp-nova-ignore` excludes
+the SDK subtree from host page snapshots without hiding either presentation
+from the accessibility tree.
 
 ```ts
 import { ELEMENT_TAG, defineElement } from "@wp-nova/chat-sdk";
