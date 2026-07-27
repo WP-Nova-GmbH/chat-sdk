@@ -3,6 +3,49 @@ import test from "node:test";
 import { capturePageContext, captureVisiblePageSnapshot } from "./index.js";
 import { FakeDocument, FakeElement, restoreGlobals } from "./test-support.js";
 
+test("an ignored SDK shell does not advertise controls or make the snapshot partial", () => {
+    const document = new FakeDocument();
+    const sdk = new FakeElement(
+        "wp-nova-chat",
+        new Map([["data-wp-nova-ignore", ""]]),
+        "",
+        document,
+    );
+    const launcher = new FakeElement("button", new Map(), "Open assistant", document);
+    const iframe = new FakeElement("iframe", new Map(), "", document);
+    sdk.append(launcher);
+    sdk.append(iframe);
+    document.body.append(sdk);
+
+    Object.defineProperty(globalThis, "document", { configurable: true, value: document });
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            innerHeight: 800,
+            innerWidth: 1200,
+            getSelection: () => "",
+        },
+    });
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { href: "https://app.example/", pathname: "/" },
+    });
+    Object.defineProperty(globalThis, "getComputedStyle", {
+        configurable: true,
+        value: () => ({ display: "block", opacity: "1", visibility: "visible" }),
+    });
+
+    try {
+        const snapshot = captureVisiblePageSnapshot();
+
+        assert.equal(snapshot.partial ?? false, false);
+        assert.deepEqual(snapshot.controls ?? [], []);
+        assert.equal(snapshot.visibleText?.includes("Open assistant") ?? false, false);
+    } finally {
+        restoreGlobals();
+    }
+});
+
 test("data-ai-context respects ignore, viewport, sensitivity, and caps", () => {
     const document = new FakeDocument();
     const included = new FakeElement(

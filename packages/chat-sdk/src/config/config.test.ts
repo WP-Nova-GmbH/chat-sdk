@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_ACCENT, resolveConfig } from "./config.js";
+import {
+    DEFAULT_ACCENT,
+    DEFAULT_SIDEBAR_WIDTH,
+    resolveConfig,
+    SIDEBAR_WIDTH_MAX,
+    SIDEBAR_WIDTH_MIN,
+} from "./config.js";
 
 const REQUIRED_CONFIG = {
     publicSurfaceId: "surf_1",
@@ -118,6 +124,80 @@ test("SDK launcher defaults to enabled and supports host-owned controls", () => 
     assert.equal(resolveConfig(REQUIRED_CONFIG).launcherEnabled, true);
     assert.equal(resolveConfig({ ...REQUIRED_CONFIG, launcher: true }).launcherEnabled, true);
     assert.equal(resolveConfig({ ...REQUIRED_CONFIG, launcher: false }).launcherEnabled, false);
+});
+
+test("presentation defaults to the backward-compatible pop-over", () => {
+    const missing = resolveConfig(REQUIRED_CONFIG);
+    const explicit = resolveConfig({
+        ...REQUIRED_CONFIG,
+        presentation: { mode: "popover" },
+    });
+
+    assert.equal(missing.presentationMode, "popover");
+    assert.equal(explicit.presentationMode, "popover");
+    assert.equal(missing.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
+    assert.equal(explicit.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
+});
+
+test("sidebar presentation defaults and clamps numeric widths", () => {
+    assert.deepEqual(
+        {
+            mode: resolveConfig({
+                ...REQUIRED_CONFIG,
+                presentation: { mode: "sidebar" },
+            }).presentationMode,
+            width: resolveConfig({
+                ...REQUIRED_CONFIG,
+                presentation: { mode: "sidebar" },
+            }).sidebarWidth,
+        },
+        { mode: "sidebar", width: DEFAULT_SIDEBAR_WIDTH },
+    );
+    assert.equal(
+        resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", width: 200 },
+        }).sidebarWidth,
+        SIDEBAR_WIDTH_MIN,
+    );
+    assert.equal(
+        resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", width: 900 },
+        }).sidebarWidth,
+        SIDEBAR_WIDTH_MAX,
+    );
+    assert.equal(
+        resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", width: 512.5 },
+        }).sidebarWidth,
+        512.5,
+    );
+});
+
+test("malformed presentation values warn and use safe defaults", () => {
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => void warnings.push(args);
+    try {
+        const invalidWidth = resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", width: "wide" } as never,
+        });
+        const invalidMode = resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "drawer" } as never,
+        });
+
+        assert.equal(invalidWidth.presentationMode, "sidebar");
+        assert.equal(invalidWidth.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
+        assert.equal(invalidMode.presentationMode, "popover");
+        assert.equal(invalidMode.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
+        assert.equal(warnings.length, 2);
+    } finally {
+        console.warn = originalWarn;
+    }
 });
 
 test("voice mode is disabled by default and omitted from the iframe URL", () => {

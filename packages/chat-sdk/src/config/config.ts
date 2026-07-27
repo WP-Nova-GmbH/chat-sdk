@@ -22,6 +22,13 @@ export const DEFAULT_TITLE = "Assistant";
  */
 export const DEFAULT_ACCENT = "#8665e3";
 
+/** Existing pop-over width, reused as the default docked sidebar width. */
+export const DEFAULT_SIDEBAR_WIDTH = 384;
+
+/** Supported docked sidebar width range, in CSS pixels. */
+export const SIDEBAR_WIDTH_MIN = 320;
+export const SIDEBAR_WIDTH_MAX = 640;
+
 /** Path the iframe app is mounted at under the base URL. */
 export const EMBED_PATH = "/embed/chat";
 
@@ -50,6 +57,10 @@ export interface ResolvedConfig {
     /** Full iframe src (`<baseUrl><EMBED_PATH>?surface=<publicSurfaceId>`). */
     iframeSrc: string;
     mount?: string | HTMLElement;
+    /** Requested shell mode before responsive fallback is applied. */
+    presentationMode: "popover" | "sidebar";
+    /** Validated sidebar width in CSS pixels. */
+    sidebarWidth: number;
     title: string;
     accent: string;
     /** Active-theme launcher/open-button color; falls back to the legacy color/accent. */
@@ -71,6 +82,64 @@ export interface ResolvedConfig {
     /** Clamped post-action settle tuning for the pre-capture mutation wait. */
     settle: SettleOptions;
     protocolVersion: number;
+}
+
+function resolvePresentation(
+    presentation: SdkConfig["presentation"],
+): Pick<ResolvedConfig, "presentationMode" | "sidebarWidth"> {
+    if (presentation == null) {
+        return {
+            presentationMode: "popover",
+            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+        };
+    }
+    if (typeof presentation !== "object") {
+        console.warn(
+            `[wp-nova] ignoring invalid presentation ${JSON.stringify(presentation)}; using popover`,
+        );
+        return {
+            presentationMode: "popover",
+            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+        };
+    }
+
+    const mode = (presentation as { mode?: unknown }).mode;
+    if (mode == null || mode === "popover") {
+        return {
+            presentationMode: "popover",
+            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+        };
+    }
+    if (mode !== "sidebar") {
+        console.warn(
+            `[wp-nova] ignoring invalid presentation mode ${JSON.stringify(mode)}; using popover`,
+        );
+        return {
+            presentationMode: "popover",
+            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+        };
+    }
+
+    const width = (presentation as { width?: unknown }).width;
+    if (width == null) {
+        return {
+            presentationMode: "sidebar",
+            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+        };
+    }
+    if (typeof width !== "number" || !Number.isFinite(width)) {
+        console.warn(
+            `[wp-nova] ignoring invalid sidebar width ${JSON.stringify(width)}; using ${DEFAULT_SIDEBAR_WIDTH}px`,
+        );
+        return {
+            presentationMode: "sidebar",
+            sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+        };
+    }
+    return {
+        presentationMode: "sidebar",
+        sidebarWidth: Math.min(Math.max(width, SIDEBAR_WIDTH_MIN), SIDEBAR_WIDTH_MAX),
+    };
 }
 
 /**
@@ -175,6 +244,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
     const hasFirstPaintLauncherColor = Boolean(
         themeTriggerColor || config.triggerColor || config.accent,
     );
+    const presentation = resolvePresentation(config.presentation);
 
     return {
         publicSurfaceId: config.publicSurfaceId,
@@ -183,6 +253,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
         iframeOrigin: url.origin,
         iframeSrc: url.toString(),
         mount: config.mount,
+        ...presentation,
         title: config.title || DEFAULT_TITLE,
         accent: config.accent || DEFAULT_ACCENT,
         triggerColor,

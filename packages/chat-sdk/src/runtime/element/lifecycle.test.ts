@@ -220,6 +220,109 @@ test("live token-endpoint changes reuse the iframe but acquire fresh auth", () =
     assert.equal(element.resolved?.tokenEndpoint, "/token-b");
 });
 
+test("presentation switches preserve the open frame, bridge, auth, tools, and token schedule", () => {
+    let tokenAcquisitions = 0;
+    const initial = resolveConfig({
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token",
+    });
+    const bridge = {
+        sendHostTheme: (_theme: string) => undefined,
+        stop: () => undefined,
+    };
+    const auth = { kind: "granted", token: "existing-token", expiresIn: 60 };
+    const element = makeElement() as {
+        resolved?: ResolvedConfig;
+        bridge?: typeof bridge;
+        iframeReady: boolean;
+        isConnected: boolean;
+        isOpen: boolean;
+        lastAuth?: unknown;
+        registry: unknown;
+        tokenTimers: unknown;
+        shell: {
+            frame?: unknown;
+            applyConfig: (config: ResolvedConfig) => void;
+            render: (config: ResolvedConfig) => void;
+        };
+        acquireToken: () => Promise<void>;
+        close: () => void;
+        open: () => void;
+        setConfig: (config: {
+            publicSurfaceId: string;
+            tokenEndpoint: string;
+            presentation?: { mode: "popover" } | { mode: "sidebar"; width?: number };
+        }) => void;
+    };
+    element.resolved = initial;
+    element.shell.applyConfig(initial);
+    element.shell.render(initial);
+    element.bridge = bridge;
+    element.iframeReady = true;
+    element.isConnected = true;
+    element.lastAuth = auth;
+    element.acquireToken = async () => {
+        tokenAcquisitions++;
+    };
+    element.open();
+    const iframe = element.shell.frame;
+    const registry = element.registry;
+    const tokenTimers = element.tokenTimers;
+
+    element.setConfig({
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token",
+        presentation: { mode: "sidebar", width: 512 },
+    });
+    assert.equal(element.resolved?.presentationMode, "sidebar");
+    assert.equal(element.resolved?.sidebarWidth, 512);
+    assert.equal(element.isOpen, true);
+    assert.equal(element.shell.frame, iframe);
+    assert.equal(element.bridge, bridge);
+    assert.equal(element.lastAuth, auth);
+    assert.equal(element.registry, registry);
+    assert.equal(element.tokenTimers, tokenTimers);
+    assert.equal(tokenAcquisitions, 0);
+
+    element.close();
+    element.setConfig({
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token",
+        presentation: { mode: "popover" },
+    });
+    assert.equal(element.resolved?.presentationMode, "popover");
+    assert.equal(element.isOpen, false);
+    assert.equal(element.shell.frame, iframe);
+    assert.equal(element.bridge, bridge);
+    assert.equal(element.lastAuth, auth);
+    assert.equal(tokenAcquisitions, 0);
+});
+
+test("controlled relocation suppresses disconnect and reconnect side effects", () => {
+    const first = new HTMLElement();
+    const second = new HTMLElement();
+    const element = makeElement() as {
+        boot: () => void;
+        moveTo: (target: HTMLElement) => void;
+        tokenTimers: { clear: () => void };
+    };
+    let boots = 0;
+    let timerClears = 0;
+    element.boot = () => {
+        boots++;
+    };
+    element.tokenTimers.clear = () => {
+        timerClears++;
+    };
+    first.appendChild(element as unknown as Node);
+    boots = 0;
+
+    element.moveTo(second);
+
+    assert.equal(boots, 0);
+    assert.equal(timerClears, 0);
+});
+
 test("READY receives the current host theme before the iframe renders auth state", () => {
     let messageListener: ((event: MessageEvent) => void) | undefined;
     const posted: Array<{ frame: SdkFrame; origin: string }> = [];

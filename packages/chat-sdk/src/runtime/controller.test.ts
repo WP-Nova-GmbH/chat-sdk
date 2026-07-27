@@ -4,8 +4,11 @@ import test from "node:test";
 // Importing the controller transitively evaluates the custom-element class
 // (`class extends HTMLElement`), so a stub must exist before the dynamic import.
 const ORIGINAL_HTML_ELEMENT = Object.getOwnPropertyDescriptor(globalThis, "HTMLElement");
+const ORIGINAL_DOCUMENT = Object.getOwnPropertyDescriptor(globalThis, "document");
 
-class FakeHTMLElement {}
+class FakeHTMLElement {
+    setAttribute() {}
+}
 
 /** The singleton the exported retain/release/destroy helpers operate on. */
 interface TestController {
@@ -26,6 +29,10 @@ interface TestController {
     open: () => void;
     retain: () => void;
     release: () => void;
+    resolveMountTarget: (
+        config: { mount?: string | HTMLElement },
+        presentationMode: "popover" | "sidebar",
+    ) => HTMLElement;
     subscribeOpenChange: (listener: (open: boolean) => void) => () => void;
     toggle: () => void;
 }
@@ -45,6 +52,11 @@ test.after(() => {
         Object.defineProperty(globalThis, "HTMLElement", ORIGINAL_HTML_ELEMENT);
     } else {
         Reflect.deleteProperty(globalThis, "HTMLElement");
+    }
+    if (ORIGINAL_DOCUMENT) {
+        Object.defineProperty(globalThis, "document", ORIGINAL_DOCUMENT);
+    } else {
+        Reflect.deleteProperty(globalThis, "document");
     }
 });
 
@@ -237,4 +249,46 @@ test("an open request made before init is retained for the eventual element", ()
 
     assert.equal(controller.isOpen(), true);
     assert.equal(controller.hasPendingOpenState, true);
+});
+
+test("sidebar mount resolution requires an explicit, resolvable layout container", () => {
+    const controller = freshController();
+    const body = new FakeHTMLElement() as unknown as HTMLElement;
+    const layout = new FakeHTMLElement() as unknown as HTMLElement;
+    Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: {
+            body,
+            querySelector(selector: string) {
+                return selector === "#nova-layout" ? layout : null;
+            },
+        },
+    });
+
+    assert.equal(controller.resolveMountTarget({ mount: "#nova-layout" }, "sidebar"), layout);
+    assert.throws(
+        () => controller.resolveMountTarget({}, "sidebar"),
+        /requires an explicit `mount` layout container/,
+    );
+    assert.throws(
+        () => controller.resolveMountTarget({ mount: "#missing" }, "sidebar"),
+        /could not resolve its `mount` selector "#missing"/,
+    );
+});
+
+test("pop-over keeps the body fallback for omitted or unresolved mounts", () => {
+    const controller = freshController();
+    const body = new FakeHTMLElement() as unknown as HTMLElement;
+    Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: {
+            body,
+            querySelector() {
+                return null;
+            },
+        },
+    });
+
+    assert.equal(controller.resolveMountTarget({}, "popover"), body);
+    assert.equal(controller.resolveMountTarget({ mount: "#missing" }, "popover"), body);
 });

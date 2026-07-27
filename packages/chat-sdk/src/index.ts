@@ -9,6 +9,7 @@ export { DEFAULT_SETTLE, SETTLED_EVENT, type SettleOptions } from "./page/settle
 // to the package (import from "./protocol/types/index.js" inside the SDK) so a wire refactor is
 // not a public SemVer-major and autocomplete is not flooded with ~45 frame types.
 export type {
+    ChatPresentation,
     ClientToolResult,
     HostTheme,
     PageContext,

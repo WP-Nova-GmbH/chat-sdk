@@ -27,6 +27,8 @@ const CONFIG = {
     baseUrl: "https://chat.wp-nova.ai",
     iframeOrigin: "https://chat.wp-nova.ai",
     iframeSrc: "https://chat.wp-nova.ai/embed/chat?surface=surf_1",
+    presentationMode: "popover",
+    sidebarWidth: 384,
     title: "Assistant",
     accent: "#8665e3",
     triggerColor: "#8665e3",

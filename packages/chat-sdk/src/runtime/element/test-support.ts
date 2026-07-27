@@ -8,6 +8,7 @@ export const ORIGINALS = {
     setTimeout: Object.getOwnPropertyDescriptor(globalThis, "setTimeout"),
     clearTimeout: Object.getOwnPropertyDescriptor(globalThis, "clearTimeout"),
     CustomEvent: Object.getOwnPropertyDescriptor(globalThis, "CustomEvent"),
+    ResizeObserver: Object.getOwnPropertyDescriptor(globalThis, "ResizeObserver"),
     location: Object.getOwnPropertyDescriptor(globalThis, "location"),
     window: Object.getOwnPropertyDescriptor(globalThis, "window"),
 };
@@ -25,6 +26,10 @@ class FakeElement {
 
     getAttribute(name: string): string | undefined {
         return this.attributes.get(name);
+    }
+
+    removeAttribute(name: string): void {
+        this.attributes.delete(name);
     }
 
     addEventListener(name: string, listener: (event: Event) => void): void {
@@ -54,28 +59,34 @@ class FakeShadowRoot {
 
 class FakeHTMLElement {
     isConnected = false;
+    parentElement: FakeHTMLElement | null = null;
     shadowRoot?: FakeShadowRoot;
-    private readonly attributes = new Set<string>();
+    layoutWidth = 0;
+    private readonly attributes = new Map<string, string>();
     private readonly listeners = new Map<string, Set<(event: Event) => void>>();
     readonly style = {
         setProperty: (_name: string, _value: string) => undefined,
         removeProperty: (_name: string) => undefined,
     };
 
-    setAttribute(name: string): void {
-        const oldValue = this.attributes.has(name) ? "" : null;
-        this.attributes.add(name);
-        this.notifyAttributeChange(name, oldValue, "");
+    setAttribute(name: string, value = ""): void {
+        const oldValue = this.attributes.get(name) ?? null;
+        this.attributes.set(name, value);
+        this.notifyAttributeChange(name, oldValue, value);
     }
 
     removeAttribute(name: string): void {
-        const oldValue = this.attributes.has(name) ? "" : null;
+        const oldValue = this.attributes.get(name) ?? null;
         this.attributes.delete(name);
         if (oldValue !== null) this.notifyAttributeChange(name, oldValue, null);
     }
 
     hasAttribute(name: string): boolean {
         return this.attributes.has(name);
+    }
+
+    getAttribute(name: string): string | null {
+        return this.attributes.get(name) ?? null;
     }
 
     addEventListener(name: string, listener: (event: Event) => void): void {
@@ -98,8 +109,27 @@ class FakeHTMLElement {
         return this.shadowRoot;
     }
 
+    appendChild(child: FakeHTMLElement): FakeHTMLElement {
+        if (child.parentElement && child.parentElement !== this) {
+            child.isConnected = false;
+            (child as unknown as { disconnectedCallback?: () => void }).disconnectedCallback?.();
+        }
+        child.parentElement = this;
+        child.isConnected = true;
+        (child as unknown as { connectedCallback?: () => void }).connectedCallback?.();
+        return child;
+    }
+
+    getBoundingClientRect(): DOMRect {
+        return { width: this.layoutWidth } as DOMRect;
+    }
+
     remove(): void {
-        this.isConnected = false;
+        if (this.isConnected) {
+            this.isConnected = false;
+            (this as unknown as { disconnectedCallback?: () => void }).disconnectedCallback?.();
+        }
+        this.parentElement = null;
     }
 
     private notifyAttributeChange(
@@ -169,6 +199,8 @@ export function resolvedConfig(overrides: Partial<ResolvedConfig> = {}): Resolve
         baseUrl: "https://chat.wp-nova.ai",
         iframeOrigin: "https://chat.wp-nova.ai",
         iframeSrc: "https://chat.wp-nova.ai/embed/chat?surface=surf_1",
+        presentationMode: "popover",
+        sidebarWidth: 384,
         title: "Assistant",
         accent: "#111111",
         triggerColor: "#111111",

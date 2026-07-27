@@ -7,6 +7,20 @@ import type { SiteRoute } from "./page.js";
 /** Host-page color mode forwarded to the embedded chat UI. */
 export type HostTheme = "light" | "dark";
 
+/**
+ * How the SDK shell is presented on the host page.
+ *
+ * Pop-over mode keeps the existing fixed launcher/panel behavior. Sidebar mode
+ * participates in the host's grid/flex layout and therefore requires `mount`.
+ */
+export type ChatPresentation =
+    | { mode?: "popover" }
+    | {
+          mode: "sidebar";
+          /** Requested docked width in pixels. Numeric values are clamped to 320–640. */
+          width?: number;
+      };
+
 /** Public configuration passed to `WpNova('init', config)` / `<wp-nova-chat>`. */
 export interface SdkConfig {
     /**
@@ -26,8 +40,16 @@ export interface SdkConfig {
      * `<baseUrl>/embed/chat`. Defaults to the production chat host.
      */
     baseUrl?: string;
-    /** Host DOM element (or selector) to mount into; defaults to document.body. */
+    /**
+     * Host DOM element (or selector) to mount into. Defaults to document.body
+     * for pop-over mode; required for sidebar mode.
+     */
     mount?: string | HTMLElement;
+    /**
+     * Shell presentation. Defaults to the existing fixed pop-over. Re-running
+     * init with a different value updates the existing iframe in place.
+     */
+    presentation?: ChatPresentation;
     /** Launcher / panel title shown before surface theming arrives. */
     title?: string;
     /** Accent color for the pre-auth launcher shell. */

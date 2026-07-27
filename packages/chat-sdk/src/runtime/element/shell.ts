@@ -14,10 +14,15 @@ const LAUNCHER_ACTIVATION_EVENTS = ["pointerdown", "pointerup", "mousedown", "mo
  */
 const LIGHT_PANEL_SHADOW = "0 1px 2px rgba(22,18,42,.05),0 22px 50px -18px rgba(22,18,42,.30)";
 const DARK_PANEL_SHADOW = "0 1px 2px rgba(0,0,0,.40),0 18px 44px -16px rgba(0,0,0,.60)";
+const LIGHT_SIDEBAR_SHADOW = "-14px 0 32px -26px rgba(22,18,42,.38)";
+const DARK_SIDEBAR_SHADOW = "-14px 0 32px -26px rgba(0,0,0,.72)";
 
 /** Hairline ring that keeps the panel edge visible against same-tone host pages. */
 const LIGHT_PANEL_BORDER = "rgba(22,18,42,.08)";
 const DARK_PANEL_BORDER = "rgba(255,255,255,.12)";
+
+/** Main-content space kept available before a requested sidebar falls back. */
+export const MIN_SIDEBAR_MAIN_CONTENT_WIDTH = 384;
 
 function resolvePanelShadow(theme: ResolvedConfig["theme"]): string {
     return theme === "dark" ? DARK_PANEL_SHADOW : LIGHT_PANEL_SHADOW;
@@ -25,6 +30,10 @@ function resolvePanelShadow(theme: ResolvedConfig["theme"]): string {
 
 function resolvePanelBorder(theme: ResolvedConfig["theme"]): string {
     return theme === "dark" ? DARK_PANEL_BORDER : LIGHT_PANEL_BORDER;
+}
+
+function resolveSidebarShadow(theme: ResolvedConfig["theme"]): string {
+    return theme === "dark" ? DARK_SIDEBAR_SHADOW : LIGHT_SIDEBAR_SHADOW;
 }
 
 /** Minimal attribute escaping for values interpolated into the shadow markup. */
@@ -55,6 +64,29 @@ export class ChatShell {
     private launcherEnabled = true;
     private developmentMode = false;
     private hostConfiguredLauncherColor = false;
+    private presentationMode: ResolvedConfig["presentationMode"] = "popover";
+    private sidebarWidth = 384;
+    private effectivePresentationMode: ResolvedConfig["presentationMode"] = "popover";
+    private observedContainer?: HTMLElement;
+    private resizeObserver?: ResizeObserver;
+    private resizeAnimationFrame?: number;
+    private resizeFallbackActive = false;
+    private readonly onWindowResize = (): void => this.syncEffectivePresentation();
+    private readonly onContainerResize: ResizeObserverCallback = (entries): void => {
+        const entry = entries.find((candidate) => candidate.target === this.observedContainer);
+        const width = entry?.contentRect.width;
+        if (typeof requestAnimationFrame === "undefined") {
+            this.syncEffectivePresentation(width);
+            return;
+        }
+        if (this.resizeAnimationFrame != null) {
+            cancelAnimationFrame(this.resizeAnimationFrame);
+        }
+        this.resizeAnimationFrame = requestAnimationFrame(() => {
+            this.resizeAnimationFrame = undefined;
+            this.syncEffectivePresentation(width);
+        });
+    };
 
     constructor(private readonly host: HTMLElement & { toggle(): void }) {}
 
@@ -69,6 +101,8 @@ export class ChatShell {
     applyConfig(config: ResolvedConfig): void {
         this.hostConfiguredLauncherColor = config.hasFirstPaintLauncherColor;
         this.launcherEnabled = config.launcherEnabled;
+        this.presentationMode = config.presentationMode;
+        this.sidebarWidth = config.sidebarWidth;
         // Once trusted surface settings have revealed the launcher, live config
         // updates (such as a host theme change) must not hide it again.
         this.launcherThemeReady ||= config.hasFirstPaintLauncherColor;
@@ -78,6 +112,10 @@ export class ChatShell {
         );
         this.host.style.setProperty("--wpn-panel-shadow", resolvePanelShadow(config.theme));
         this.host.style.setProperty("--wpn-panel-border", resolvePanelBorder(config.theme));
+        this.host.style.setProperty("--wpn-sidebar-shadow", resolveSidebarShadow(config.theme));
+        this.host.style.setProperty("--wpn-sidebar-width", `${config.sidebarWidth}px`);
+        this.host.setAttribute("data-wpn-presentation", config.presentationMode);
+        this.configureResponsivePresentation();
         this.applyLauncherTheme({
             triggerColor: config.triggerColor,
             triggerIconColor: config.triggerIconColor,
@@ -94,6 +132,7 @@ export class ChatShell {
     }
 
     reset(): void {
+        this.disconnectPresentationObserver();
         this.iframe = undefined;
         this.panel = undefined;
         this.launcher = undefined;
@@ -101,7 +140,14 @@ export class ChatShell {
         this.launcherThemeReady = false;
         this.launcherEnabled = true;
         this.developmentMode = false;
+        this.presentationMode = "popover";
+        this.sidebarWidth = 384;
+        this.effectivePresentationMode = "popover";
         this.host.removeAttribute("data-wpn-dev");
+        this.host.removeAttribute("data-wpn-presentation");
+        this.host.removeAttribute("data-wpn-effective-presentation");
+        this.host.style.removeProperty("--wpn-sidebar-width");
+        this.host.style.removeProperty("--wpn-sidebar-shadow");
     }
 
     render(config: ResolvedConfig): void {
@@ -123,7 +169,7 @@ export class ChatShell {
             "<style>",
             // `all:initial` resets inherited host styles but NOT custom properties,
             // so the accent token survives for the color-mix shadows below.
-            `:host{all:initial;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-frame-background:${config.theme === "dark" ? "#0f1117" : "#ffffff"};--wpn-panel-shadow:${panelShadow};--wpn-panel-border:${panelBorder};--wpn-dev:#e8a91d;}`,
+            `:host{all:initial;display:block;inline-size:0;min-inline-size:0;block-size:0;--wpn-accent:${accent};--wpn-launcher-icon:${iconColor};--wpn-frame-background:${config.theme === "dark" ? "#0f1117" : "#ffffff"};--wpn-panel-shadow:${panelShadow};--wpn-panel-border:${panelBorder};--wpn-sidebar-shadow:${resolveSidebarShadow(config.theme)};--wpn-sidebar-width:${config.sidebarWidth}px;--wpn-dev:#e8a91d;}`,
             "*{box-sizing:border-box;}",
             // --- launcher: 60px accent circle, two-layer shadow ----------------
             "#launcher{position:fixed;right:24px;bottom:24px;width:60px;height:60px;border:0;",
@@ -162,6 +208,13 @@ export class ChatShell {
             "#panel[hidden]{display:none;}",
             "iframe{border:0;flex:1 1 auto;width:100%;height:100%;display:block;background:var(--wpn-frame-background);}",
             "@keyframes wpn-in{from{opacity:0;transform:translateY(8px) scale(.96);}to{opacity:1;transform:none;}}",
+            // --- sidebar: an in-flow final grid/flex child ---------------------
+            ":host([data-wpn-effective-presentation='sidebar']){block-size:100%;height:100%;align-self:stretch;}",
+            ":host([data-wpn-effective-presentation='sidebar'][open]){inline-size:var(--wpn-sidebar-width);}",
+            ":host([data-wpn-effective-presentation='sidebar']) #panel{position:relative;right:auto;bottom:auto;",
+            "width:100%;height:100%;max-width:none;max-height:none;border-radius:0;",
+            "border:0;border-inline-start:1px solid var(--wpn-panel-border);",
+            "box-shadow:var(--wpn-sidebar-shadow);transform-origin:center;animation:none;z-index:auto;}",
             // mobile: the panel fills the viewport.
             "@media (max-width:480px){#panel{right:0;bottom:0;width:100vw;height:100dvh;",
             "max-width:100vw;max-height:100dvh;border-radius:0;border:0;}#launcher{right:16px;bottom:16px;}}",
@@ -182,6 +235,7 @@ export class ChatShell {
         this.launcher = (shadow.getElementById("launcher") as HTMLButtonElement) ?? undefined;
         this.syncLauncherThemeVisibility();
         this.syncDevelopmentMode();
+        this.syncPanelSemantics();
 
         if (this.launcher) {
             // Shadow-DOM activation events are composed. Contain the whole
@@ -204,6 +258,76 @@ export class ChatShell {
         if (this.panel) this.panel.hidden = !isOpen;
         this.syncLauncherThemeVisibility();
         this.updateLauncherLabel();
+    }
+
+    private configureResponsivePresentation(): void {
+        if (this.presentationMode !== "sidebar") {
+            this.disconnectPresentationObserver();
+            this.setEffectivePresentation("popover");
+            return;
+        }
+
+        const container = this.host.parentElement ?? undefined;
+        if (container !== this.observedContainer) {
+            this.disconnectPresentationObserver();
+            this.observedContainer = container;
+            if (container && typeof ResizeObserver !== "undefined") {
+                this.resizeObserver = new ResizeObserver(this.onContainerResize);
+                this.resizeObserver.observe(container);
+            } else if (typeof window !== "undefined") {
+                window.addEventListener("resize", this.onWindowResize);
+                this.resizeFallbackActive = true;
+            }
+        }
+        this.syncEffectivePresentation();
+    }
+
+    private syncEffectivePresentation(observedWidth?: number): void {
+        if (this.presentationMode !== "sidebar") {
+            this.setEffectivePresentation("popover");
+            return;
+        }
+        const availableWidth =
+            observedWidth ?? this.observedContainer?.getBoundingClientRect().width ?? 0;
+        const canDock = availableWidth >= this.sidebarWidth + MIN_SIDEBAR_MAIN_CONTENT_WIDTH;
+        this.setEffectivePresentation(canDock ? "sidebar" : "popover");
+    }
+
+    private setEffectivePresentation(mode: ResolvedConfig["presentationMode"]): void {
+        if (
+            this.effectivePresentationMode === mode &&
+            this.host.getAttribute("data-wpn-effective-presentation") === mode
+        ) {
+            return;
+        }
+        this.effectivePresentationMode = mode;
+        this.host.setAttribute("data-wpn-effective-presentation", mode);
+        this.syncPanelSemantics();
+    }
+
+    private syncPanelSemantics(): void {
+        if (!this.panel) return;
+        if (this.effectivePresentationMode === "sidebar") {
+            this.panel.setAttribute("role", "complementary");
+            this.panel.removeAttribute("aria-modal");
+        } else {
+            this.panel.setAttribute("role", "dialog");
+            this.panel.setAttribute("aria-modal", "false");
+        }
+    }
+
+    private disconnectPresentationObserver(): void {
+        this.resizeObserver?.disconnect();
+        this.resizeObserver = undefined;
+        if (this.resizeAnimationFrame != null && typeof cancelAnimationFrame !== "undefined") {
+            cancelAnimationFrame(this.resizeAnimationFrame);
+        }
+        this.resizeAnimationFrame = undefined;
+        if (this.resizeFallbackActive && typeof window !== "undefined") {
+            window.removeEventListener("resize", this.onWindowResize);
+        }
+        this.resizeFallbackActive = false;
+        this.observedContainer = undefined;
     }
 
     /** Reflect development state on the launcher's accessible name. */
@@ -282,9 +406,7 @@ export class ChatShell {
         else this.host.setAttribute("launcher-theme-pending", "");
         if (this.launcher) {
             this.launcher.hidden =
-                !this.launcherEnabled ||
-                !this.launcherThemeReady ||
-                this.host.hasAttribute("open");
+                !this.launcherEnabled || !this.launcherThemeReady || this.host.hasAttribute("open");
         }
     }
 

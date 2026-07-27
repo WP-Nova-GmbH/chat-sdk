@@ -18,6 +18,7 @@ import { fetchToken } from "../../auth/token.js";
 import { type ResolvedConfig, resolveConfig } from "../../config/config.js";
 import { executeNavigation, isNavigationAction } from "../../page/navigation/index.js";
 import { DEFAULT_SETTLE } from "../../page/settle.js";
+import { IGNORE_ATTR } from "../../page/snapshot/constants.js";
 import { capturePageContext, clearHandleStamps } from "../../page/snapshot/index.js";
 import { Bridge } from "../../protocol/bridge/index.js";
 import type {
@@ -50,6 +51,8 @@ export class WpNovaChatElement extends HTMLElement {
     private iframeReady = false;
     private booting = false;
     private tokenRequestId = 0;
+    /** Suppresses disconnect/connect side effects while the controller reparents this node. */
+    private relocating = false;
 
     static get observedAttributes(): string[] {
         return ["open", "title", "accent"];
@@ -57,6 +60,7 @@ export class WpNovaChatElement extends HTMLElement {
 
     /** Apply config object (from WpNova('init')) — alternative to attributes. */
     setConfig(config: SdkConfig): void {
+        this.markSnapshotIgnored();
         const next = resolveConfig(config);
         const current = this.resolved;
         const requiresFrameReset = current ? this.requiresFrameReset(current, next) : false;
@@ -87,15 +91,39 @@ export class WpNovaChatElement extends HTMLElement {
     }
 
     connectedCallback(): void {
+        if (this.relocating) return;
+        this.markSnapshotIgnored();
         // Singleton/idempotent: only boot once a config exists; re-connecting the
         // same node reuses the existing iframe + bridge (see boot()).
         if (this.resolved) this.boot();
     }
 
     disconnectedCallback(): void {
+        if (this.relocating) return;
         // Keep the bridge listener + iframe alive across SPA re-mounts/HMR; tear
         // down timers (re-armed on the next AUTH_TOKEN / retry).
         this.tokenTimers.clear();
+    }
+
+    /**
+     * Move the live singleton into a new host layout slot. Custom-element
+     * disconnect/connect callbacks run synchronously during appendChild; the
+     * relocation guard prevents those callbacks from disturbing timers or auth.
+     */
+    moveTo(target: HTMLElement): void {
+        if (this.parentElement === target) return;
+        this.relocating = true;
+        try {
+            target.appendChild(this);
+        } finally {
+            this.relocating = false;
+        }
+    }
+
+    private markSnapshotIgnored(): void {
+        // SDK chrome and the cross-origin iframe are never host-page tools or
+        // context. This does not hide the complementary/dialog UI from AT.
+        this.setAttribute(IGNORE_ATTR, "");
     }
 
     attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {

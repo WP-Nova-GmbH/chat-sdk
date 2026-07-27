@@ -145,7 +145,8 @@ class SdkController {
     private init(config: SdkConfig): void {
         try {
             assertBrowserRuntime();
-            resolveConfig(config);
+            const resolved = resolveConfig(config);
+            const mountTarget = this.resolveMountTarget(config, resolved.presentationMode);
             defineElement();
 
             if (!this.element) {
@@ -154,7 +155,7 @@ class SdkController {
                     existing ?? (document.createElement(ELEMENT_TAG) as WpNovaChatElement);
                 element.setRegistry(this.registry);
                 element.addEventListener(OPEN_CHANGE_EVENT, this.onElementOpenChange);
-                if (!existing) this.mountInto(element, config.mount);
+                element.moveTo(mountTarget);
                 element.setConfig(config);
                 this.element = element;
                 if (this.hasPendingOpenState) {
@@ -167,6 +168,7 @@ class SdkController {
                 return;
             }
 
+            this.element.moveTo(mountTarget);
             this.element.setConfig(config);
         } catch (error) {
             console.error(`[wp-nova] chat launcher was not mounted: ${formatErrorMessage(error)}`);
@@ -190,21 +192,42 @@ class SdkController {
             try {
                 listener(open);
             } catch (error) {
-                console.error(
-                    `[wp-nova] open-state listener failed: ${formatErrorMessage(error)}`,
-                );
+                console.error(`[wp-nova] open-state listener failed: ${formatErrorMessage(error)}`);
             }
         }
     }
 
-    private mountInto(element: HTMLElement, mount?: string | HTMLElement): void {
-        let target: HTMLElement | null = document.body;
+    private resolveMountTarget(
+        config: SdkConfig,
+        presentationMode: "popover" | "sidebar",
+    ): HTMLElement {
+        const mount = config.mount;
+        let target: HTMLElement | null = null;
         if (typeof mount === "string") {
             target = document.querySelector(mount);
         } else if (typeof HTMLElement !== "undefined" && mount instanceof HTMLElement) {
             target = mount;
         }
-        (target ?? document.body).appendChild(element);
+
+        if (presentationMode === "sidebar") {
+            if (mount == null) {
+                throw new Error(
+                    "[wp-nova] sidebar presentation requires an explicit `mount` layout container",
+                );
+            }
+            if (!target) {
+                const description =
+                    typeof mount === "string" ? ` selector ${JSON.stringify(mount)}` : "";
+                throw new Error(
+                    `[wp-nova] sidebar presentation could not resolve its \`mount\`${description}`,
+                );
+            }
+            return target;
+        }
+
+        // Keep the original pop-over behavior: an omitted or unresolved mount
+        // falls back to body.
+        return target ?? document.body;
     }
 }
 
