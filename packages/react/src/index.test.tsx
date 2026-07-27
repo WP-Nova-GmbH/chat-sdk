@@ -234,6 +234,37 @@ describe("NovaChatProvider — R5 stable config", () => {
         expect(retain).toHaveBeenCalledTimes(1);
         expect(release).not.toHaveBeenCalled();
     });
+
+    it("re-initializes in place when presentation changes", async () => {
+        const root = await mount(
+            <NovaChatProvider config={{ ...config, presentation: { mode: "popover" } }}>
+                child
+            </NovaChatProvider>,
+        );
+        expect(init).toHaveBeenCalledTimes(1);
+
+        await rerender(
+            root,
+            <NovaChatProvider
+                config={{
+                    ...config,
+                    mount: "#nova-layout",
+                    presentation: { mode: "sidebar", width: 480 },
+                }}
+            >
+                child
+            </NovaChatProvider>,
+        );
+
+        expect(init).toHaveBeenCalledTimes(2);
+        expect(init).toHaveBeenLastCalledWith({
+            ...config,
+            mount: "#nova-layout",
+            presentation: { mode: "sidebar", width: 480 },
+        });
+        expect(retain).toHaveBeenCalledTimes(1);
+        expect(release).not.toHaveBeenCalled();
+    });
 });
 
 describe("NovaChatProvider — R20 stable tools", () => {
@@ -279,11 +310,7 @@ describe("host-owned chat controls", () => {
         const open = useNovaChatOpenState();
         triggerChatToggle = chat.toggle;
         return (
-            <button
-                aria-expanded={open}
-                onClick={() => void chat.toggle()}
-                type="button"
-            >
+            <button aria-expanded={open} onClick={() => void chat.toggle()} type="button">
                 {open ? "Close assistant" : "Open assistant"}
             </button>
         );

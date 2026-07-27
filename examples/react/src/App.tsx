@@ -7,6 +7,7 @@ import {
 import { useMemo, useState } from "react";
 
 type ManifestStatus = "On time" | "Hold" | "Delayed" | "Released";
+type PresentationMode = "popover" | "sidebar";
 
 interface Shipment {
     id: string;
@@ -138,6 +139,7 @@ export function App() {
     const [events, setEvents] = useState<LogEvent[]>([
         createEvent("system", "React example loaded with rail operations fixture data."),
     ]);
+    const [presentationMode, setPresentationMode] = useState<PresentationMode>("popover");
     const settings = useMemo(readInitialSettings, []);
 
     const activeShipment =
@@ -160,10 +162,15 @@ export function App() {
             triggerColor: "#f0a202",
             triggerIconColor: "dark",
             launcher: false,
+            mount: "#nova-layout",
+            presentation:
+                presentationMode === "sidebar"
+                    ? ({ mode: "sidebar", width: 384 } as const)
+                    : ({ mode: "popover" } as const),
             safeValueSelectors: parseSelectorList(settings.safeValueSelectors),
             voiceMode: true,
         }),
-        [settings],
+        [presentationMode, settings],
     );
 
     const tools = useMemo<NovaToolDefinition[]>(
@@ -334,13 +341,24 @@ export function App() {
 
     return (
         <NovaChatProvider config={config} enabled={enabled} tools={tools}>
-            <div className="app-shell">
+            <div className="nova-host-layout" id="nova-layout">
+                <div className="app-shell">
                 <header className="ops-header">
                     <div>
                         <p className="eyebrow">RailOps Control Desk</p>
                         <h1>West Corridor Freight Board</h1>
                     </div>
                     <div className="ops-header-actions">
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setPresentationMode((current) =>
+                                    current === "popover" ? "sidebar" : "popover",
+                                )
+                            }
+                        >
+                            {presentationMode === "popover" ? "Dock assistant" : "Use pop-over"}
+                        </button>
                         <CustomChatTrigger disabled={!enabled} />
                         <div className="ops-status" role="status" aria-label="Current yard status">
                             <span>Shift Delta</span>
@@ -597,6 +615,7 @@ export function App() {
                         </ol>
                     </section>
                 </main>
+                </div>
             </div>
         </NovaChatProvider>
     );

@@ -1,4 +1,9 @@
-export type { SdkConfig, ToolDefinition, ToolHandler } from "@wp-nova/chat-sdk";
+export type {
+    ChatPresentation,
+    SdkConfig,
+    ToolDefinition,
+    ToolHandler,
+} from "@wp-nova/chat-sdk";
 export * from "./lib/nova-chat.component";
 export * from "./lib/nova-chat.service";
 export * from "./lib/nova-chat.tokens";

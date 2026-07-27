@@ -175,6 +175,7 @@ export function NovaChatProvider({
         config.triggerColorDark,
         config.triggerIconColor,
         config.launcher,
+        config.presentation,
         config.theme,
         config.safeValueSelectors,
         config.voiceMode,
@@ -308,4 +309,9 @@ export function useNovaTool(tool: NovaToolDefinition) {
     }, [api, toolKey]);
 }
 
-export type { SdkConfig, ToolDefinition, ToolHandler } from "@wp-nova/chat-sdk";
+export type {
+    ChatPresentation,
+    SdkConfig,
+    ToolDefinition,
+    ToolHandler,
+} from "@wp-nova/chat-sdk";

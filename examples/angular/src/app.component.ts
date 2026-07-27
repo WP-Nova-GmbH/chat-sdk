@@ -116,21 +116,21 @@ const initialTickets: SupportTicket[] = [
     selector: "app-root",
     imports: [NovaChatComponent],
     template: `
-        <wp-nova-chat-mount
-            [config]="sdkConfig"
-            [enabled]="chatEnabled"
-            [tools]="tools"
-        />
-
-        <div class="site-shell">
+        <div class="nova-host-layout" id="nova-layout">
+          <div class="site-shell">
             <header class="site-header">
                 <div>
                     <p class="eyebrow">Harbor & Fern Concierge</p>
                     <h1>Guest stays and atelier requests</h1>
                 </div>
-                <div class="mood-board">
-                    <span>Today</span>
-                    <strong data-agent-readable-field>{{ banner }}</strong>
+                <div class="site-header-actions">
+                    <button type="button" (click)="togglePresentation()">
+                        {{ presentationMode === "popover" ? "Dock assistant" : "Use pop-over" }}
+                    </button>
+                    <div class="mood-board">
+                        <span>Today</span>
+                        <strong data-agent-readable-field>{{ banner }}</strong>
+                    </div>
                 </div>
             </header>
 
@@ -303,7 +303,13 @@ const initialTickets: SupportTicket[] = [
                     </ol>
                 </section>
             </main>
+          </div>
         </div>
+        <wp-nova-chat-mount
+            [config]="sdkConfig"
+            [enabled]="chatEnabled"
+            [tools]="tools"
+        />
     `,
 })
 export class AppComponent {
@@ -316,7 +322,8 @@ export class AppComponent {
     banner = "Rain clearing by 17:00; courtyard dinner can stay outside.";
     events: LogEvent[] = [createEvent("system", "Angular concierge example loaded.")];
     settings = readInitialSettings();
-    sdkConfig = buildSdkConfig(this.settings);
+    presentationMode: "popover" | "sidebar" = "popover";
+    sdkConfig = buildSdkConfig(this.settings, this.presentationMode);
     tools: ToolDefinition[] = [
         {
             name: "select_booking",
@@ -420,6 +427,11 @@ export class AppComponent {
 
     get chatEnabled(): boolean {
         return this.settings.publicSurfaceId.trim().length > 0;
+    }
+
+    togglePresentation(): void {
+        this.presentationMode = this.presentationMode === "popover" ? "sidebar" : "popover";
+        this.sdkConfig = buildSdkConfig(this.settings, this.presentationMode);
     }
 
     updateGuestSearch(event: Event): void {
@@ -561,7 +573,7 @@ function readInitialSettings(): SdkSettings {
     };
 }
 
-function buildSdkConfig(settings: SdkSettings): SdkConfig {
+function buildSdkConfig(settings: SdkSettings, presentationMode: "popover" | "sidebar"): SdkConfig {
     return {
         publicSurfaceId: settings.publicSurfaceId,
         tokenEndpoint: settings.tokenEndpoint,
@@ -570,6 +582,9 @@ function buildSdkConfig(settings: SdkSettings): SdkConfig {
         accent: "#b4543a",
         triggerColor: "#276b55",
         triggerIconColor: "light",
+        mount: "#nova-layout",
+        presentation:
+            presentationMode === "sidebar" ? { mode: "sidebar", width: 384 } : { mode: "popover" },
         safeValueSelectors: parseSelectorList(settings.safeValueSelectors),
         voiceMode: true,
     };

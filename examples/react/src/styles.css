@@ -78,7 +78,15 @@ dd {
     font-weight: 700;
 }
 
+.nova-host-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 100dvh;
+    align-items: stretch;
+}
+
 .app-shell {
+    min-width: 0;
     min-height: 100vh;
 }
 
