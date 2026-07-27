@@ -64,6 +64,55 @@ iframe ohne neuen Token-Abruf oder Verlust der Konversation.
 `triggerColorLight` und `triggerColorDark` aktualisieren den vorhandenen
 Launcher, ohne ihn neu zu mounten.
 
+### Umschaltbarer Pop-over und Sidebar
+
+Verwende einen stabilen Grid-/Flex-Container als `mount` und nimm
+`presentation` in die Provider-Konfiguration auf. Der React-Wrapper behandelt
+den Inhalt von `presentation` als relevante Konfiguration und ruft bei einer
+Änderung `init()` erneut auf, ohne das iframe zu ersetzen:
+
+```tsx
+const [mode, setMode] = useState<"popover" | "sidebar">("popover");
+const config = useMemo(
+  () => ({
+    ...novaConfig,
+    mount: "#nova-layout",
+    presentation:
+      mode === "sidebar"
+        ? ({ mode: "sidebar", width: 420 } as const)
+        : ({ mode: "popover" } as const),
+  }),
+  [mode],
+);
+
+return (
+  <NovaChatProvider config={config}>
+    <div id="nova-layout" className="nova-layout">
+      <main>
+        <button
+          type="button"
+          onClick={() =>
+            setMode((value) =>
+              value === "popover" ? "sidebar" : "popover"
+            )
+          }
+        >
+          Darstellung wechseln
+        </button>
+        <Routes />
+      </main>
+    </div>
+  </NovaChatProvider>
+);
+```
+
+Der Container muss vor Ausführung des Provider-Effekts existieren. Verwende
+`grid-template-columns: minmax(0, 1fr) auto`, setze `min-width: 0` am
+Hauptinhalt und stelle eine Blockhöhe bereit. Ein Moduswechsel erhält iframe,
+Authentifizierung, Tools, Öffnungszustand und Konversation. Breitenvalidierung
+und responsiver Fallback sind unter
+[Konfiguration: Darstellung](./configuration.md#darstellung) beschrieben.
+
 ### Eigener Launcher
 
 Setze `launcher: false` und verwende die Hooks für einen Button im Design der

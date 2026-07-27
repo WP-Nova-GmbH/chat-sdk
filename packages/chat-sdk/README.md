@@ -59,7 +59,8 @@ init({ publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
 | `publicSurfaceId` | yes | Non-secret `surf_…` handle. |
 | `tokenEndpoint` | yes | Customer backend endpoint that mints embed sessions. |
 | `baseUrl` | no | Nova iframe origin; defaults to `https://chat.wp-nova.ai`. |
-| `mount` | no | Host element/selector; defaults to `document.body`. |
+| `mount` | sidebar only | Host element/selector. Pop-over defaults to `document.body`; sidebar requires an explicit layout container. |
+| `presentation` | no | `{ mode: "popover" }` (default) or `{ mode: "sidebar", width?: number }`. |
 | `title` | no | Pre-auth panel title. |
 | `accent` | no | Pre-auth accent color. |
 | `triggerColor` | no | Launcher color; defaults to `accent`. |
@@ -72,6 +73,43 @@ init({ publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
 | `voiceMode` | no | Enables voice and iframe microphone delegation. |
 | `routes` | no | Permission-filtered `{ path, description }[]`, max 100. |
 | `settle` | no | `quietMs`, `maxWaitMs`, and `waitForNavigationSignal`. |
+
+## Pop-over or docked sidebar
+
+The same singleton iframe can render as the default fixed pop-over or as a
+column in a host-owned grid/flex layout:
+
+```html
+<div id="nova-layout">
+  <main><!-- application content --></main>
+</div>
+
+<style>
+  #nova-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 100dvh;
+    align-items: stretch;
+  }
+  #nova-layout > main { min-width: 0; }
+</style>
+```
+
+```ts
+init({
+  publicSurfaceId: "surf_…",
+  tokenEndpoint: "/api/nova-token",
+  mount: "#nova-layout",
+  presentation: { mode: "sidebar", width: 420 },
+});
+```
+
+Sidebar width defaults to `384px`; finite values are clamped to `320–640px`.
+The SDK falls back to pop-over when the mount cannot fit the sidebar plus
+`384px` of main content, and returns to docked mode when space is available.
+Call `init()` again with a different `presentation` or `mount` to switch in
+place without replacing the iframe, token, tools, open state, or conversation.
+The host owns column order, vertical sizing, sticky offsets, and animation.
 
 ## Host-owned launcher
 
@@ -161,6 +199,8 @@ The mount is singleton-safe across duplicate `init`, HMR, and SPA remounts.
 Changes to iframe identity (`publicSurfaceId`, `baseUrl`, `voiceMode`, or
 `protocolVersion`) rebuild the frame and refresh auth. Use `destroy()` only when
 removing chat; framework wrappers pair shared `retain()`/`release()` mounts.
+Presentation and mount changes move/restyle the existing element without
+resetting the frame or authentication state.
 
 ### Page snapshots
 

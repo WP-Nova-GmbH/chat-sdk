@@ -72,3 +72,28 @@ provider above the route outlet. For async router destinations, connect
 Update `config.theme` from the host application's light/dark mode; changing only
 that field updates the existing iframe without re-fetching auth or resetting the
 conversation.
+
+For a docked sidebar, render a stable grid/flex container before the provider
+effect runs and configure it as the mount:
+
+```tsx
+const config = useMemo(
+    () => ({
+        ...novaConfig,
+        mount: "#nova-layout",
+        presentation:
+            mode === "sidebar"
+                ? ({ mode: "sidebar", width: 420 } as const)
+                : ({ mode: "popover" } as const),
+    }),
+    [mode],
+);
+```
+
+Use `grid-template-columns: minmax(0, 1fr) auto` and give the container an
+available block size. Changing `mode` re-initializes the singleton in place and
+preserves the iframe, auth, tools, open state, and conversation. The core falls
+back to pop-over when the container cannot fit the sidebar plus `384px` of main
+content. See the
+[presentation documentation](https://chat.wp-nova.ai/configuration#presentation)
+for the complete layout and sizing contract.

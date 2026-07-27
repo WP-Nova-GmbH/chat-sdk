@@ -36,6 +36,7 @@ import {
   defineElement,
   ELEMENT_TAG,
   WpNovaChatElement,
+  type ChatPresentation,
   type HostTheme,
 } from "@wp-nova/chat-sdk";
 ```
@@ -45,11 +46,16 @@ import {
 ```ts
 export type HostTheme = "light" | "dark";
 
+export type ChatPresentation =
+  | { mode?: "popover" }
+  | { mode: "sidebar"; width?: number };
+
 export interface SdkConfig {
   publicSurfaceId: string;
   tokenEndpoint: string;
   baseUrl?: string;
   mount?: string | HTMLElement;
+  presentation?: ChatPresentation;
   title?: string;
   accent?: string;
   triggerColor?: string;
@@ -91,6 +97,13 @@ existante sans récupérer de nouveau token ni réinitialiser la conversation.
 `triggerColorLight` et `triggerColorDark` remplacent `triggerColor` uniquement
 dans leur mode respectif.
 
+`presentation` vaut `{ mode: "popover" }` par défaut. La largeur de la barre
+latérale vaut `384`, les valeurs numériques sont limitées à `320–640` et une
+valeur d’exécution non valide revient à `384` avec un avertissement. Le mode
+barre latérale exige un `mount` explicite et résolvable. Lorsque le conteneur
+est plus étroit que `sidebarWidth + 384px`, la présentation effective repasse
+temporairement en pop-over.
+
 `registerToolHandler` reste uniquement comme helper de compatibilité obsolète,
 limité à l’exécution. Un handler seul n’est pas proposé à l’agent.
 
@@ -127,4 +140,12 @@ demande d’accès reste disponible.
 
 ### Custom Element
 
-Le SDK définit `<wp-nova-chat>` de façon lazy et idempotente. Vous pouvez placer l’élément à l’avance dans le DOM, mais la plupart des intégrations doivent laisser `init` le créer et le monter.
+Le SDK définit `<wp-nova-chat>` de façon lazy et idempotente. Vous pouvez placer
+l’élément à l’avance dans le DOM, mais la plupart des intégrations doivent
+laisser `init` le créer et le monter. L’élément reflète la présentation
+configurée et effective avec `data-wpn-presentation` et
+`data-wpn-effective-presentation` ; la largeur validée est exposée en interne
+par `--wpn-sidebar-width`. La barre latérale effective est une région
+`complementary` nommée, tandis que le pop-over reste une boîte de dialogue non
+modale. Le SDK exclut son propre sous-arbre des instantanés de la page hôte sans
+le retirer de l’arbre d’accessibilité.

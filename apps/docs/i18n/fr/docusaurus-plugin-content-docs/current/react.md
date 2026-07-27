@@ -63,6 +63,55 @@ existante sans récupérer de nouveau token ni perdre la conversation.
 `triggerColorLight` et `triggerColorDark` mettent le lanceur existant à jour
 sans remontage.
 
+### Pop-over et barre latérale interchangeables
+
+Utilisez un conteneur grid/flex stable comme `mount` et incluez
+`presentation` dans la configuration du provider. Le wrapper React considère
+le contenu de `presentation` comme une configuration significative et rappelle
+`init()` lors d’un changement sans remplacer l’iframe :
+
+```tsx
+const [mode, setMode] = useState<"popover" | "sidebar">("popover");
+const config = useMemo(
+  () => ({
+    ...novaConfig,
+    mount: "#nova-layout",
+    presentation:
+      mode === "sidebar"
+        ? ({ mode: "sidebar", width: 420 } as const)
+        : ({ mode: "popover" } as const),
+  }),
+  [mode],
+);
+
+return (
+  <NovaChatProvider config={config}>
+    <div id="nova-layout" className="nova-layout">
+      <main>
+        <button
+          type="button"
+          onClick={() =>
+            setMode((value) =>
+              value === "popover" ? "sidebar" : "popover"
+            )
+          }
+        >
+          Changer la présentation
+        </button>
+        <Routes />
+      </main>
+    </div>
+  </NovaChatProvider>
+);
+```
+
+Le conteneur doit exister avant l’exécution de l’effet du provider. Utilisez
+`grid-template-columns: minmax(0, 1fr) auto`, appliquez `min-width: 0` au
+contenu principal et fournissez une hauteur disponible. Le changement de mode
+préserve l’iframe, l’authentification, les outils, l’état ouvert/fermé et la
+conversation. La validation de largeur et le fallback responsive sont décrits
+dans [Configuration : présentation](./configuration.md#présentation).
+
 ### Lanceur personnalisé
 
 Définissez `launcher: false` et utilisez les hooks pour un bouton adapté à

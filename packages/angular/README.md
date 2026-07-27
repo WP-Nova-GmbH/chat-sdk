@@ -47,3 +47,23 @@ Pass complete `ToolDefinition[]` values to the mount component or call
 host-owned controls; omit `launcher: false` to keep the default SDK button.
 For async Angular Router destinations, dispatch `wp-nova:settled` only after
 the destination's required data has rendered.
+
+For a docked sidebar, place a stable grid/flex container before
+`<wp-nova-chat-mount>` and bind a new config reference when the mode changes:
+
+```ts
+config: SdkConfig = {
+    publicSurfaceId: "surf_...",
+    tokenEndpoint: "/api/nova/embed-token",
+    mount: "#nova-layout",
+    presentation: { mode: "sidebar", width: 420 },
+};
+```
+
+Use `grid-template-columns: minmax(0, 1fr) auto` and give the container an
+available block size. Angular passes the updated config through `init()` while
+the core preserves the iframe, auth, tools, open state, and conversation. The
+core falls back to pop-over when the container cannot fit the sidebar plus
+`384px` of main content. See the
+[presentation documentation](https://chat.wp-nova.ai/configuration#presentation)
+for the complete layout and sizing contract.

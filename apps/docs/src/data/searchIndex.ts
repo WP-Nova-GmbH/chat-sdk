@@ -32,7 +32,7 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             docId: "configuration",
             section: "Guides",
             description:
-                "SdkConfig fields, token endpoint request shape, lifecycle, and destroy behavior.",
+                "SdkConfig fields, pop-over/sidebar presentation, token requests, and lifecycle.",
         },
         {
             title: "Giving the agent DOM access",
@@ -128,7 +128,7 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             docId: "configuration",
             section: "Anleitungen",
             description:
-                "SdkConfig-Felder wie publicSurfaceId, tokenEndpoint, baseUrl und Theming.",
+                "SdkConfig-Felder, Pop-over-/Sidebar-Darstellung, Token-Anfragen und Lebenszyklus.",
         },
         {
             title: "Dem Agenten DOM-Zugriff geben",
@@ -222,7 +222,7 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             docId: "configuration",
             section: "Guides",
             description:
-                "Champs SdkConfig, dont publicSurfaceId, tokenEndpoint, baseUrl et theming.",
+                "Champs SdkConfig, présentation pop-over/barre latérale, tokens et cycle de vie.",
         },
         {
             title: "Donner à l'agent l'accès au DOM",

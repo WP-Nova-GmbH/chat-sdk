@@ -68,6 +68,42 @@ Launcher, Panel und bestehendes iframe ohne neuen Token-Abruf oder Verlust der
 Konversation. `triggerColorLight` und `triggerColorDark` aktualisieren den
 vorhandenen Launcher ohne Remount.
 
+### Umschaltbarer Pop-over und Sidebar
+
+Lege einen stabilen Grid-/Flex-Container vor
+`<wp-nova-chat-mount>` an und binde bei einer Darstellungsänderung eine neue
+`SdkConfig`-Referenz:
+
+```ts
+mode: "popover" | "sidebar" = "popover";
+config: SdkConfig = this.buildConfig();
+
+togglePresentation() {
+  this.mode = this.mode === "popover" ? "sidebar" : "popover";
+  this.config = this.buildConfig();
+}
+
+private buildConfig(): SdkConfig {
+  return {
+    publicSurfaceId: "surf_...",
+    tokenEndpoint: "/api/nova-token",
+    mount: "#nova-layout",
+    presentation:
+      this.mode === "sidebar"
+        ? { mode: "sidebar", width: 420 }
+        : { mode: "popover" },
+  };
+}
+```
+
+Der Mount-Container verwendet typischerweise
+`grid-template-columns: minmax(0, 1fr) auto`, eine definierte Blockhöhe und
+`min-width: 0` am Hauptinhalt. Angular reagiert auf die neue
+Konfigurationsreferenz; das Core-SDK erhält iframe, Authentifizierung, Tools,
+Öffnungszustand und Konversation. Siehe
+[Konfiguration: Darstellung](./configuration.md#darstellung) für
+Breitenvalidierung und responsiven Fallback.
+
 Für einen eigenen Host-Button setze `launcher: false`. Der
 `NovaChatService` stellt `open()`, `close()` und `toggle()` bereit:
 

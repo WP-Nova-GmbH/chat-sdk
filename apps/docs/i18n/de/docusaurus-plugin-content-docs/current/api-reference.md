@@ -36,6 +36,7 @@ import {
   defineElement,
   ELEMENT_TAG,
   WpNovaChatElement,
+  type ChatPresentation,
   type HostTheme,
 } from "@wp-nova/chat-sdk";
 ```
@@ -45,11 +46,16 @@ import {
 ```ts
 export type HostTheme = "light" | "dark";
 
+export type ChatPresentation =
+  | { mode?: "popover" }
+  | { mode: "sidebar"; width?: number };
+
 export interface SdkConfig {
   publicSurfaceId: string;
   tokenEndpoint: string;
   baseUrl?: string;
   mount?: string | HTMLElement;
+  presentation?: ChatPresentation;
   title?: string;
   accent?: string;
   triggerColor?: string;
@@ -91,6 +97,13 @@ aktualisiert das bestehende iframe, ohne ein neues Token abzurufen oder die
 Konversation zurückzusetzen. `triggerColorLight` und `triggerColorDark`
 überschreiben `triggerColor` jeweils nur im zugehörigen Modus.
 
+`presentation` ist standardmäßig `{ mode: "popover" }`. Die Sidebar-Breite ist
+standardmäßig `384`, wird bei numerischen Werten auf `320–640` begrenzt und
+fällt bei ungültigen Laufzeitwerten mit einer Warnung auf `384` zurück. Der
+Sidebar-Modus erfordert einen expliziten, auflösbaren `mount`. Wenn der
+Mount-Container schmaler als `sidebarWidth + 384px` ist, verwendet die
+effektive Darstellung vorübergehend Pop-over.
+
 `registerToolHandler` bleibt nur als veralteter, ausführungsbezogener
 Kompatibilitäts-Helper verfügbar. Ein solcher Handler wird dem Agenten nicht
 angeboten.
@@ -128,4 +141,12 @@ die Aktion zum Anfordern des Zugriffs verfügbar ist.
 
 ### Custom Element
 
-Das SDK definiert `<wp-nova-chat>` lazy und idempotent. Du kannst das Element vorab im DOM platzieren, aber die meisten Integrationen sollten es von `init` erstellen und mounten lassen.
+Das SDK definiert `<wp-nova-chat>` lazy und idempotent. Du kannst das Element
+vorab im DOM platzieren, aber die meisten Integrationen sollten es von `init`
+erstellen und mounten lassen. Das Element spiegelt konfigurierte und effektive
+Darstellung über `data-wpn-presentation` und
+`data-wpn-effective-presentation`; die validierte Breite ist intern als
+`--wpn-sidebar-width` verfügbar. Die effektive Sidebar ist eine benannte
+`complementary`-Region, der Pop-over bleibt ein nicht modaler Dialog. Das SDK
+schließt seinen eigenen Teilbaum aus Host-Seiten-Snapshots aus, ohne ihn aus
+dem Accessibility Tree zu entfernen.

@@ -12,7 +12,8 @@ Toutes les options sont transmises à `WpNova("init", config)` ou au helper `ini
 | `publicSurfaceId` | oui | Handle de surface non secret expose au SDK. |
 | `tokenEndpoint` | oui | Endpoint du backend client qui émet un token de session intégrée. |
 | `baseUrl` | non | URL de base de l’iframe Nova. Par défaut : `https://chat.wp-nova.ai`. |
-| `mount` | non | Sélecteur CSS ou élément dans lequel monter le widget. Par défaut : `document.body`. |
+| `mount` | barre latérale uniquement | Sélecteur CSS ou `HTMLElement` de montage. Le pop-over utilise `document.body` par défaut ; la barre latérale exige un conteneur de mise en page explicite. |
+| `presentation` | non | `{ mode: "popover" }` (par défaut) ou `{ mode: "sidebar", width?: number }`. |
 | `title` | non | Titre du lanceur et du panneau avant authentification. |
 | `accent` | non | Couleur d’accent avant authentification. |
 | `triggerColor` | non | Couleur du lanceur/bouton d’ouverture. Par défaut : `accent`. |
@@ -38,6 +39,7 @@ init({
   accent: "#8665e3",
   triggerIconColor: "light",
   launcher: true,
+  presentation: { mode: "popover" },
   theme: "light",
 });
 ```
@@ -55,6 +57,74 @@ cookie WP Chat et ne déduit pas ce mode. Un nouvel appel à `init` avec un
 `theme` différent met à jour le lanceur, le panneau et l’iframe existante sans
 récupérer de nouveau token ni réinitialiser la conversation. Il en va de même
 si la valeur de configuration change dans un wrapper de framework.
+
+### Présentation
+
+La présentation `popover` par défaut conserve le panneau fixe de
+`384px × 640px` et occupe tout l’écran lorsque la largeur du viewport ne
+dépasse pas `480px`. Le mode `sidebar` ancre la même iframe comme colonne
+d’une mise en page appartenant à la page hôte :
+
+```html
+<div id="nova-layout">
+  <main><!-- contenu de l’application --></main>
+</div>
+
+<style>
+  #nova-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 100dvh;
+    align-items: stretch;
+  }
+  #nova-layout > main {
+    min-width: 0;
+  }
+</style>
+```
+
+```ts
+let mode: "popover" | "sidebar" = "sidebar";
+
+function applyPresentation() {
+  init({
+    publicSurfaceId: "surf_...",
+    tokenEndpoint: "/api/nova-token",
+    mount: "#nova-layout",
+    presentation:
+      mode === "sidebar"
+        ? { mode: "sidebar", width: 420 }
+        : { mode: "popover" },
+  });
+}
+
+applyPresentation();
+mode = "popover";
+applyPresentation();
+```
+
+La largeur de la barre latérale vaut `384px` par défaut. Les nombres finis
+sont limités à `320–640px` ; une valeur d’exécution non valide émet un
+avertissement et utilise `384px`. La page hôte contrôle entièrement l’ordre
+des colonnes, la hauteur disponible, les décalages sticky/header et les
+animations.
+
+Le SDK observe la largeur disponible du conteneur de montage. Il ne conserve
+le mode ancré que si la barre latérale laisse encore `384px` au contenu
+principal. Avec la largeur par défaut, le mode passe donc en pop-over sous
+`768px`, puis revient automatiquement en barre latérale lorsque l’espace le
+permet.
+
+Appelez de nouveau `init()` pour changer de mode, de largeur ou de cible de
+montage. Le SDK déplace et restyle son Custom Element existant tout en
+préservant l’iframe, le bridge, le token, les outils enregistrés, l’état
+ouvert/fermé et la conversation. Le mode `sidebar` exige un `mount` explicite
+et résolvable ; sinon, une erreur exploitable est levée.
+
+L’ouverture et la fermeture ne font pas partie de la configuration de
+présentation. Utilisez le lanceur intégré ou `open()`, `close()` et `toggle()`.
+Lorsqu’une barre latérale ancrée se ferme, sa colonne se réduit à une largeur
+nulle. `launcher: false` permet le même contrôle depuis un bouton hôte.
 
 ### Routes et navigation asynchrone
 
@@ -116,7 +186,9 @@ reconstruit l’iframe et le bridge, puis récupère un nouveau token. Une
 modification de `tokenEndpoint` récupère de nouvelles données
 d’authentification pour l’iframe existante. Les changements de `theme` ou de
 couleurs du lanceur s’appliquent en direct ; un nouveau `theme` est également
-transmis à l’iframe existante via `HOST_THEME`.
+transmis à l’iframe existante via `HOST_THEME`. Les changements de
+`presentation` ou de `mount` restylent ou déplacent l’élément existant sans
+réinitialiser l’iframe ni l’authentification.
 
 ### Cycle de vie du panneau
 

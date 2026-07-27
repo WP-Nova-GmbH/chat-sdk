@@ -56,8 +56,10 @@ VITE_NOVA_TOKEN_ENDPOINT=/api/nova-token \
 npm --workspace @wp-nova/chat-sdk-example-angular run dev
 ```
 
-Both examples mount chat automatically when a surface id is available. They also
-accept `?surface=surf_...&baseUrl=http://localhost:5173&tokenEndpoint=/api/nova-token`.
+Both examples mount chat automatically when a surface id is available and
+include a control for switching the live iframe between pop-over and docked
+sidebar presentation. They also accept
+`?surface=surf_...&baseUrl=http://localhost:5173&tokenEndpoint=/api/nova-token`.
 
 ## Releases
 

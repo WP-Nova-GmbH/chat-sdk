@@ -12,7 +12,8 @@ Alle Optionen werden an `WpNova("init", config)` oder den Helper `init(config)` 
 | `publicSurfaceId` | ja | Nicht geheimes Surface-Handle für das SDK. |
 | `tokenEndpoint` | ja | Kunden-Backend-Endpoint, der ein Embedded-Session-Token ausstellt. |
 | `baseUrl` | nein | Basis-URL des Nova-iframes. Standard ist `https://chat.wp-nova.ai`. |
-| `mount` | nein | CSS-Selektor oder Element, in das gemountet wird. Standard ist `document.body`. |
+| `mount` | nur Sidebar | CSS-Selektor oder `HTMLElement` für das Mounting. Pop-over verwendet standardmäßig `document.body`; die Sidebar erfordert einen expliziten Layout-Container. |
+| `presentation` | nein | `{ mode: "popover" }` (Standard) oder `{ mode: "sidebar", width?: number }`. |
 | `title` | nein | Launcher- und Panel-Titel vor der Authentifizierung. |
 | `accent` | nein | Akzentfarbe vor der Authentifizierung. |
 | `triggerColor` | nein | Farbe des Launchers bzw. Öffnen-Buttons. Standard ist `accent`. |
@@ -38,6 +39,7 @@ init({
   accent: "#8665e3",
   triggerIconColor: "light",
   launcher: true,
+  presentation: { mode: "popover" },
   theme: "light",
 });
 ```
@@ -55,6 +57,71 @@ WP-Chat-Cookie noch ermittelt es den Modus selbst. Ein weiterer `init`-Aufruf
 mit geändertem `theme` aktualisiert Launcher, Panel und bestehendes iframe,
 ohne ein neues Token abzurufen oder die Konversation zurückzusetzen. Dasselbe
 gilt bei einer Änderung des Config-Werts in einem Framework-Wrapper.
+
+### Darstellung
+
+Die Standarddarstellung `popover` behält das feste Panel mit `384px × 640px`
+und wird bei Viewport-Breiten bis `480px` bildschirmfüllend. `sidebar` dockt
+dasselbe iframe als Spalte in einem Layout der Host-Seite an:
+
+```html
+<div id="nova-layout">
+  <main><!-- Anwendungsinhalt --></main>
+</div>
+
+<style>
+  #nova-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 100dvh;
+    align-items: stretch;
+  }
+  #nova-layout > main {
+    min-width: 0;
+  }
+</style>
+```
+
+```ts
+let mode: "popover" | "sidebar" = "sidebar";
+
+function applyPresentation() {
+  init({
+    publicSurfaceId: "surf_...",
+    tokenEndpoint: "/api/nova-token",
+    mount: "#nova-layout",
+    presentation:
+      mode === "sidebar"
+        ? { mode: "sidebar", width: 420 }
+        : { mode: "popover" },
+  });
+}
+
+applyPresentation();
+mode = "popover";
+applyPresentation();
+```
+
+Die Sidebar-Breite ist standardmäßig `384px`. Endliche Zahlen werden auf
+`320–640px` begrenzt; ungültige Laufzeitwerte erzeugen eine Warnung und
+verwenden `384px`. Position und Reihenfolge der Spalten, verfügbare Blockhöhe,
+Sticky-/Header-Offsets und Animationen gehören vollständig der Host-Seite.
+
+Das SDK beobachtet die verfügbare Breite des Mount-Containers. Es dockt nur,
+wenn neben der konfigurierten Sidebar noch `384px` für den Hauptinhalt
+verfügbar sind. Die Standardbreite fällt daher unter `768px` auf Pop-over
+zurück und dockt automatisch wieder an, sobald genügend Platz vorhanden ist.
+
+Rufe `init()` erneut auf, um Modus, Breite oder Mount-Ziel zu ändern. Das SDK
+verschiebt und formatiert sein vorhandenes Custom Element und erhält iframe,
+Bridge, Token, registrierte Tools, Öffnungszustand und Konversation. Für
+`sidebar` ist ein expliziter, auflösbarer `mount` erforderlich; andernfalls
+wird ein aussagekräftiger Fehler ausgelöst.
+
+Öffnen und Schließen sind keine Darstellungsoptionen. Verwende den integrierten
+Launcher oder `open()`, `close()` und `toggle()`. Beim Schließen einer
+angedockten Sidebar fällt die Layout-Spalte auf Breite null zusammen.
+`launcher: false` ermöglicht dieselbe Steuerung über einen eigenen Host-Button.
 
 ### Site-Routen und asynchrone Navigation
 
@@ -116,7 +183,9 @@ baut das Element iframe und Bridge neu auf und holt ein frisches Token. Ein
 geänderter `tokenEndpoint` holt neue Authentifizierungsdaten für das bestehende
 iframe. Änderungen an `theme` oder Launcher-Farben werden live angewendet; ein
 neues `theme` wird zusätzlich per `HOST_THEME` an das bestehende iframe
-gesendet.
+gesendet. Änderungen an `presentation` oder `mount` gestalten beziehungsweise
+verschieben das vorhandene Element, ohne iframe oder Authentifizierung
+zurückzusetzen.
 
 ### Panel-Lebenszyklus
 
