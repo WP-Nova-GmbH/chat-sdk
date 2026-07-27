@@ -66,11 +66,32 @@ init({ publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
 | `triggerColorLight` | no | Light-mode launcher color; overrides `triggerColor`. |
 | `triggerColorDark` | no | Dark-mode launcher color; overrides `triggerColor`. |
 | `triggerIconColor` | no | `light`, `dark`, or hex. |
+| `launcher` | no | Show the SDK-owned launcher; defaults to `true`. |
 | `theme` | no | Host page mode (`light` or `dark`); defaults to `light` and updates live. |
 | `safeValueSelectors` | no | Selectors that opt safe field values into snapshots. |
 | `voiceMode` | no | Enables voice and iframe microphone delegation. |
 | `routes` | no | Permission-filtered `{ path, description }[]`, max 100. |
 | `settle` | no | `quietMs`, `maxWaitMs`, and `waitForNavigationSignal`. |
+
+## Host-owned launcher
+
+Set `launcher: false` and control the singleton panel from your own UI:
+
+```ts
+import { init, toggle } from "@wp-nova/chat-sdk";
+
+init({
+  publicSurfaceId: "surf_…",
+  tokenEndpoint: "/api/nova-token",
+  launcher: false,
+});
+
+document.querySelector("#assistant")?.addEventListener("click", toggle);
+```
+
+The global build supports `WpNova("open")`, `WpNova("close")`, and
+`WpNova("toggle")`. Use `subscribeOpenChange()` or the bubbling
+`wp-nova:open-change` event to keep host UI synchronized.
 
 ## Backend token contract
 

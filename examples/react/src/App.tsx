@@ -1,4 +1,9 @@
-import { NovaChatProvider, type NovaToolDefinition } from "@wp-nova/chat-sdk-react";
+import {
+    NovaChatProvider,
+    type NovaToolDefinition,
+    useNovaChat,
+    useNovaChatOpenState,
+} from "@wp-nova/chat-sdk-react";
 import { useMemo, useState } from "react";
 
 type ManifestStatus = "On time" | "Hold" | "Delayed" | "Released";
@@ -154,6 +159,7 @@ export function App() {
             accent: "#167c80",
             triggerColor: "#f0a202",
             triggerIconColor: "dark",
+            launcher: false,
             safeValueSelectors: parseSelectorList(settings.safeValueSelectors),
             voiceMode: true,
         }),
@@ -334,9 +340,12 @@ export function App() {
                         <p className="eyebrow">RailOps Control Desk</p>
                         <h1>West Corridor Freight Board</h1>
                     </div>
-                    <div className="ops-status" role="status" aria-label="Current yard status">
-                        <span>Shift Delta</span>
-                        <strong data-agent-readable-field>{banner}</strong>
+                    <div className="ops-header-actions">
+                        <CustomChatTrigger disabled={!enabled} />
+                        <div className="ops-status" role="status" aria-label="Current yard status">
+                            <span>Shift Delta</span>
+                            <strong data-agent-readable-field>{banner}</strong>
+                        </div>
                     </div>
                 </header>
 
@@ -598,6 +607,25 @@ export function App() {
         );
         recordEvent(setEvents, "button", `${id} status changed to ${status}.`);
     }
+}
+
+function CustomChatTrigger({ disabled }: { disabled: boolean }) {
+    const chat = useNovaChat();
+    const open = useNovaChatOpenState();
+
+    return (
+        <button
+            aria-expanded={open}
+            aria-haspopup="dialog"
+            className="chat-trigger"
+            disabled={disabled}
+            onClick={() => void chat.toggle()}
+            type="button"
+        >
+            <span aria-hidden="true">{open ? "×" : "✦"}</span>
+            {open ? "Close assistant" : "Ask Nova"}
+        </button>
+    );
 }
 
 function readInitialSettings(): SdkSettings {

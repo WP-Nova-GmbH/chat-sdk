@@ -19,6 +19,7 @@ Alle Optionen werden an `WpNova("init", config)` oder den Helper `init(config)` 
 | `triggerColorLight` | nein | Launcher-Farbe im hellen Modus; überschreibt dort `triggerColor`. |
 | `triggerColorDark` | nein | Launcher-Farbe im dunklen Modus; überschreibt dort `triggerColor`. |
 | `triggerIconColor` | nein | `light`, `dark` oder eine Hex-Farbe. |
+| `launcher` | nein | Zeigt den SDK-eigenen Launcher. Standard ist `true`; für einen Host-Button auf `false` setzen. |
 | `theme` | nein | Aktueller Modus der Host-Seite: `light` oder `dark`. Standard ist `light`. |
 | `safeValueSelectors` | nein | CSS-Selektoren, die Feldwerte für die Snapshot-Erfassung freigeben. |
 | `voiceMode` | nein | Aktiviert Spracheingabe und Mikrofon-Delegation an das Nova-iframe. |
@@ -36,6 +37,7 @@ init({
   title: "Assistant",
   accent: "#8665e3",
   triggerIconColor: "light",
+  launcher: true,
   theme: "light",
 });
 ```
@@ -123,4 +125,9 @@ freien Platz unten rechts. Minimieren über den iframe-Header blendet das Panel
 aus, lässt das iframe aber gemountet und erhält damit Route und Konversation.
 Das SDK hält außerdem Pointer-, Maus- und Klick-Events des Launchers in seinem
 Shadow Root, damit Outside-Click-Handler der Host-Seite nicht auf dieselbe
-Aktivierung reagieren. Dafür ist kein Integrationscode erforderlich.
+Aktivierung reagieren.
+
+Für einen eigenen Host-Button setze `launcher: false` und rufe `open()`,
+`close()` oder `toggle()` auf. Eine Live-Änderung von `launcher` ersetzt das
+iframe nicht. `subscribeOpenChange()` oder `wp-nova:open-change` hält den
+eigenen Button synchron, wenn das iframe sich selbst minimiert.

@@ -5,7 +5,22 @@ React provider and hooks for the Nova Chat SDK.
 📖 **Full documentation:** [https://wp-nova.ai/chat-sdk](https://wp-nova.ai/chat-sdk)
 
 ```tsx
-import { NovaChatProvider, useNovaTool } from "@wp-nova/chat-sdk-react";
+import {
+    NovaChatProvider,
+    useNovaChat,
+    useNovaChatOpenState,
+    useNovaTool,
+} from "@wp-nova/chat-sdk-react";
+
+function AssistantButton() {
+    const chat = useNovaChat();
+    const open = useNovaChatOpenState();
+    return (
+        <button aria-expanded={open} onClick={() => void chat.toggle()} type="button">
+            {open ? "Close assistant" : "Open assistant"}
+        </button>
+    );
+}
 
 function Tools() {
     useNovaTool({
@@ -33,6 +48,7 @@ export function App() {
                 theme: "dark",
                 triggerColorLight: "#7E54E4",
                 triggerColorDark: "#A991F2",
+                launcher: false,
                 routes: [
                     { path: "/customers", description: "Customer lookup list with search." },
                 ],
@@ -42,6 +58,7 @@ export function App() {
                 },
             }}
         >
+            <AssistantButton />
             <Tools />
         </NovaChatProvider>
     );

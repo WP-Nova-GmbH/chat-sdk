@@ -38,6 +38,7 @@ init({
 | `triggerColorLight` | No | Light-mode launcher color. Overrides `triggerColor` while `theme` is `light`. |
 | `triggerColorDark` | No | Dark-mode launcher color. Overrides `triggerColor` while `theme` is `dark`. |
 | `triggerIconColor` | No | `light`, `dark`, or a custom hex color for the launcher icon. |
+| `launcher` | No | Shows the SDK-owned launcher button. Defaults to `true`; set `false` for a host-owned trigger. |
 | `theme` | No | Host page color mode copied into the iframe: `light` or `dark`. Defaults to `light`. |
 | `safeValueSelectors` | No | CSS selectors that opt field values into page snapshot capture. Field values still pass sensitivity checks. |
 | `voiceMode` | No | Enables the embedded voice button and delegates microphone access to the Nova iframe. Defaults to `false`. |
@@ -55,6 +56,7 @@ init({
   title: "Assistant",
   accent: "#8665e3",
   triggerIconColor: "light",
+  launcher: true,
   theme: "light",
 });
 ```
@@ -147,8 +149,13 @@ Opening chat hides the launcher and lets the panel use the freed bottom-right
 space. Minimizing from the iframe header hides the panel but keeps the iframe
 mounted, preserving its route and conversation. The SDK also contains launcher
 pointer, mouse, and click events inside its shadow root so host-page
-outside-click handlers do not react to the same activation. No host integration
-code is required for these behaviors.
+outside-click handlers do not react to the same activation.
+
+For a host-owned trigger, set `launcher: false` and call `open()`, `close()`, or
+`toggle()`. Changing `launcher` live only changes button visibility; it does not
+replace the iframe or reset the conversation. Subscribe with
+`subscribeOpenChange()` or listen for `wp-nova:open-change` to keep custom
+controls synchronized when the iframe minimizes itself.
 
 ## Destroying the Embed
 

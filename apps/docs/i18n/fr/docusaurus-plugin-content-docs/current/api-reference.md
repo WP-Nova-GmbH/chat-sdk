@@ -9,6 +9,9 @@ title: Référence API
 
 ```ts
 WpNova("init", config);
+WpNova("open");
+WpNova("close");
+WpNova("toggle");
 WpNova("registerTool", definition);
 WpNova("unregisterTool", name);
 WpNova("destroy");
@@ -20,6 +23,11 @@ WpNova("destroy");
 import {
   WpNova,
   init,
+  open,
+  close,
+  toggle,
+  isOpen,
+  subscribeOpenChange,
   registerTool,
   unregisterTool,
   destroy,
@@ -48,6 +56,7 @@ export interface SdkConfig {
   triggerColorLight?: string;
   triggerColorDark?: string;
   triggerIconColor?: "light" | "dark" | string;
+  launcher?: boolean;
   theme?: HostTheme;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
@@ -84,6 +93,15 @@ dans leur mode respectif.
 
 `registerToolHandler` reste uniquement comme helper de compatibilité obsolète,
 limité à l’exécution. Un handler seul n’est pas proposé à l’agent.
+
+### Contrôle du panneau
+
+Le lanceur du SDK est activé par défaut. Définissez `launcher: false` lorsque
+la page hôte fournit son propre bouton, puis utilisez `open()`, `close()` ou
+`toggle()`. `isOpen()` renvoie l’état courant et `subscribeOpenChange()` signale
+aussi les changements venant du bouton de réduction dans l’iframe. L’élément
+monté émet également `wp-nova:open-change` avec `{ open: boolean }` dans
+`detail`.
 
 Un instantané post-action peut être `truncated`, `partial` ou `unsettled`
 et contient les `siteRoutes` validées.

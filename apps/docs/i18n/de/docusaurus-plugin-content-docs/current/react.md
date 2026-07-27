@@ -12,7 +12,12 @@ npm install @wp-nova/chat-sdk @wp-nova/chat-sdk-react
 ```
 
 ```tsx
-import { NovaChatProvider, useNovaTool } from "@wp-nova/chat-sdk-react";
+import {
+  NovaChatProvider,
+  useNovaChat,
+  useNovaChatOpenState,
+  useNovaTool,
+} from "@wp-nova/chat-sdk-react";
 
 function CustomerTools() {
   useNovaTool({
@@ -58,3 +63,25 @@ ab. Bei einer Änderung aktualisiert der Provider Launcher, Panel und bestehende
 iframe ohne neuen Token-Abruf oder Verlust der Konversation.
 `triggerColorLight` und `triggerColorDark` aktualisieren den vorhandenen
 Launcher, ohne ihn neu zu mounten.
+
+### Eigener Launcher
+
+Setze `launcher: false` und verwende die Hooks für einen Button im Design der
+Host-Anwendung:
+
+```tsx
+function AssistantButton() {
+  const chat = useNovaChat();
+  const open = useNovaChatOpenState();
+
+  return (
+    <button aria-expanded={open} onClick={() => void chat.toggle()}>
+      {open ? "Assistent schließen" : "Assistent öffnen"}
+    </button>
+  );
+}
+```
+
+`useNovaChat()` stellt `open()`, `close()` und `toggle()` bereit.
+`useNovaChatOpenState()` bleibt auch beim Minimieren innerhalb des iframes
+synchron.

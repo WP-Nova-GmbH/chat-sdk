@@ -52,6 +52,47 @@ conversation reset. Changes to `triggerColorLight` and `triggerColorDark`
 update the existing launcher without remounting. Keep the config memoized as
 described below.
 
+## Custom Launcher
+
+The built-in launcher is enabled by default. Set `launcher: false` and render a
+host-owned button inside the provider when it needs to match your application UI.
+
+```tsx
+import {
+  NovaChatProvider,
+  useNovaChat,
+  useNovaChatOpenState,
+} from "@wp-nova/chat-sdk-react";
+
+function AssistantButton() {
+  const chat = useNovaChat();
+  const open = useNovaChatOpenState();
+
+  return (
+    <button
+      aria-expanded={open}
+      onClick={() => void chat.toggle()}
+      type="button"
+    >
+      {open ? "Close assistant" : "Open assistant"}
+    </button>
+  );
+}
+
+export function App() {
+  return (
+    <NovaChatProvider config={{ ...novaConfig, launcher: false }}>
+      <AssistantButton />
+      <Routes />
+    </NovaChatProvider>
+  );
+}
+```
+
+`useNovaChat()` exposes `open()`, `close()`, and `toggle()`.
+`useNovaChatOpenState()` follows all transitions, including minimize actions
+inside the iframe, so labels and `aria-expanded` remain accurate.
+
 ## Registering Tools with Definitions
 
 If your tools are stable inside one component, pass them through the `tools` prop:

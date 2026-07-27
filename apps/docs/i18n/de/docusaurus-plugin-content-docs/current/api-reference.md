@@ -9,6 +9,9 @@ title: API-Referenz
 
 ```ts
 WpNova("init", config);
+WpNova("open");
+WpNova("close");
+WpNova("toggle");
 WpNova("registerTool", definition);
 WpNova("unregisterTool", name);
 WpNova("destroy");
@@ -20,6 +23,11 @@ WpNova("destroy");
 import {
   WpNova,
   init,
+  open,
+  close,
+  toggle,
+  isOpen,
+  subscribeOpenChange,
   registerTool,
   unregisterTool,
   destroy,
@@ -48,6 +56,7 @@ export interface SdkConfig {
   triggerColorLight?: string;
   triggerColorDark?: string;
   triggerIconColor?: "light" | "dark" | string;
+  launcher?: boolean;
   theme?: HostTheme;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
@@ -85,6 +94,15 @@ Konversation zurückzusetzen. `triggerColorLight` und `triggerColorDark`
 `registerToolHandler` bleibt nur als veralteter, ausführungsbezogener
 Kompatibilitäts-Helper verfügbar. Ein solcher Handler wird dem Agenten nicht
 angeboten.
+
+### Panel-Steuerung
+
+Der SDK-eigene Launcher ist standardmäßig aktiv. Setze `launcher: false`, wenn
+die Host-Seite einen eigenen Button bereitstellt, und verwende `open()`,
+`close()` oder `toggle()`. `isOpen()` liefert den aktuellen Zustand;
+`subscribeOpenChange()` meldet auch Änderungen durch den Minimieren-Button im
+iframe. Das gemountete Element sendet zusätzlich das Event
+`wp-nova:open-change` mit `{ open: boolean }` in `detail`.
 
 Ein Post-Action-Snapshot kann `truncated`, `partial` oder `unsettled` sein
 und enthält die validierten `siteRoutes`.

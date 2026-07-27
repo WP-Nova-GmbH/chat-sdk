@@ -111,6 +111,25 @@ export class CustomerToolRegistration {
 }
 ```
 
+The service also exposes `open()`, `close()`, and `toggle()` for host-owned
+controls. Disable the SDK launcher in configuration and wire any Angular button:
+
+```ts
+provideNovaChat({
+  publicSurfaceId: "surf_...",
+  tokenEndpoint: "/api/nova-token",
+  launcher: false,
+});
+```
+
+```html
+<button type="button" (click)="nova.toggle()">Assistant</button>
+<wp-nova-chat-mount />
+```
+
+Keep `nova` public or delegate through a component method when the template
+needs access to it.
+
 The same definition can be passed through the component's `tools` input. See
 [Tools and guided workflows](./tools.md) for confirmation, abort, and handler rules.
 

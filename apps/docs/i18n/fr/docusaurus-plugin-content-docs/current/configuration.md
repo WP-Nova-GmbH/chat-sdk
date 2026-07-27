@@ -19,6 +19,7 @@ Toutes les options sont transmises à `WpNova("init", config)` ou au helper `ini
 | `triggerColorLight` | non | Couleur du lanceur en mode clair ; remplace alors `triggerColor`. |
 | `triggerColorDark` | non | Couleur du lanceur en mode sombre ; remplace alors `triggerColor`. |
 | `triggerIconColor` | non | `light`, `dark` ou une couleur hexadécimale. |
+| `launcher` | non | Affiche le lanceur du SDK. Par défaut : `true` ; utilisez `false` pour un bouton hôte. |
 | `theme` | non | Mode actuel de la page hôte : `light` ou `dark`. Par défaut : `light`. |
 | `safeValueSelectors` | non | Sélecteurs CSS qui autorisent la capture des valeurs de champ dans les instantanés. |
 | `voiceMode` | non | Active la voix et délègue le microphone à l’iframe Nova. |
@@ -36,6 +37,7 @@ init({
   title: "Assistant",
   accent: "#8665e3",
   triggerIconColor: "light",
+  launcher: true,
   theme: "light",
 });
 ```
@@ -123,4 +125,9 @@ libéré en bas à droite. Réduire le panneau depuis l’en-tête de l’iframe
 masque sans démonter l’iframe, ce qui conserve sa route et la conversation. Le
 SDK contient aussi les événements pointer, souris et clic du lanceur dans son
 Shadow DOM afin que les handlers de clic extérieur de la page hôte ne réagissent
-pas à la même activation. Aucun code d’intégration n’est requis.
+pas à la même activation.
+
+Pour un bouton hôte, définissez `launcher: false` puis appelez `open()`,
+`close()` ou `toggle()`. Modifier `launcher` en direct ne remplace pas l’iframe.
+Utilisez `subscribeOpenChange()` ou `wp-nova:open-change` pour synchroniser le
+bouton lorsque l’iframe réduit elle-même le panneau.

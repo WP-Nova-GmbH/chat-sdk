@@ -9,6 +9,9 @@ The script-tag build installs `window.WpNova`. Calls made before the SDK loads a
 
 ```ts
 WpNova("init", config);
+WpNova("open");
+WpNova("close");
+WpNova("toggle");
 WpNova("registerTool", tool);
 WpNova("unregisterTool", name);
 WpNova("destroy");
@@ -20,6 +23,11 @@ WpNova("destroy");
 import {
   WpNova,
   init,
+  open,
+  close,
+  toggle,
+  isOpen,
+  subscribeOpenChange,
   destroy,
   registerTool,
   unregisterTool,
@@ -27,6 +35,7 @@ import {
   release,
   defineElement,
   ELEMENT_TAG,
+  OPEN_CHANGE_EVENT,
   WpNovaChatElement,
   DEFAULT_SETTLE,
   SETTLED_EVENT,
@@ -36,6 +45,30 @@ import {
 ```
 
 `WpNova(command, ...args)` and the named helpers call the same singleton controller.
+
+## Panel Controls
+
+The SDK-owned launcher is enabled by default. Set `launcher: false` when the
+host page provides its own button, then control the same singleton panel through
+`open()`, `close()`, or `toggle()`. Calls made before `init()` are retained and
+applied when the element mounts.
+
+```ts
+import { init, toggle } from "@wp-nova/chat-sdk";
+
+init({
+  publicSurfaceId: "surf_...",
+  tokenEndpoint: "/api/nova-token",
+  launcher: false,
+});
+
+document.querySelector("#assistant")?.addEventListener("click", toggle);
+```
+
+`isOpen()` returns the current state. `subscribeOpenChange(listener)` reports
+transitions from every source, including the iframe minimize control, and
+returns an unsubscribe function. The mounted custom element also emits a
+bubbling `wp-nova:open-change` event with `{ open: boolean }` in `detail`.
 
 ## SdkConfig
 
@@ -53,6 +86,7 @@ export interface SdkConfig {
   triggerColorLight?: string;
   triggerColorDark?: string;
   triggerIconColor?: "light" | "dark" | string;
+  launcher?: boolean;
   theme?: HostTheme;
   safeValueSelectors?: string[];
   voiceMode?: boolean;

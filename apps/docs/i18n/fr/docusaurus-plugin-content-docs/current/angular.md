@@ -36,7 +36,7 @@ import { NovaChatComponent, NovaChatService } from "@wp-nova/chat-sdk-angular";
   template: `<wp-nova-chat-mount />`,
 })
 export class AppComponent {
-  private readonly nova = inject(NovaChatService);
+  readonly nova = inject(NovaChatService);
 
   constructor() {
     this.nova.registerTool({
@@ -66,3 +66,11 @@ l’input `config` du composant ou appelez
 lanceur, le panneau et l’iframe existante sans récupérer de nouveau token ni
 perdre la conversation. `triggerColorLight` et `triggerColorDark` mettent le
 lanceur existant à jour sans remontage.
+
+Pour un bouton fourni par la page hôte, définissez `launcher: false`.
+`NovaChatService` fournit `open()`, `close()` et `toggle()` :
+
+```html
+<button type="button" (click)="nova.toggle()">Assistant</button>
+<wp-nova-chat-mount />
+```

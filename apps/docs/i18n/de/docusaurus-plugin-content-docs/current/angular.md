@@ -36,7 +36,7 @@ import { NovaChatComponent, NovaChatService } from "@wp-nova/chat-sdk-angular";
   template: `<wp-nova-chat-mount />`,
 })
 export class AppComponent {
-  private readonly nova = inject(NovaChatService);
+  readonly nova = inject(NovaChatService);
 
   constructor() {
     this.nova.registerTool({
@@ -67,3 +67,11 @@ Wenn sich das Host-Theme nach dem Bootstrap ändern kann, binde die aktuelle
 Launcher, Panel und bestehendes iframe ohne neuen Token-Abruf oder Verlust der
 Konversation. `triggerColorLight` und `triggerColorDark` aktualisieren den
 vorhandenen Launcher ohne Remount.
+
+Für einen eigenen Host-Button setze `launcher: false`. Der
+`NovaChatService` stellt `open()`, `close()` und `toggle()` bereit:
+
+```html
+<button type="button" (click)="nova.toggle()">Assistent</button>
+<wp-nova-chat-mount />
+```
