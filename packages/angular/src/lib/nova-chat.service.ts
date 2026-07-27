@@ -68,6 +68,24 @@ export class NovaChatService {
             .catch((error) => reportAngularOperationError("release", error));
     }
 
+    open(): void {
+        void this.load()
+            .then((sdk) => sdk.open())
+            .catch((error) => reportAngularOperationError("open", error));
+    }
+
+    close(): void {
+        void this.load()
+            .then((sdk) => sdk.close())
+            .catch((error) => reportAngularOperationError("close", error));
+    }
+
+    toggle(): void {
+        void this.load()
+            .then((sdk) => sdk.toggle())
+            .catch((error) => reportAngularOperationError("toggle", error));
+    }
+
     destroy(): void {
         void this.load()
             .then((sdk) => sdk.destroy())

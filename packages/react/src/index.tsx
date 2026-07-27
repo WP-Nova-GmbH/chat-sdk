@@ -8,6 +8,7 @@ import {
     useEffect,
     useMemo,
     useRef,
+    useState,
 } from "react";
 
 type SdkModule = typeof import("@wp-nova/chat-sdk");
@@ -37,6 +38,9 @@ export interface NovaChatApi {
     retain: () => Promise<void>;
     /** Drop a live mount; the shared element tears down only at the last release. */
     release: () => Promise<void>;
+    open: () => Promise<void>;
+    close: () => Promise<void>;
+    toggle: () => Promise<void>;
     destroy: () => Promise<void>;
 }
 
@@ -113,6 +117,15 @@ function useSdkApi(): NovaChatApi {
             release() {
                 return runQueued((sdk) => sdk.release());
             },
+            open() {
+                return runQueued((sdk) => sdk.open());
+            },
+            close() {
+                return runQueued((sdk) => sdk.close());
+            },
+            toggle() {
+                return runQueued((sdk) => sdk.toggle());
+            },
             destroy() {
                 return runQueued((sdk) => sdk.destroy());
             },
@@ -161,6 +174,7 @@ export function NovaChatProvider({
         config.triggerColorLight,
         config.triggerColorDark,
         config.triggerIconColor,
+        config.launcher,
         config.theme,
         config.safeValueSelectors,
         config.voiceMode,
@@ -242,6 +256,34 @@ export function useNovaChat(): NovaChatApi {
     const context = useContext(NovaChatContext);
     const fallback = useSdkApi();
     return context ?? fallback;
+}
+
+/**
+ * Reactive open state for host-owned controls. The core SDK remains the source
+ * of truth, so iframe minimization and every imperative API path stay in sync.
+ */
+export function useNovaChatOpenState(): boolean {
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+        let unsubscribe: (() => void) | undefined;
+
+        void loadSdk()
+            .then((sdk) => {
+                if (!active) return;
+                unsubscribe = sdk.subscribeOpenChange(setOpen);
+                setOpen(sdk.isOpen());
+            })
+            .catch((error) => reportOperationError("open-state subscription", error));
+
+        return () => {
+            active = false;
+            unsubscribe?.();
+        };
+    }, []);
+
+    return open;
 }
 
 export function useNovaTool(tool: NovaToolDefinition) {
