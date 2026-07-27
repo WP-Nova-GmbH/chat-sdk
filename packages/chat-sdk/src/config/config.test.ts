@@ -114,6 +114,12 @@ test("host theme defaults to light and accepts an explicit dark mode", () => {
     assert.equal(resolveConfig({ ...REQUIRED_CONFIG, theme: "dark" }).theme, "dark");
 });
 
+test("SDK launcher defaults to enabled and supports host-owned controls", () => {
+    assert.equal(resolveConfig(REQUIRED_CONFIG).launcherEnabled, true);
+    assert.equal(resolveConfig({ ...REQUIRED_CONFIG, launcher: true }).launcherEnabled, true);
+    assert.equal(resolveConfig({ ...REQUIRED_CONFIG, launcher: false }).launcherEnabled, false);
+});
+
 test("voice mode is disabled by default and omitted from the iframe URL", () => {
     const config = resolveConfig(REQUIRED_CONFIG);
 

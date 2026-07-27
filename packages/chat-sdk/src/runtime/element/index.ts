@@ -1,1 +1,7 @@
-export { defineElement, ELEMENT_TAG, WpNovaChatElement } from "./element.js";
+export {
+    defineElement,
+    ELEMENT_TAG,
+    OPEN_CHANGE_EVENT,
+    type OpenChangeDetail,
+    WpNovaChatElement,
+} from "./element.js";

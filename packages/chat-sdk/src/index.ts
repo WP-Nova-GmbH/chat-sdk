@@ -20,18 +20,30 @@ export type {
 } from "./protocol/types/index.js";
 export {
     type Command,
+    close,
     destroy,
     init,
     installGlobal,
+    isOpen,
+    type OpenChangeListener,
+    open,
     type QueuedWpNova,
     registerTool,
     /** @deprecated Use registerTool so the agent receives the tool spec and handler together. */
     registerToolHandler,
     release,
     retain,
+    subscribeOpenChange,
+    toggle,
     unregisterTool,
     /** @deprecated Use unregisterTool for SDK-declared tools. */
     unregisterToolHandler,
     WpNova,
 } from "./runtime/controller.js";
-export { defineElement, ELEMENT_TAG, WpNovaChatElement } from "./runtime/element/index.js";
+export {
+    defineElement,
+    ELEMENT_TAG,
+    OPEN_CHANGE_EVENT,
+    type OpenChangeDetail,
+    WpNovaChatElement,
+} from "./runtime/element/index.js";

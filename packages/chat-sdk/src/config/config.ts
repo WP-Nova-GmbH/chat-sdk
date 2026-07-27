@@ -56,6 +56,8 @@ export interface ResolvedConfig {
     triggerColor: string;
     /** Launcher icon color; supports "light", "dark", or a hex color. */
     triggerIconColor: string;
+    /** Whether the SDK-owned launcher button is visible. */
+    launcherEnabled: boolean;
     /** Host page color mode forwarded to the iframe; defaults to light. */
     theme: HostTheme;
     /** True when the host config supplied a launcher/accent color for first paint. */
@@ -185,6 +187,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
         accent: config.accent || DEFAULT_ACCENT,
         triggerColor,
         triggerIconColor: config.triggerIconColor || "light",
+        launcherEnabled: config.launcher !== false,
         theme,
         hasFirstPaintLauncherColor,
         safeValueSelectors: Array.isArray(config.safeValueSelectors)

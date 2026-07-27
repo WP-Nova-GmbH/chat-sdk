@@ -9,10 +9,23 @@ class FakeHTMLElement {}
 
 /** The singleton the exported retain/release/destroy helpers operate on. */
 interface TestController {
+    hasPendingOpenState: boolean;
     mountRefs: number;
-    element?: { destroy: () => void };
+    openState: boolean;
+    element?: {
+        close?: () => void;
+        destroy: () => void;
+        isOpen?: boolean;
+        open?: () => void;
+        removeEventListener: () => void;
+    };
+    close: () => void;
+    isOpen: () => boolean;
+    open: () => void;
     retain: () => void;
     release: () => void;
+    subscribeOpenChange: (listener: (open: boolean) => void) => () => void;
+    toggle: () => void;
 }
 
 let retain: () => void;
@@ -42,10 +55,13 @@ function freshController(): TestController {
         | undefined;
     assert.ok(controller, "expected the global SDK controller to exist");
     controller.mountRefs = 0;
+    controller.openState = false;
+    controller.hasPendingOpenState = false;
     controller.element = {
         destroy() {
             controller.element = undefined;
         },
+        removeEventListener() {},
     };
     return controller;
 }
@@ -59,6 +75,7 @@ test("release tears down the shared element only when the last mount releases", 
             destroyed++;
             element?.destroy();
         },
+        removeEventListener() {},
     };
 
     controller.retain();
@@ -86,6 +103,7 @@ test("release never underflows the refcount or re-tears-down a gone element", ()
             destroyed++;
             element?.destroy();
         },
+        removeEventListener() {},
     };
 
     controller.retain();
@@ -110,6 +128,7 @@ test("repeated retain stacks the refcount (retain/release are per-mount, not per
             destroyed++;
             element?.destroy();
         },
+        removeEventListener() {},
     };
 
     controller.retain();
@@ -122,4 +141,52 @@ test("repeated retain stacks the refcount (retain/release are per-mount, not per
     assert.equal(destroyed, 0);
     controller.release();
     assert.equal(destroyed, 1);
+});
+
+test("open, close and toggle are idempotent and publish real transitions", () => {
+    const controller = freshController();
+    const changes: boolean[] = [];
+    const unsubscribe = controller.subscribeOpenChange((open) => changes.push(open));
+    let elementOpen = false;
+    controller.element = {
+        get isOpen() {
+            return elementOpen;
+        },
+        open() {
+            elementOpen = true;
+        },
+        close() {
+            elementOpen = false;
+        },
+        destroy() {
+            elementOpen = false;
+            controller.element = undefined;
+        },
+        removeEventListener() {},
+    };
+
+    controller.open();
+    controller.open();
+    assert.equal(controller.isOpen(), true);
+    assert.equal(elementOpen, true);
+
+    controller.toggle();
+    controller.close();
+    assert.equal(controller.isOpen(), false);
+    assert.equal(elementOpen, false);
+    assert.deepEqual(changes, [true, false]);
+
+    unsubscribe();
+    controller.open();
+    assert.deepEqual(changes, [true, false]);
+});
+
+test("an open request made before init is retained for the eventual element", () => {
+    const controller = freshController();
+    controller.element = undefined;
+
+    controller.open();
+
+    assert.equal(controller.isOpen(), true);
+    assert.equal(controller.hasPendingOpenState, true);
 });

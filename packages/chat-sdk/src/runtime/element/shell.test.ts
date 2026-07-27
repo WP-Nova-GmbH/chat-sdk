@@ -37,6 +37,57 @@ test("launcher stays hidden while first-paint theme is pending", () => {
     assert.equal(element.shell.launcher.hidden, false);
 });
 
+test("launcher can be disabled and re-enabled without replacing the iframe", () => {
+    const element = makeElement() as {
+        shadowRoot?: {
+            getElementById: (id: string) => { hidden: boolean };
+        };
+        shell: {
+            frame?: unknown;
+            applyConfig: (config: ResolvedConfig) => void;
+            render: (config: ResolvedConfig) => void;
+        };
+    };
+    const disabledConfig = resolvedConfig({ launcherEnabled: false });
+    element.shell.applyConfig(disabledConfig);
+    element.shell.render(disabledConfig);
+    const iframe = element.shell.frame;
+    const launcher = element.shadowRoot?.getElementById("launcher");
+
+    assert.equal(launcher?.hidden, true);
+
+    element.shell.applyConfig(resolvedConfig({ launcherEnabled: true }));
+    assert.equal(launcher?.hidden, false);
+    assert.equal(element.shell.frame, iframe);
+
+    element.shell.applyConfig(disabledConfig);
+    assert.equal(launcher?.hidden, true);
+    assert.equal(element.shell.frame, iframe);
+});
+
+test("open-state events describe real transitions only", () => {
+    const changes: boolean[] = [];
+    const element = makeElement() as {
+        addEventListener: (name: string, listener: (event: Event) => void) => void;
+        close: () => void;
+        isOpen: boolean;
+        open: () => void;
+        toggle: () => void;
+    };
+    element.addEventListener("wp-nova:open-change", (event) => {
+        changes.push((event as CustomEvent<{ open: boolean }>).detail.open);
+    });
+
+    element.open();
+    element.open();
+    assert.equal(element.isOpen, true);
+
+    element.toggle();
+    element.close();
+    assert.equal(element.isOpen, false);
+    assert.deepEqual(changes, [true, false]);
+});
+
 test("setConfig seeds host launcher colors before shadow render", () => {
     const appliedTheme: Array<[string, string]> = [];
     const element = makeElement() as {

@@ -2,7 +2,15 @@ import { resolveConfig } from "../config/config.js";
 import { formatErrorMessage } from "../config/diagnostics.js";
 import type { SdkConfig, ToolDefinition, ToolHandler } from "../protocol/types/index.js";
 import { ToolRegistry } from "../tools/tools.js";
-import { defineElement, ELEMENT_TAG, type WpNovaChatElement } from "./element/index.js";
+import {
+    defineElement,
+    ELEMENT_TAG,
+    OPEN_CHANGE_EVENT,
+    type OpenChangeDetail,
+    type WpNovaChatElement,
+} from "./element/index.js";
+
+export type OpenChangeListener = (open: boolean) => void;
 
 /** Commands the queued `WpNova(...)` dispatcher accepts. */
 export type Command =
@@ -11,6 +19,9 @@ export type Command =
     | ["unregisterTool", string]
     | ["registerToolHandler", string, ToolHandler]
     | ["unregisterToolHandler", string]
+    | ["open"]
+    | ["close"]
+    | ["toggle"]
     | ["retain"]
     | ["release"]
     | ["destroy"]
@@ -31,8 +42,15 @@ export interface QueuedWpNova {
 class SdkController {
     private readonly registry = new ToolRegistry();
     private element?: WpNovaChatElement;
+    private openState = false;
+    private hasPendingOpenState = false;
+    private readonly openChangeListeners = new Set<OpenChangeListener>();
     /** Live mount count. The shared element is torn down only when it hits 0. */
     private mountRefs = 0;
+    private readonly onElementOpenChange = (event: Event): void => {
+        const detail = (event as CustomEvent<OpenChangeDetail>).detail;
+        if (typeof detail?.open === "boolean") this.updateOpenState(detail.open);
+    };
 
     dispatch = (...args: Command): void => {
         const [command, ...rest] = args;
@@ -52,6 +70,15 @@ class SdkController {
             case "unregisterToolHandler":
                 this.registry.unregisterHandler(rest[0] as string);
                 break;
+            case "open":
+                this.open();
+                break;
+            case "close":
+                this.close();
+                break;
+            case "toggle":
+                this.toggle();
+                break;
             case "retain":
                 this.retain();
                 break;
@@ -65,6 +92,32 @@ class SdkController {
                 console.warn(`[wp-nova] unknown command: ${String(command)}`);
         }
     };
+
+    open(): void {
+        if (!this.element) this.hasPendingOpenState = true;
+        this.updateOpenState(true);
+        this.element?.open();
+    }
+
+    close(): void {
+        if (!this.element) this.hasPendingOpenState = true;
+        this.updateOpenState(false);
+        this.element?.close();
+    }
+
+    toggle(): void {
+        if (this.element?.isOpen ?? this.openState) this.close();
+        else this.open();
+    }
+
+    isOpen(): boolean {
+        return this.openState;
+    }
+
+    subscribeOpenChange(listener: OpenChangeListener): () => void {
+        this.openChangeListeners.add(listener);
+        return () => this.openChangeListeners.delete(listener);
+    }
 
     /**
      * Register a live mount. Called once per mount lifecycle (NOT per `init`), so
@@ -94,9 +147,17 @@ class SdkController {
                 const element =
                     existing ?? (document.createElement(ELEMENT_TAG) as WpNovaChatElement);
                 element.setRegistry(this.registry);
+                element.addEventListener(OPEN_CHANGE_EVENT, this.onElementOpenChange);
                 if (!existing) this.mountInto(element, config.mount);
                 element.setConfig(config);
                 this.element = element;
+                if (this.hasPendingOpenState) {
+                    if (this.openState) element.open();
+                    else element.close();
+                    this.hasPendingOpenState = false;
+                } else {
+                    this.updateOpenState(element.isOpen);
+                }
                 return;
             }
 
@@ -108,8 +169,18 @@ class SdkController {
     }
 
     private destroy(): void {
-        this.element?.destroy();
+        const element = this.element;
+        element?.destroy();
+        element?.removeEventListener(OPEN_CHANGE_EVENT, this.onElementOpenChange);
         this.element = undefined;
+        this.hasPendingOpenState = false;
+        this.updateOpenState(false);
+    }
+
+    private updateOpenState(open: boolean): void {
+        if (this.openState === open) return;
+        this.openState = open;
+        for (const listener of this.openChangeListeners) listener(open);
     }
 
     private mountInto(element: HTMLElement, mount?: string | HTMLElement): void {
@@ -167,6 +238,31 @@ export function registerToolHandler(name: string, handler: ToolHandler): void {
 /** @deprecated Use unregisterTool for SDK-declared tools. */
 export function unregisterToolHandler(name: string): void {
     WpNova("unregisterToolHandler", name);
+}
+
+/** Open the shared chat panel. Safe to call before init; the state is applied on mount. */
+export function open(): void {
+    WpNova("open");
+}
+
+/** Close the shared chat panel without destroying its iframe or conversation. */
+export function close(): void {
+    WpNova("close");
+}
+
+/** Toggle the shared chat panel between open and closed. */
+export function toggle(): void {
+    WpNova("toggle");
+}
+
+/** Return the controller's current (or pre-init requested) open state. */
+export function isOpen(): boolean {
+    return getController().isOpen();
+}
+
+/** Subscribe to open-state transitions. Returns an unsubscribe callback. */
+export function subscribeOpenChange(listener: OpenChangeListener): () => void {
+    return getController().subscribeOpenChange(listener);
 }
 
 /**

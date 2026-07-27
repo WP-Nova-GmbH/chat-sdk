@@ -34,6 +34,13 @@ import { TokenTimers } from "./token-timers.js";
 /** Tag name of the custom element. */
 export const ELEMENT_TAG = "wp-nova-chat";
 
+/** Emitted after the SDK panel transitions between its open and closed states. */
+export const OPEN_CHANGE_EVENT = "wp-nova:open-change";
+
+export interface OpenChangeDetail {
+    open: boolean;
+}
+
 export class WpNovaChatElement extends HTMLElement {
     private resolved?: ResolvedConfig;
     private registry = new ToolRegistry();
@@ -91,8 +98,21 @@ export class WpNovaChatElement extends HTMLElement {
         this.tokenTimers.clear();
     }
 
-    attributeChangedCallback(name: string): void {
-        if (name === "open") this.shell.setOpen(this.hasAttribute("open"));
+    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+        if (name !== "open" || oldValue === newValue) return;
+        const open = this.hasAttribute("open");
+        this.shell.setOpen(open);
+        this.dispatchEvent(
+            new CustomEvent<OpenChangeDetail>(OPEN_CHANGE_EVENT, {
+                bubbles: true,
+                composed: true,
+                detail: { open },
+            }),
+        );
+    }
+
+    get isOpen(): boolean {
+        return this.hasAttribute("open");
     }
 
     open(): void {
@@ -108,6 +128,7 @@ export class WpNovaChatElement extends HTMLElement {
 
     /** Explicit teardown used by framework wrappers and the public destroy command. */
     destroy(): void {
+        this.close();
         this.teardownFrame();
         this.remove();
     }

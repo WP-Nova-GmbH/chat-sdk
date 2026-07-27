@@ -52,6 +52,7 @@ export class ChatShell {
     private launcher?: HTMLButtonElement;
     private shadowReady = false;
     private launcherThemeReady = false;
+    private launcherEnabled = true;
     private developmentMode = false;
     private hostConfiguredLauncherColor = false;
 
@@ -67,6 +68,7 @@ export class ChatShell {
 
     applyConfig(config: ResolvedConfig): void {
         this.hostConfiguredLauncherColor = config.hasFirstPaintLauncherColor;
+        this.launcherEnabled = config.launcherEnabled;
         // Once trusted surface settings have revealed the launcher, live config
         // updates (such as a host theme change) must not hide it again.
         this.launcherThemeReady ||= config.hasFirstPaintLauncherColor;
@@ -82,9 +84,7 @@ export class ChatShell {
             reveal: false,
         });
         if (this.shadowReady) {
-            if (!this.launcherThemeReady) {
-                this.syncLauncherThemeVisibility();
-            }
+            this.syncLauncherThemeVisibility();
             this.applyLauncherTheme({
                 triggerColor: config.triggerColor,
                 triggerIconColor: config.triggerIconColor,
@@ -99,6 +99,7 @@ export class ChatShell {
         this.launcher = undefined;
         this.shadowReady = false;
         this.launcherThemeReady = false;
+        this.launcherEnabled = true;
         this.developmentMode = false;
         this.host.removeAttribute("data-wpn-dev");
     }
@@ -115,7 +116,8 @@ export class ChatShell {
         const panelBorder = resolvePanelBorder(config.theme);
         const title = config.title;
         this.syncLauncherThemeVisibility();
-        const launcherHiddenAttribute = this.launcherThemeReady ? "" : " hidden";
+        const launcherHiddenAttribute =
+            this.launcherEnabled && this.launcherThemeReady ? "" : " hidden";
         const microphoneAllowAttribute = config.voiceModeEnabled ? ' allow="microphone"' : "";
         shadow.innerHTML = [
             "<style>",
@@ -279,7 +281,10 @@ export class ChatShell {
         if (this.launcherThemeReady) this.host.removeAttribute("launcher-theme-pending");
         else this.host.setAttribute("launcher-theme-pending", "");
         if (this.launcher) {
-            this.launcher.hidden = !this.launcherThemeReady || this.host.hasAttribute("open");
+            this.launcher.hidden =
+                !this.launcherEnabled ||
+                !this.launcherThemeReady ||
+                this.host.hasAttribute("open");
         }
     }
 

@@ -44,6 +44,12 @@ export interface SdkConfig {
     /** Launcher icon color for the pre-auth shell: "light", "dark", or a hex color. */
     triggerIconColor?: string;
     /**
+     * Whether the SDK-owned launcher button is shown. Defaults to true. Set to
+     * false when the host page provides its own control and uses the public
+     * open/close/toggle API.
+     */
+    launcher?: boolean;
+    /**
      * Host page color mode forwarded to the embedded chat. Defaults to "light".
      * Re-running init with a new value updates the existing iframe in place.
      */
