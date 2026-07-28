@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DEFAULT_ACCENT, type ResolvedConfig } from "../../config/config.js";
+import { SIDEBAR_RESIZE_EVENT } from "./shell.js";
 import {
     makeElement,
     resetElementTestGlobals,
@@ -519,3 +520,105 @@ test("window resize fallback uses the default 768px docking threshold", () => {
     element.shell.reset();
     assert.equal(removedListener, resizeListener);
 });
+
+test("sidebar resizing is opt-in and preserves the iframe while dragging or using keys", () => {
+    const resizedWidths: number[] = [];
+    const windowListeners = new Map<string, (event: Event) => void>();
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: {
+            addEventListener(name: string, listener: (event: Event) => void) {
+                windowListeners.set(name, listener);
+            },
+            removeEventListener(name: string, listener: (event: Event) => void) {
+                if (windowListeners.get(name) === listener) windowListeners.delete(name);
+            },
+        },
+    });
+    const element = makeElement() as {
+        addEventListener: (name: string, listener: (event: Event) => void) => void;
+        getAttribute: (name: string) => string | null;
+        setAttribute: (name: string) => void;
+        shadowRoot?: {
+            innerHTML: string;
+            getElementById: (id: string) => {
+                dispatch: (name: string, event: Event) => void;
+                getAttribute: (name: string) => string | undefined;
+            };
+        };
+        style: { getPropertyValue: (name: string) => string };
+        shell: {
+            frame?: unknown;
+            applyConfig: (config: ResolvedConfig) => void;
+            render: (config: ResolvedConfig) => void;
+        };
+    };
+    const container = new HTMLElement() as HTMLElement & { layoutWidth: number };
+    container.layoutWidth = 1000;
+    container.appendChild(element as unknown as Node);
+    const fixed = resolvedConfig({
+        presentationMode: "sidebar",
+        sidebarWidth: 420,
+        sidebarResizable: false,
+    });
+    element.shell.applyConfig(fixed);
+    element.shell.render(fixed);
+    element.setAttribute("open");
+    const iframe = element.shell.frame;
+    const resizer = element.shadowRoot?.getElementById("sidebar-resizer");
+    element.addEventListener(SIDEBAR_RESIZE_EVENT, (event) => {
+        resizedWidths.push((event as CustomEvent<{ width: number }>).detail.width);
+    });
+
+    assert.equal(element.getAttribute("data-wpn-sidebar-resizable"), null);
+    assert.equal(element.shadowRoot?.innerHTML.includes("#sidebar-resizer{display:none;}"), true);
+    resizer?.dispatch("pointerdown", pointerEvent({ clientX: 500, pointerId: 1 }));
+    resizer?.dispatch("pointermove", pointerEvent({ clientX: 450, pointerId: 1 }));
+    resizer?.dispatch("pointerup", pointerEvent({ clientX: 450, pointerId: 1 }));
+    assert.equal(element.style.getPropertyValue("--wpn-sidebar-width"), "420px");
+    assert.deepEqual(resizedWidths, []);
+
+    element.shell.applyConfig({ ...fixed, sidebarResizable: true });
+    assert.equal(element.getAttribute("data-wpn-sidebar-resizable"), "");
+    resizer?.dispatch("pointerdown", pointerEvent({ clientX: 500, pointerId: 2 }));
+    windowListeners.get("pointermove")?.(pointerEvent({ clientX: 450, pointerId: 2 }));
+    windowListeners.get("pointerup")?.(pointerEvent({ clientX: 450, pointerId: 2 }));
+    assert.equal(element.style.getPropertyValue("--wpn-sidebar-width"), "470px");
+    assert.equal(resizer?.getAttribute("aria-valuenow"), "470");
+    assert.deepEqual(resizedWidths, [470]);
+    assert.equal(windowListeners.has("pointermove"), false);
+
+    resizer?.dispatch("keydown", keyboardEvent("ArrowLeft"));
+    assert.equal(element.style.getPropertyValue("--wpn-sidebar-width"), "486px");
+    resizer?.dispatch("keydown", keyboardEvent("Home"));
+    assert.equal(element.style.getPropertyValue("--wpn-sidebar-width"), "320px");
+    resizer?.dispatch("keydown", keyboardEvent("End"));
+    assert.equal(element.style.getPropertyValue("--wpn-sidebar-width"), "616px");
+    assert.equal(resizer?.getAttribute("aria-valuemax"), "616");
+    assert.deepEqual(resizedWidths, [470, 486, 320, 616]);
+    assert.equal(element.shell.frame, iframe);
+});
+
+function pointerEvent({
+    clientX,
+    pointerId,
+}: {
+    clientX: number;
+    pointerId: number;
+}): PointerEvent {
+    return {
+        button: 0,
+        clientX,
+        pointerId,
+        preventDefault() {},
+        stopPropagation() {},
+    } as PointerEvent;
+}
+
+function keyboardEvent(key: string): KeyboardEvent {
+    return {
+        key,
+        preventDefault() {},
+        stopPropagation() {},
+    } as KeyboardEvent;
+}

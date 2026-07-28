@@ -46,5 +46,7 @@ export {
     ELEMENT_TAG,
     OPEN_CHANGE_EVENT,
     type OpenChangeDetail,
+    SIDEBAR_RESIZE_EVENT,
+    type SidebarResizeDetail,
     WpNovaChatElement,
 } from "./runtime/element/index.js";

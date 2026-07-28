@@ -19,6 +19,8 @@ export type ChatPresentation =
           mode: "sidebar";
           /** Requested docked width in pixels. Numeric values are clamped to 320–640. */
           width?: number;
+          /** Adds an accessible drag handle for live width changes. Defaults to false. */
+          resizable?: boolean;
       };
 
 /** Public configuration passed to `WpNova('init', config)` / `<wp-nova-chat>`. */

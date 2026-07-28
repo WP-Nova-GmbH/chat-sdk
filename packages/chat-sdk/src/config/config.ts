@@ -61,6 +61,8 @@ export interface ResolvedConfig {
     presentationMode: "popover" | "sidebar";
     /** Validated sidebar width in CSS pixels. */
     sidebarWidth: number;
+    /** Whether the docked sidebar exposes its built-in resize separator. */
+    sidebarResizable: boolean;
     title: string;
     accent: string;
     /** Active-theme launcher/open-button color; falls back to the legacy color/accent. */
@@ -84,13 +86,17 @@ export interface ResolvedConfig {
     protocolVersion: number;
 }
 
-type ResolvedPresentation = Pick<ResolvedConfig, "presentationMode" | "sidebarWidth">;
+type ResolvedPresentation = Pick<
+    ResolvedConfig,
+    "presentationMode" | "sidebarWidth" | "sidebarResizable"
+>;
 
 function resolvedPresentation(
     presentationMode: ResolvedConfig["presentationMode"],
     sidebarWidth = DEFAULT_SIDEBAR_WIDTH,
+    sidebarResizable = false,
 ): ResolvedPresentation {
-    return { presentationMode, sidebarWidth };
+    return { presentationMode, sidebarWidth, sidebarResizable };
 }
 
 function resolvePresentation(presentation: SdkConfig["presentation"]): ResolvedPresentation {
@@ -116,18 +122,20 @@ function resolvePresentation(presentation: SdkConfig["presentation"]): ResolvedP
     }
 
     const width = (presentation as { width?: unknown }).width;
+    const resizable = (presentation as { resizable?: unknown }).resizable === true;
     if (width == null) {
-        return resolvedPresentation("sidebar");
+        return resolvedPresentation("sidebar", DEFAULT_SIDEBAR_WIDTH, resizable);
     }
     if (typeof width !== "number" || !Number.isFinite(width)) {
         console.warn(
             `[wp-nova] ignoring invalid sidebar width ${JSON.stringify(width)}; using ${DEFAULT_SIDEBAR_WIDTH}px`,
         );
-        return resolvedPresentation("sidebar");
+        return resolvedPresentation("sidebar", DEFAULT_SIDEBAR_WIDTH, resizable);
     }
     return resolvedPresentation(
         "sidebar",
         Math.min(Math.max(width, SIDEBAR_WIDTH_MIN), SIDEBAR_WIDTH_MAX),
+        resizable,
     );
 }
 

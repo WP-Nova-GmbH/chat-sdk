@@ -29,6 +29,7 @@ const CONFIG = {
     iframeSrc: "https://chat.wp-nova.ai/embed/chat?surface=surf_1",
     presentationMode: "popover",
     sidebarWidth: 384,
+    sidebarResizable: false,
     title: "Assistant",
     accent: "#8665e3",
     triggerColor: "#8665e3",

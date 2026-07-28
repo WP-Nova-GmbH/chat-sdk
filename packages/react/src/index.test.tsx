@@ -249,7 +249,7 @@ describe("NovaChatProvider — R5 stable config", () => {
                 config={{
                     ...config,
                     mount: "#nova-layout",
-                    presentation: { mode: "sidebar", width: 480 },
+                    presentation: { mode: "sidebar", width: 480, resizable: true },
                 }}
             >
                 child
@@ -260,7 +260,7 @@ describe("NovaChatProvider — R5 stable config", () => {
         expect(init).toHaveBeenLastCalledWith({
             ...config,
             mount: "#nova-layout",
-            presentation: { mode: "sidebar", width: 480 },
+            presentation: { mode: "sidebar", width: 480, resizable: true },
         });
         expect(retain).toHaveBeenCalledTimes(1);
         expect(release).not.toHaveBeenCalled();

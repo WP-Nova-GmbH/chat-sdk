@@ -312,6 +312,7 @@ export function useNovaTool(tool: NovaToolDefinition) {
 export type {
     ChatPresentation,
     SdkConfig,
+    SidebarResizeDetail,
     ToolDefinition,
     ToolHandler,
 } from "@wp-nova/chat-sdk";

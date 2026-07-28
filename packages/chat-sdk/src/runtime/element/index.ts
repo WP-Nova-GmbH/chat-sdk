@@ -5,3 +5,4 @@ export {
     type OpenChangeDetail,
     WpNovaChatElement,
 } from "./element.js";
+export { SIDEBAR_RESIZE_EVENT, type SidebarResizeDetail } from "./shell.js";

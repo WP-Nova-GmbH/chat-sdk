@@ -1,6 +1,7 @@
 export type {
     ChatPresentation,
     SdkConfig,
+    SidebarResizeDetail,
     ToolDefinition,
     ToolHandler,
 } from "@wp-nova/chat-sdk";

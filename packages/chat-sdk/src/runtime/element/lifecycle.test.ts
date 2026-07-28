@@ -251,7 +251,9 @@ test("presentation switches preserve the open frame, bridge, auth, tools, and to
         setConfig: (config: {
             publicSurfaceId: string;
             tokenEndpoint: string;
-            presentation?: { mode: "popover" } | { mode: "sidebar"; width?: number };
+            presentation?:
+                | { mode: "popover" }
+                | { mode: "sidebar"; width?: number; resizable?: boolean };
         }) => void;
     };
     element.resolved = initial;
@@ -272,10 +274,11 @@ test("presentation switches preserve the open frame, bridge, auth, tools, and to
     element.setConfig({
         publicSurfaceId: "surf_1",
         tokenEndpoint: "/token",
-        presentation: { mode: "sidebar", width: 512 },
+        presentation: { mode: "sidebar", width: 512, resizable: true },
     });
     assert.equal(element.resolved?.presentationMode, "sidebar");
     assert.equal(element.resolved?.sidebarWidth, 512);
+    assert.equal(element.resolved?.sidebarResizable, true);
     assert.equal(element.isOpen, true);
     assert.equal(element.shell.frame, iframe);
     assert.equal(element.bridge, bridge);

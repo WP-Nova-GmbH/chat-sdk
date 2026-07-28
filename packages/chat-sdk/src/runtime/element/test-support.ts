@@ -18,6 +18,7 @@ class FakeElement {
     src = "";
     contentWindow?: Window;
     private readonly attributes = new Map<string, string>();
+    private readonly capturedPointers = new Set<number>();
     private readonly listeners = new Map<string, Array<(event: Event) => void>>();
 
     setAttribute(name: string, value = ""): void {
@@ -40,6 +41,18 @@ class FakeElement {
 
     dispatch(name: string, event: Event): void {
         for (const listener of this.listeners.get(name) ?? []) listener(event);
+    }
+
+    setPointerCapture(pointerId: number): void {
+        this.capturedPointers.add(pointerId);
+    }
+
+    hasPointerCapture(pointerId: number): boolean {
+        return this.capturedPointers.has(pointerId);
+    }
+
+    releasePointerCapture(pointerId: number): void {
+        this.capturedPointers.delete(pointerId);
     }
 }
 
@@ -64,9 +77,11 @@ class FakeHTMLElement {
     layoutWidth = 0;
     private readonly attributes = new Map<string, string>();
     private readonly listeners = new Map<string, Set<(event: Event) => void>>();
+    private readonly styleProperties = new Map<string, string>();
     readonly style = {
-        setProperty: (_name: string, _value: string) => undefined,
-        removeProperty: (_name: string) => undefined,
+        setProperty: (name: string, value: string) => this.styleProperties.set(name, value),
+        removeProperty: (name: string) => this.styleProperties.delete(name),
+        getPropertyValue: (name: string) => this.styleProperties.get(name) ?? "",
     };
 
     setAttribute(name: string, value = ""): void {
@@ -201,6 +216,7 @@ export function resolvedConfig(overrides: Partial<ResolvedConfig> = {}): Resolve
         iframeSrc: "https://chat.wp-nova.ai/embed/chat?surface=surf_1",
         presentationMode: "popover",
         sidebarWidth: 384,
+        sidebarResizable: false,
         title: "Assistant",
         accent: "#111111",
         triggerColor: "#111111",

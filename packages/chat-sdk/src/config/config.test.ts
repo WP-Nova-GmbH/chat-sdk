@@ -137,6 +137,8 @@ test("presentation defaults to the backward-compatible pop-over", () => {
     assert.equal(explicit.presentationMode, "popover");
     assert.equal(missing.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
     assert.equal(explicit.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
+    assert.equal(missing.sidebarResizable, false);
+    assert.equal(explicit.sidebarResizable, false);
 });
 
 test("sidebar presentation defaults and clamps numeric widths", () => {
@@ -149,8 +151,16 @@ test("sidebar presentation defaults and clamps numeric widths", () => {
         {
             mode: sidebar.presentationMode,
             width: sidebar.sidebarWidth,
+            resizable: sidebar.sidebarResizable,
         },
-        { mode: "sidebar", width: DEFAULT_SIDEBAR_WIDTH },
+        { mode: "sidebar", width: DEFAULT_SIDEBAR_WIDTH, resizable: false },
+    );
+    assert.equal(
+        resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", resizable: true },
+        }).sidebarResizable,
+        true,
     );
     assert.equal(
         resolveConfig({
@@ -188,11 +198,16 @@ test("malformed presentation values warn and use safe defaults", () => {
             ...REQUIRED_CONFIG,
             presentation: { mode: "drawer" } as never,
         });
+        const invalidResizable = resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", resizable: "yes" } as never,
+        });
 
         assert.equal(invalidWidth.presentationMode, "sidebar");
         assert.equal(invalidWidth.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
         assert.equal(invalidMode.presentationMode, "popover");
         assert.equal(invalidMode.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
+        assert.equal(invalidResizable.sidebarResizable, false);
         assert.equal(warnings.length, 2);
     } finally {
         console.warn = originalWarn;

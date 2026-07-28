@@ -176,7 +176,7 @@ describe("NovaChatComponent — R4 change-aware sync", () => {
         component.config = {
             ...config,
             mount: "#nova-layout",
-            presentation: { mode: "sidebar", width: 480 },
+            presentation: { mode: "sidebar", width: 480, resizable: true },
         };
         component.ngOnChanges(changeOf("config"));
 
@@ -184,7 +184,7 @@ describe("NovaChatComponent — R4 change-aware sync", () => {
         expect(service.init).toHaveBeenCalledWith({
             ...config,
             mount: "#nova-layout",
-            presentation: { mode: "sidebar", width: 480 },
+            presentation: { mode: "sidebar", width: 480, resizable: true },
         });
         // Tools did not change, so the tool registry is left untouched.
         expect(service.registerTool).not.toHaveBeenCalled();

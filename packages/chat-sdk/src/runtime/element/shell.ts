@@ -2,6 +2,8 @@ import {
     DEFAULT_ACCENT,
     DEFAULT_SIDEBAR_WIDTH,
     type ResolvedConfig,
+    SIDEBAR_WIDTH_MAX,
+    SIDEBAR_WIDTH_MIN,
 } from "../../config/config.js";
 
 /** Message-circle glyph used by the settings preview and SDK launcher. */
@@ -35,6 +37,23 @@ const SHELL_THEME = {
 /** Main-content space kept available before a requested sidebar falls back. */
 export const MIN_SIDEBAR_MAIN_CONTENT_WIDTH = 384;
 
+/** Emitted when pointer or keyboard resizing commits a new sidebar width. */
+export const SIDEBAR_RESIZE_EVENT = "wp-nova:sidebar-resize";
+
+export interface SidebarResizeDetail {
+    width: number;
+}
+
+const SIDEBAR_KEYBOARD_RESIZE_STEP = 16;
+
+interface SidebarResizeSession {
+    pointerId: number;
+    startClientX: number;
+    startWidth: number;
+    direction: 1 | -1;
+    changed: boolean;
+}
+
 /** Minimal attribute escaping for values interpolated into the shadow markup. */
 function escapeAttr(value: string): string {
     return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -58,6 +77,7 @@ export class ChatShell {
     private iframe?: HTMLIFrameElement;
     private panel?: HTMLElement;
     private launcher?: HTMLButtonElement;
+    private sidebarResizer?: HTMLElement;
     private shadowReady = false;
     private launcherThemeReady = false;
     private launcherEnabled = true;
@@ -65,7 +85,9 @@ export class ChatShell {
     private hostConfiguredLauncherColor = false;
     private presentationMode: ResolvedConfig["presentationMode"] = "popover";
     private sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
+    private sidebarResizable = false;
     private effectivePresentationMode: ResolvedConfig["presentationMode"] = "popover";
+    private sidebarResizeSession?: SidebarResizeSession;
     private observedContainer?: HTMLElement;
     private resizeObserver?: ResizeObserver;
     private resizeAnimationFrame?: number;
@@ -86,6 +108,74 @@ export class ChatShell {
             this.syncEffectivePresentation(width);
         });
     };
+    private readonly onSidebarResizePointerDown = (event: PointerEvent): void => {
+        if (
+            event.button !== 0 ||
+            !this.sidebarResizable ||
+            this.effectivePresentationMode !== "sidebar"
+        ) {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        this.sidebarResizer?.setPointerCapture(event.pointerId);
+        this.sidebarResizeSession = {
+            pointerId: event.pointerId,
+            startClientX: event.clientX,
+            startWidth: this.sidebarWidth,
+            direction: this.inlineResizeDirection(),
+            changed: false,
+        };
+        this.listenForSidebarResize();
+        this.host.setAttribute("data-wpn-sidebar-resizing", "");
+    };
+    private readonly onSidebarResizePointerMove = (event: PointerEvent): void => {
+        const session = this.sidebarResizeSession;
+        if (!session || session.pointerId !== event.pointerId) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const width =
+            session.startWidth +
+            (event.clientX - session.startClientX) * session.direction;
+        session.changed = this.applyUserSidebarWidth(width) || session.changed;
+    };
+    private readonly onSidebarResizePointerUp = (event: PointerEvent): void => {
+        const session = this.sidebarResizeSession;
+        if (!session || session.pointerId !== event.pointerId) return;
+        this.onSidebarResizePointerMove(event);
+        this.finishSidebarResize(event.pointerId, session.changed);
+    };
+    private readonly onSidebarResizePointerCancel = (event: PointerEvent): void => {
+        if (this.sidebarResizeSession?.pointerId !== event.pointerId) return;
+        this.finishSidebarResize(event.pointerId, false);
+    };
+    private readonly onSidebarResizeLostPointerCapture = (event: PointerEvent): void => {
+        const session = this.sidebarResizeSession;
+        if (!session || session.pointerId !== event.pointerId) return;
+        this.finishSidebarResize(event.pointerId, session.changed);
+    };
+    private readonly onSidebarResizeKeyDown = (event: KeyboardEvent): void => {
+        if (!this.sidebarResizable || this.effectivePresentationMode !== "sidebar") return;
+
+        let width: number;
+        if (event.key === "Home") {
+            width = SIDEBAR_WIDTH_MIN;
+        } else if (event.key === "End") {
+            width = this.sidebarResizeMax();
+        } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+            const physicalDelta =
+                event.key === "ArrowLeft"
+                    ? -SIDEBAR_KEYBOARD_RESIZE_STEP
+                    : SIDEBAR_KEYBOARD_RESIZE_STEP;
+            width = this.sidebarWidth + physicalDelta * this.inlineResizeDirection();
+        } else {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        if (this.applyUserSidebarWidth(width)) this.emitSidebarResize();
+    };
 
     constructor(private readonly host: HTMLElement & { toggle(): void }) {}
 
@@ -103,6 +193,7 @@ export class ChatShell {
         this.launcherEnabled = config.launcherEnabled;
         this.presentationMode = config.presentationMode;
         this.sidebarWidth = config.sidebarWidth;
+        this.sidebarResizable = config.sidebarResizable;
         // Once trusted surface settings have revealed the launcher, live config
         // updates (such as a host theme change) must not hide it again.
         this.launcherThemeReady ||= config.hasFirstPaintLauncherColor;
@@ -112,7 +203,13 @@ export class ChatShell {
         this.host.style.setProperty("--wpn-sidebar-shadow", theme.sidebarShadow);
         this.host.style.setProperty("--wpn-sidebar-width", `${config.sidebarWidth}px`);
         this.host.setAttribute("data-wpn-presentation", config.presentationMode);
+        if (config.sidebarResizable) {
+            this.host.setAttribute("data-wpn-sidebar-resizable", "");
+        } else {
+            this.host.removeAttribute("data-wpn-sidebar-resizable");
+        }
         this.configureResponsivePresentation();
+        this.syncSidebarResizeA11y();
         this.applyLauncherTheme({
             triggerColor: config.triggerColor,
             triggerIconColor: config.triggerIconColor,
@@ -129,20 +226,28 @@ export class ChatShell {
     }
 
     reset(): void {
+        if (this.sidebarResizeSession) {
+            this.finishSidebarResize(this.sidebarResizeSession.pointerId, false);
+        }
         this.disconnectPresentationObserver();
         this.iframe = undefined;
         this.panel = undefined;
         this.launcher = undefined;
+        this.sidebarResizer = undefined;
         this.shadowReady = false;
         this.launcherThemeReady = false;
         this.launcherEnabled = true;
         this.developmentMode = false;
         this.presentationMode = "popover";
         this.sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
+        this.sidebarResizable = false;
+        this.sidebarResizeSession = undefined;
         this.effectivePresentationMode = "popover";
         this.host.removeAttribute("data-wpn-dev");
         this.host.removeAttribute("data-wpn-presentation");
         this.host.removeAttribute("data-wpn-effective-presentation");
+        this.host.removeAttribute("data-wpn-sidebar-resizable");
+        this.host.removeAttribute("data-wpn-sidebar-resizing");
         this.host.style.removeProperty("--wpn-sidebar-width");
         this.host.style.removeProperty("--wpn-sidebar-shadow");
     }
@@ -211,6 +316,15 @@ export class ChatShell {
             "width:100%;height:100%;max-width:none;max-height:none;border-radius:0;",
             "border:0;border-inline-start:1px solid var(--wpn-panel-border);",
             "box-shadow:var(--wpn-sidebar-shadow);transform-origin:center;animation:none;z-index:auto;}",
+            "#sidebar-resizer{display:none;}",
+            ":host([data-wpn-effective-presentation='sidebar'][data-wpn-sidebar-resizable][open]) #sidebar-resizer{",
+            "display:block;position:absolute;inset-block:0;inset-inline-start:0;inline-size:10px;",
+            "z-index:2;cursor:col-resize;touch-action:none;outline:none;}",
+            "#sidebar-resizer::before{content:'';position:absolute;inset-block:0;inset-inline-start:0;",
+            "inline-size:2px;background:transparent;transition:background .14s;}",
+            "#sidebar-resizer:hover::before,#sidebar-resizer:focus-visible::before,",
+            ":host([data-wpn-sidebar-resizing]) #sidebar-resizer::before{background:var(--wpn-accent);}",
+            ":host([data-wpn-sidebar-resizing]) iframe{pointer-events:none;user-select:none;}",
             // mobile: the panel fills the viewport.
             "@media (max-width:480px){#panel{right:0;bottom:0;width:100vw;height:100dvh;",
             "max-width:100vw;max-height:100dvh;border-radius:0;border:0;}#launcher{right:16px;bottom:16px;}}",
@@ -221,6 +335,7 @@ export class ChatShell {
             '  <span class="dev-badge" aria-hidden="true">DEV</span>',
             "</button>",
             `<div id="panel" role="dialog" aria-modal="false" aria-label="${escapeAttr(title)}" hidden>`,
+            `  <div id="sidebar-resizer" role="separator" aria-label="Resize assistant sidebar" aria-orientation="vertical" aria-valuemin="${SIDEBAR_WIDTH_MIN}" aria-valuemax="${SIDEBAR_WIDTH_MAX}" aria-valuenow="${config.sidebarWidth}" tabindex="0"></div>`,
             `  <iframe id="frame" title="${escapeAttr(title)}"${microphoneAllowAttribute}></iframe>`,
             "</div>",
         ].join("");
@@ -229,9 +344,11 @@ export class ChatShell {
         this.iframe.src = config.iframeSrc;
         this.panel = shadow.getElementById("panel") ?? undefined;
         this.launcher = (shadow.getElementById("launcher") as HTMLButtonElement) ?? undefined;
+        this.sidebarResizer = shadow.getElementById("sidebar-resizer") ?? undefined;
         this.syncLauncherThemeVisibility();
         this.syncDevelopmentMode();
         this.syncPanelSemantics();
+        this.syncSidebarResizeA11y();
 
         if (this.launcher) {
             // Shadow-DOM activation events are composed. Contain the whole
@@ -245,6 +362,15 @@ export class ChatShell {
                 this.host.toggle();
             });
         }
+        this.sidebarResizer?.addEventListener("pointerdown", this.onSidebarResizePointerDown);
+        this.sidebarResizer?.addEventListener("pointermove", this.onSidebarResizePointerMove);
+        this.sidebarResizer?.addEventListener("pointerup", this.onSidebarResizePointerUp);
+        this.sidebarResizer?.addEventListener("pointercancel", this.onSidebarResizePointerCancel);
+        this.sidebarResizer?.addEventListener(
+            "lostpointercapture",
+            this.onSidebarResizeLostPointerCapture,
+        );
+        this.sidebarResizer?.addEventListener("keydown", this.onSidebarResizeKeyDown);
         if (this.host.hasAttribute("open")) this.setOpen(true);
 
         this.shadowReady = true;
@@ -254,6 +380,81 @@ export class ChatShell {
         if (this.panel) this.panel.hidden = !isOpen;
         this.syncLauncherThemeVisibility();
         this.updateLauncherLabel();
+    }
+
+    private inlineResizeDirection(): 1 | -1 {
+        if (
+            typeof getComputedStyle === "function" &&
+            getComputedStyle(this.host).direction === "rtl"
+        ) {
+            return 1;
+        }
+        return -1;
+    }
+
+    private sidebarResizeMax(): number {
+        const availableWidth =
+            this.observedContainer?.getBoundingClientRect().width ??
+            this.host.parentElement?.getBoundingClientRect().width ??
+            0;
+        if (availableWidth <= 0) return SIDEBAR_WIDTH_MAX;
+        return Math.max(
+            SIDEBAR_WIDTH_MIN,
+            Math.min(SIDEBAR_WIDTH_MAX, availableWidth - MIN_SIDEBAR_MAIN_CONTENT_WIDTH),
+        );
+    }
+
+    private applyUserSidebarWidth(width: number): boolean {
+        const next = Math.min(
+            Math.max(Math.round(width), SIDEBAR_WIDTH_MIN),
+            this.sidebarResizeMax(),
+        );
+        if (next === this.sidebarWidth) return false;
+        this.sidebarWidth = next;
+        this.host.style.setProperty("--wpn-sidebar-width", `${next}px`);
+        this.syncEffectivePresentation();
+        this.syncSidebarResizeA11y();
+        return true;
+    }
+
+    private listenForSidebarResize(): void {
+        if (typeof window === "undefined") return;
+        window.addEventListener("pointermove", this.onSidebarResizePointerMove);
+        window.addEventListener("pointerup", this.onSidebarResizePointerUp);
+        window.addEventListener("pointercancel", this.onSidebarResizePointerCancel);
+    }
+
+    private stopListeningForSidebarResize(): void {
+        if (typeof window === "undefined") return;
+        window.removeEventListener("pointermove", this.onSidebarResizePointerMove);
+        window.removeEventListener("pointerup", this.onSidebarResizePointerUp);
+        window.removeEventListener("pointercancel", this.onSidebarResizePointerCancel);
+    }
+
+    private finishSidebarResize(pointerId: number, emit: boolean): void {
+        this.sidebarResizeSession = undefined;
+        this.stopListeningForSidebarResize();
+        this.host.removeAttribute("data-wpn-sidebar-resizing");
+        if (this.sidebarResizer?.hasPointerCapture(pointerId)) {
+            this.sidebarResizer.releasePointerCapture(pointerId);
+        }
+        if (emit) this.emitSidebarResize();
+    }
+
+    private emitSidebarResize(): void {
+        this.host.dispatchEvent(
+            new CustomEvent<SidebarResizeDetail>(SIDEBAR_RESIZE_EVENT, {
+                bubbles: true,
+                composed: true,
+                detail: { width: this.sidebarWidth },
+            }),
+        );
+    }
+
+    private syncSidebarResizeA11y(): void {
+        this.sidebarResizer?.setAttribute("aria-valuemin", String(SIDEBAR_WIDTH_MIN));
+        this.sidebarResizer?.setAttribute("aria-valuemax", String(this.sidebarResizeMax()));
+        this.sidebarResizer?.setAttribute("aria-valuenow", String(this.sidebarWidth));
     }
 
     private configureResponsivePresentation(): void {
@@ -287,6 +488,7 @@ export class ChatShell {
             observedWidth ?? this.observedContainer?.getBoundingClientRect().width ?? 0;
         const canDock = availableWidth >= this.sidebarWidth + MIN_SIDEBAR_MAIN_CONTENT_WIDTH;
         this.setEffectivePresentation(canDock ? "sidebar" : "popover");
+        this.syncSidebarResizeA11y();
     }
 
     private setEffectivePresentation(mode: ResolvedConfig["presentationMode"]): void {
