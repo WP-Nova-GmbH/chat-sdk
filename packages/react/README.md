@@ -83,10 +83,10 @@ const config = useMemo(
         mount: "#nova-layout",
         presentation:
             mode === "sidebar"
-                ? ({ mode: "sidebar", width: 420 } as const)
+                ? ({ mode: "sidebar", width, resizable: true } as const)
                 : ({ mode: "popover" } as const),
     }),
-    [mode],
+    [mode, width],
 );
 ```
 
@@ -94,6 +94,8 @@ Use `grid-template-columns: minmax(0, 1fr) auto` and give the container an
 available block size. Changing `mode` re-initializes the singleton in place and
 preserves the iframe, auth, tools, open state, and conversation. The core falls
 back to pop-over when the container cannot fit the sidebar plus `384px` of main
-content. See the
+content. Omit `resizable` for a fixed width. When it is enabled, listen for the
+bubbling `wp-nova:sidebar-resize` event and store `event.detail.width` in the
+`width` state if the choice should survive later config updates. See the
 [presentation documentation](https://chat.wp-nova.ai/configuration#presentation)
 for the complete layout and sizing contract.

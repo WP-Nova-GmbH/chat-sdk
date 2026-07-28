@@ -35,9 +35,11 @@ import {
   SETTLED_EVENT,
   defineElement,
   ELEMENT_TAG,
+  SIDEBAR_RESIZE_EVENT,
   WpNovaChatElement,
   type ChatPresentation,
   type HostTheme,
+  type SidebarResizeDetail,
 } from "@wp-nova/chat-sdk";
 ```
 
@@ -48,7 +50,7 @@ export type HostTheme = "light" | "dark";
 
 export type ChatPresentation =
   | { mode?: "popover" }
-  | { mode: "sidebar"; width?: number };
+  | { mode: "sidebar"; width?: number; resizable?: boolean };
 
 export interface SdkConfig {
   publicSurfaceId: string;
@@ -102,7 +104,10 @@ latérale vaut `384`, les valeurs numériques sont limitées à `320–640` et u
 valeur d’exécution non valide revient à `384` avec un avertissement. Le mode
 barre latérale exige un `mount` explicite et résolvable. Lorsque le conteneur
 est plus étroit que `sidebarWidth + 384px`, la présentation effective repasse
-temporairement en pop-over.
+temporairement en pop-over. La largeur reste fixe sauf avec `resizable: true`.
+Le séparateur intégré accepte alors le pointeur et le clavier, puis émet
+`wp-nova:sidebar-resize` avec `SidebarResizeDetail` après chaque modification
+validée.
 
 `registerToolHandler` reste uniquement comme helper de compatibilité obsolète,
 limité à l’exécution. Un handler seul n’est pas proposé à l’agent.
@@ -146,6 +151,13 @@ laisser `init` le créer et le monter. L’élément reflète la présentation
 configurée et effective avec `data-wpn-presentation` et
 `data-wpn-effective-presentation` ; la largeur validée est exposée en interne
 par `--wpn-sidebar-width`. La barre latérale effective est une région
-`complementary` nommée, tandis que le pop-over reste une boîte de dialogue non
+`complementary` nommée. `data-wpn-sidebar-resizable` reflète le séparateur
+activé, tandis que le pop-over reste une boîte de dialogue non
 modale. Le SDK exclut son propre sous-arbre des instantanés de la page hôte sans
 le retirer de l’arbre d’accessibilité.
+
+`wp-nova:sidebar-resize` est un `CustomEvent<SidebarResizeDetail>` bubbling et
+composed avec `{ width: number }`. Utilisez la constante
+`SIDEBAR_RESIZE_EVENT` dans les intégrations npm. La valeur est déjà limitée ;
+retransmettez-la comme `presentation.width` pour conserver le choix lors des
+appels ultérieurs à `init()`.

@@ -13,7 +13,7 @@ Toutes les options sont transmises à `WpNova("init", config)` ou au helper `ini
 | `tokenEndpoint` | oui | Endpoint du backend client qui émet un token de session intégrée. |
 | `baseUrl` | non | URL de base de l’iframe Nova. Par défaut : `https://chat.wp-nova.ai`. |
 | `mount` | barre latérale uniquement | Sélecteur CSS ou `HTMLElement` de montage. Le pop-over utilise `document.body` par défaut ; la barre latérale exige un conteneur de mise en page explicite. |
-| `presentation` | non | `{ mode: "popover" }` (par défaut) ou `{ mode: "sidebar", width?: number }`. |
+| `presentation` | non | `{ mode: "popover" }` (par défaut) ou `{ mode: "sidebar", width?: number, resizable?: boolean }`. |
 | `title` | non | Titre du lanceur et du panneau avant authentification. |
 | `accent` | non | Couleur d’accent avant authentification. |
 | `triggerColor` | non | Couleur du lanceur/bouton d’ouverture. Par défaut : `accent`. |
@@ -93,7 +93,7 @@ function applyPresentation() {
     mount: "#nova-layout",
     presentation:
       mode === "sidebar"
-        ? { mode: "sidebar", width: 420 }
+        ? { mode: "sidebar", width: 420, resizable: true }
         : { mode: "popover" },
   });
 }
@@ -108,6 +108,20 @@ sont limités à `320–640px` ; une valeur d’exécution non valide émet un
 avertissement et utilise `384px`. La page hôte contrôle entièrement l’ordre
 des colonnes, la hauteur disponible, les décalages sticky/header et les
 animations.
+
+La largeur de la barre latérale est fixe par défaut. `resizable: true` ajoute
+un séparateur accessible sur son bord inline-start. Il prend en charge le
+glisser au pointeur, les flèches gauche/droite par pas de `16px`, Origine pour
+`320px` et Fin pour la plus grande largeur autorisée par le conteneur courant.
+Le redimensionnement respecte toujours `320–640px` et réserve `384px` au
+contenu principal.
+
+Après validation d’un glisser et après chaque modification au clavier, le
+séparateur émet l’événement bubbling et composed `wp-nova:sidebar-resize` avec
+`{ width: number }` dans `detail`. Le SDK applique immédiatement la largeur
+sans remplacer l’iframe. Enregistrez-la et retransmettez-la comme
+`presentation.width` lors des prochains appels à `init()` pour conserver le
+choix de l’utilisateur.
 
 Le SDK observe la largeur disponible du conteneur de montage. Il ne conserve
 le mode ancré que si la barre latérale laisse encore `384px` au contenu

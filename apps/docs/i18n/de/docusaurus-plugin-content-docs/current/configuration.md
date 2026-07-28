@@ -13,7 +13,7 @@ Alle Optionen werden an `WpNova("init", config)` oder den Helper `init(config)` 
 | `tokenEndpoint` | ja | Kunden-Backend-Endpoint, der ein Embedded-Session-Token ausstellt. |
 | `baseUrl` | nein | Basis-URL des Nova-iframes. Standard ist `https://chat.wp-nova.ai`. |
 | `mount` | nur Sidebar | CSS-Selektor oder `HTMLElement` für das Mounting. Pop-over verwendet standardmäßig `document.body`; die Sidebar erfordert einen expliziten Layout-Container. |
-| `presentation` | nein | `{ mode: "popover" }` (Standard) oder `{ mode: "sidebar", width?: number }`. |
+| `presentation` | nein | `{ mode: "popover" }` (Standard) oder `{ mode: "sidebar", width?: number, resizable?: boolean }`. |
 | `title` | nein | Launcher- und Panel-Titel vor der Authentifizierung. |
 | `accent` | nein | Akzentfarbe vor der Authentifizierung. |
 | `triggerColor` | nein | Farbe des Launchers bzw. Öffnen-Buttons. Standard ist `accent`. |
@@ -92,7 +92,7 @@ function applyPresentation() {
     mount: "#nova-layout",
     presentation:
       mode === "sidebar"
-        ? { mode: "sidebar", width: 420 }
+        ? { mode: "sidebar", width: 420, resizable: true }
         : { mode: "popover" },
   });
 }
@@ -106,6 +106,19 @@ Die Sidebar-Breite ist standardmäßig `384px`. Endliche Zahlen werden auf
 `320–640px` begrenzt; ungültige Laufzeitwerte erzeugen eine Warnung und
 verwenden `384px`. Position und Reihenfolge der Spalten, verfügbare Blockhöhe,
 Sticky-/Header-Offsets und Animationen gehören vollständig der Host-Seite.
+
+Die Sidebar-Breite ist standardmäßig fest. `resizable: true` fügt an ihrer
+Inline-Startkante einen barrierefreien Separator hinzu. Er unterstützt
+Pointer-Ziehen, Links-/Rechts-Pfeil in `16px`-Schritten, Pos1 für `320px` und
+Ende für die größte Breite, die der aktuelle Container erlaubt. Dabei bleiben
+die Grenzen `320–640px` und `384px` Platz für den Hauptinhalt erhalten.
+
+Nach Abschluss eines Pointer-Ziehens und nach jeder unterstützten
+Tastaturänderung sendet der Separator das bubbling und composed Event
+`wp-nova:sidebar-resize` mit `{ width: number }` in `detail`. Das SDK wendet
+die Breite sofort an, ohne das iframe zu ersetzen. Speichere den Wert und
+übergib ihn bei späteren `init()`-Aufrufen wieder als `presentation.width`,
+wenn die Benutzerauswahl erhalten bleiben soll.
 
 Das SDK beobachtet die verfügbare Breite des Mount-Containers. Es dockt nur,
 wenn neben der konfigurierten Sidebar noch `384px` für den Hauptinhalt

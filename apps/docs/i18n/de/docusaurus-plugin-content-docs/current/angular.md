@@ -90,7 +90,7 @@ private buildConfig(): SdkConfig {
     mount: "#nova-layout",
     presentation:
       this.mode === "sidebar"
-        ? { mode: "sidebar", width: 420 }
+        ? { mode: "sidebar", width: 420, resizable: true }
         : { mode: "popover" },
   };
 }
@@ -103,6 +103,9 @@ Konfigurationsreferenz; das Core-SDK erhält iframe, Authentifizierung, Tools,
 Öffnungszustand und Konversation. Siehe
 [Konfiguration: Darstellung](./configuration.md#darstellung) für
 Breitenvalidierung und responsiven Fallback.
+Ohne `resizable` bleibt die Breite fest. Bei aktiviertem Ziehen sollte die
+Host-Anwendung `event.detail.width` aus `wp-nova:sidebar-resize` in einer neuen
+Konfigurationsreferenz speichern.
 
 Für einen eigenen Host-Button setze `launcher: false`. Der
 `NovaChatService` stellt `open()`, `close()` und `toggle()` bereit:

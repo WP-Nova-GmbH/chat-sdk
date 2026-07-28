@@ -99,10 +99,11 @@ wrapper mount after a stable layout container in the template so the container
 exists when Angular initializes the SDK:
 
 ```ts
-import { Component } from "@angular/core";
+import { Component, HostListener } from "@angular/core";
 import {
   NovaChatComponent,
   type SdkConfig,
+  type SidebarResizeDetail,
 } from "@wp-nova/chat-sdk-angular";
 
 @Component({
@@ -131,10 +132,17 @@ import {
 })
 export class AppComponent {
   mode: "popover" | "sidebar" = "popover";
+  width = 420;
   config: SdkConfig = this.buildConfig();
 
   togglePresentation() {
     this.mode = this.mode === "popover" ? "sidebar" : "popover";
+    this.config = this.buildConfig();
+  }
+
+  @HostListener("window:wp-nova:sidebar-resize", ["$event"])
+  rememberWidth(event: CustomEvent<SidebarResizeDetail>) {
+    this.width = event.detail.width;
     this.config = this.buildConfig();
   }
 
@@ -145,7 +153,7 @@ export class AppComponent {
       mount: "#nova-layout",
       presentation:
         this.mode === "sidebar"
-          ? { mode: "sidebar", width: 420 }
+          ? { mode: "sidebar", width: this.width, resizable: true }
           : { mode: "popover" },
     };
   }
@@ -155,7 +163,8 @@ export class AppComponent {
 Angular already responds to a new `config` reference. The core reuses its
 iframe and conversation while it changes layout or moves to a new mount. See
 [Configuration: Presentation](./configuration.md#presentation) for the host
-layout contract and responsive fallback.
+layout contract, fixed versus resizable width, persistence, and responsive
+fallback.
 
 ## Service API
 

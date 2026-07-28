@@ -58,7 +58,8 @@ npm --workspace @wp-nova/chat-sdk-example-angular run dev
 
 Both examples mount chat automatically when a surface id is available and
 include a control for switching the live iframe between pop-over and docked
-sidebar presentation. They also accept
+sidebar presentation, plus a fixed-width/drag-resize toggle that preserves the
+committed width in host state. They also accept
 `?surface=surf_...&baseUrl=http://localhost:5173&tokenEndpoint=/api/nova-token`.
 
 ## Releases

@@ -32,7 +32,7 @@ init({
 | `tokenEndpoint` | Yes | Your backend route. The SDK posts `{ publicSurfaceId, origin }` to this endpoint with `credentials: "include"`. |
 | `baseUrl` | No | Nova iframe host. Defaults to `https://chat.wp-nova.ai`. Local development commonly uses `http://localhost:5173`. |
 | `mount` | Sidebar only | CSS selector or `HTMLElement` to mount into. Pop-over defaults to `document.body`; sidebar requires an explicit host layout container. |
-| `presentation` | No | `{ mode: "popover" }` (default) or `{ mode: "sidebar", width?: number }`. See [Presentation](#presentation). |
+| `presentation` | No | `{ mode: "popover" }` (default) or `{ mode: "sidebar", width?: number, resizable?: boolean }`. See [Presentation](#presentation). |
 | `title` | No | Pre-auth launcher/panel title shown before trusted surface display settings arrive. |
 | `accent` | No | Pre-auth accent color for the SDK-owned launcher shell. |
 | `triggerColor` | No | Launcher button color. Defaults to `accent`. |
@@ -110,7 +110,7 @@ panel (and its full-screen rule at viewport widths of `480px` or less).
     publicSurfaceId: "surf_...",
     tokenEndpoint: "/api/nova-token",
     mount: "#nova-layout",
-    presentation: { mode: "sidebar", width: 420 },
+    presentation: { mode: "sidebar", width: 420, resizable: true },
   };
 
   WpNova("init", config);
@@ -121,7 +121,7 @@ panel (and its full-screen rule at viewport widths of `480px` or less).
       ...config,
       presentation:
         mode === "sidebar"
-          ? { mode: "sidebar", width: 420 }
+          ? { mode: "sidebar", width: 420, resizable: true }
           : { mode: "popover" },
     });
   }
@@ -133,6 +133,27 @@ Sidebar width defaults to `384px`. Finite numeric widths are clamped to
 Placement is entirely host-owned: Nova appends its custom element as the
 mount's final layout child, while the host controls column order, available
 block size, sticky/header offsets, and any layout animation.
+
+Sidebar width is fixed by default. Set `resizable: true` to add an accessible
+separator on the sidebar's inline-start edge. It supports pointer dragging,
+Left/Right Arrow in `16px` steps, Home for `320px`, and End for the largest
+width the current container permits. User resizing never exceeds `320–640px`
+or consumes the `384px` reserved for main content.
+
+The separator emits a bubbling, composed `wp-nova:sidebar-resize` event after a
+pointer drag commits and after every supported keyboard change:
+
+```ts
+window.addEventListener("wp-nova:sidebar-resize", (event) => {
+  const { width } = (event as CustomEvent<{ width: number }>).detail;
+  saveSidebarWidth(width);
+});
+```
+
+The SDK applies the width immediately without replacing the iframe. The next
+`init()` call remains authoritative, so store the event value and pass it back
+as `presentation.width` if the user's choice should survive later config
+updates or page loads.
 
 The SDK observes the mount container. It docks only when the container can fit
 the configured sidebar plus `384px` of main-content space, so the default

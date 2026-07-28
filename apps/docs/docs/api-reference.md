@@ -36,11 +36,13 @@ import {
   defineElement,
   ELEMENT_TAG,
   OPEN_CHANGE_EVENT,
+  SIDEBAR_RESIZE_EVENT,
   WpNovaChatElement,
   DEFAULT_SETTLE,
   SETTLED_EVENT,
   type ChatPresentation,
   type HostTheme,
+  type SidebarResizeDetail,
   type SettleOptions,
 } from "@wp-nova/chat-sdk";
 ```
@@ -78,7 +80,7 @@ export type HostTheme = "light" | "dark";
 
 export type ChatPresentation =
   | { mode?: "popover" }
-  | { mode: "sidebar"; width?: number };
+  | { mode: "sidebar"; width?: number; resizable?: boolean };
 
 export interface SdkConfig {
   publicSurfaceId: string;
@@ -127,7 +129,10 @@ See [Configuration](./configuration.md) for the full options table.
 `384`, numeric values are clamped to `320–640`, and invalid runtime widths warn
 and fall back to `384`. Sidebar mode requires an explicit, resolvable `mount`.
 Its effective mode falls back to pop-over whenever the mount is narrower than
-`sidebarWidth + 384px`.
+`sidebarWidth + 384px`. Sidebar width is fixed unless `resizable: true`; then
+the built-in separator supports pointer and keyboard resizing and emits
+`wp-nova:sidebar-resize` with `SidebarResizeDetail` after each committed
+change.
 
 `settle` controls post-action snapshot readiness. Defaults are
 `quietMs: 200`, `maxWaitMs: 1600`, and
@@ -278,6 +283,7 @@ element in the DOM, but most integrations should let `init` create and mount
 it. The element reflects requested and responsive presentation as
 `data-wpn-presentation` and `data-wpn-effective-presentation`; the validated
 width is available internally as `--wpn-sidebar-width`.
+`data-wpn-sidebar-resizable` reflects the opt-in resize handle.
 
 An effective sidebar panel is a labelled `complementary` region. An effective
 pop-over keeps its non-modal `dialog` semantics. `data-wp-nova-ignore` excludes
@@ -297,6 +303,13 @@ console.log(ELEMENT_TAG); // "wp-nova-chat"
 same-origin document navigation. `wp-nova:settled` ends a pending post-action
 wait after the requested route and data render. See
 [Navigation and async pages](./navigation.md) for the router adapter.
+
+`wp-nova:sidebar-resize` is a bubbling, composed
+`CustomEvent<SidebarResizeDetail>` with `{ width: number }`. It fires when an
+opt-in sidebar pointer drag commits and after every supported keyboard resize.
+Use `SIDEBAR_RESIZE_EVENT` instead of repeating the event-name string in npm
+integrations. The event reports the effective clamped width; pass it back as
+`presentation.width` to persist the user's choice across later `init()` calls.
 
 ## Shared Mount Lifecycle
 

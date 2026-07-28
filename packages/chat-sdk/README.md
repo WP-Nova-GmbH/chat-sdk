@@ -60,7 +60,7 @@ init({ publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
 | `tokenEndpoint` | yes | Customer backend endpoint that mints embed sessions. |
 | `baseUrl` | no | Nova iframe origin; defaults to `https://chat.wp-nova.ai`. |
 | `mount` | sidebar only | Host element/selector. Pop-over defaults to `document.body`; sidebar requires an explicit layout container. |
-| `presentation` | no | `{ mode: "popover" }` (default) or `{ mode: "sidebar", width?: number }`. |
+| `presentation` | no | `{ mode: "popover" }` (default) or `{ mode: "sidebar", width?: number, resizable?: boolean }`. |
 | `title` | no | Pre-auth panel title. |
 | `accent` | no | Pre-auth accent color. |
 | `triggerColor` | no | Launcher color; defaults to `accent`. |
@@ -100,11 +100,16 @@ init({
   publicSurfaceId: "surf_…",
   tokenEndpoint: "/api/nova-token",
   mount: "#nova-layout",
-  presentation: { mode: "sidebar", width: 420 },
+  presentation: { mode: "sidebar", width: 420, resizable: true },
 });
 ```
 
 Sidebar width defaults to `384px`; finite values are clamped to `320–640px`.
+Omit `resizable` (or set it to `false`) for a fixed width. With
+`resizable: true`, an accessible separator supports pointer dragging, arrow
+keys, Home, and End. Committed changes emit a bubbling
+`wp-nova:sidebar-resize` event with `{ width }`; store that value and pass it
+back on later `init()` calls when the user's choice should persist.
 The SDK falls back to pop-over when the mount cannot fit the sidebar plus
 `384px` of main content, and returns to docked mode when space is available.
 Call `init()` again with a different `presentation` or `mount` to switch in

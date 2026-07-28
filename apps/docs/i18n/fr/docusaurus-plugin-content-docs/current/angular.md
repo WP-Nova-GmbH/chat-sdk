@@ -89,7 +89,7 @@ private buildConfig(): SdkConfig {
     mount: "#nova-layout",
     presentation:
       this.mode === "sidebar"
-        ? { mode: "sidebar", width: 420 }
+        ? { mode: "sidebar", width: 420, resizable: true }
         : { mode: "popover" },
   };
 }
@@ -102,6 +102,9 @@ référence de configuration ; le SDK cœur préserve l’iframe,
 l’authentification, les outils, l’état ouvert/fermé et la conversation. Voir
 [Configuration : présentation](./configuration.md#présentation) pour la
 validation de largeur et le fallback responsive.
+Sans `resizable`, la largeur reste fixe. Lorsque le glisser est activé,
+l’application hôte doit enregistrer `event.detail.width` depuis
+`wp-nova:sidebar-resize` dans une nouvelle référence de configuration.
 
 Pour un bouton fourni par la page hôte, définissez `launcher: false`.
 `NovaChatService` fournit `open()`, `close()` et `toggle()` :

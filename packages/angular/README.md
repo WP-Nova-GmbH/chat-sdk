@@ -56,7 +56,7 @@ config: SdkConfig = {
     publicSurfaceId: "surf_...",
     tokenEndpoint: "/api/nova/embed-token",
     mount: "#nova-layout",
-    presentation: { mode: "sidebar", width: 420 },
+    presentation: { mode: "sidebar", width: 420, resizable: true },
 };
 ```
 
@@ -64,6 +64,8 @@ Use `grid-template-columns: minmax(0, 1fr) auto` and give the container an
 available block size. Angular passes the updated config through `init()` while
 the core preserves the iframe, auth, tools, open state, and conversation. The
 core falls back to pop-over when the container cannot fit the sidebar plus
-`384px` of main content. See the
+`384px` of main content. Omit `resizable` for a fixed width. When it is enabled,
+listen for the bubbling `wp-nova:sidebar-resize` event and store
+`event.detail.width` in a new config reference if the choice should persist. See the
 [presentation documentation](https://chat.wp-nova.ai/configuration#presentation)
 for the complete layout and sizing contract.

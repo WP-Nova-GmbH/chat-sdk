@@ -79,7 +79,7 @@ const config = useMemo(
     mount: "#nova-layout",
     presentation:
       mode === "sidebar"
-        ? ({ mode: "sidebar", width: 420 } as const)
+        ? ({ mode: "sidebar", width: 420, resizable: true } as const)
         : ({ mode: "popover" } as const),
   }),
   [mode],
@@ -112,6 +112,8 @@ Hauptinhalt und stelle eine Blockhöhe bereit. Ein Moduswechsel erhält iframe,
 Authentifizierung, Tools, Öffnungszustand und Konversation. Breitenvalidierung
 und responsiver Fallback sind unter
 [Konfiguration: Darstellung](./configuration.md#darstellung) beschrieben.
+Ohne `resizable` bleibt die Breite fest. Bei aktiviertem Ziehen sollte die
+Host-Anwendung `event.detail.width` aus `wp-nova:sidebar-resize` speichern.
 
 ### Eigener Launcher
 

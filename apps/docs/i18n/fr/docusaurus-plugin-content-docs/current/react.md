@@ -78,7 +78,7 @@ const config = useMemo(
     mount: "#nova-layout",
     presentation:
       mode === "sidebar"
-        ? ({ mode: "sidebar", width: 420 } as const)
+        ? ({ mode: "sidebar", width: 420, resizable: true } as const)
         : ({ mode: "popover" } as const),
   }),
   [mode],
@@ -111,6 +111,9 @@ contenu principal et fournissez une hauteur disponible. Le changement de mode
 préserve l’iframe, l’authentification, les outils, l’état ouvert/fermé et la
 conversation. La validation de largeur et le fallback responsive sont décrits
 dans [Configuration : présentation](./configuration.md#présentation).
+Sans `resizable`, la largeur reste fixe. Lorsque le glisser est activé,
+l’application hôte doit enregistrer `event.detail.width` depuis
+`wp-nova:sidebar-resize`.
 
 ### Lanceur personnalisé
 
