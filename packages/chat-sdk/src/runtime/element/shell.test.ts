@@ -572,6 +572,18 @@ test("sidebar resizing is opt-in and preserves the iframe while dragging or usin
 
     assert.equal(element.getAttribute("data-wpn-sidebar-resizable"), null);
     assert.equal(element.shadowRoot?.innerHTML.includes("#sidebar-resizer{display:none;}"), true);
+    assert.equal(
+        element.shadowRoot?.innerHTML.includes(
+            "inline-size:3px;block-size:36px;border-radius:999px;background:var(--wpn-accent);",
+        ),
+        true,
+    );
+    assert.equal(
+        element.shadowRoot?.innerHTML.includes(
+            "opacity:.28;transform:translateY(-50%);transition:opacity .14s,transform .14s;",
+        ),
+        true,
+    );
     resizer?.dispatch("pointerdown", pointerEvent({ clientX: 500, pointerId: 1 }));
     resizer?.dispatch("pointermove", pointerEvent({ clientX: 450, pointerId: 1 }));
     resizer?.dispatch("pointerup", pointerEvent({ clientX: 450, pointerId: 1 }));
