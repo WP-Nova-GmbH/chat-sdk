@@ -1,10 +1,11 @@
 import {
     NovaChatProvider,
     type NovaToolDefinition,
+    type SidebarResizeDetail,
     useNovaChat,
     useNovaChatOpenState,
 } from "@wp-nova/chat-sdk-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ManifestStatus = "On time" | "Hold" | "Delayed" | "Released";
 type PresentationMode = "popover" | "sidebar";
@@ -140,7 +141,17 @@ export function App() {
         createEvent("system", "React example loaded with rail operations fixture data."),
     ]);
     const [presentationMode, setPresentationMode] = useState<PresentationMode>("popover");
+    const [sidebarWidth, setSidebarWidth] = useState(384);
+    const [sidebarResizable, setSidebarResizable] = useState(false);
     const settings = useMemo(readInitialSettings, []);
+
+    useEffect(() => {
+        const rememberSidebarWidth = (event: Event) => {
+            setSidebarWidth((event as CustomEvent<SidebarResizeDetail>).detail.width);
+        };
+        window.addEventListener("wp-nova:sidebar-resize", rememberSidebarWidth);
+        return () => window.removeEventListener("wp-nova:sidebar-resize", rememberSidebarWidth);
+    }, []);
 
     const activeShipment =
         shipments.find((shipment) => shipment.id === activeManifestId) ?? defaultShipment;
@@ -165,12 +176,16 @@ export function App() {
             mount: "#nova-layout",
             presentation:
                 presentationMode === "sidebar"
-                    ? ({ mode: "sidebar", width: 384 } as const)
+                    ? ({
+                          mode: "sidebar",
+                          width: sidebarWidth,
+                          resizable: sidebarResizable,
+                      } as const)
                     : ({ mode: "popover" } as const),
             safeValueSelectors: parseSelectorList(settings.safeValueSelectors),
             voiceMode: true,
         }),
-        [presentationMode, settings],
+        [presentationMode, settings, sidebarResizable, sidebarWidth],
     );
 
     const tools = useMemo<NovaToolDefinition[]>(
@@ -358,6 +373,12 @@ export function App() {
                             }
                         >
                             {presentationMode === "popover" ? "Dock assistant" : "Use pop-over"}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setSidebarResizable((current) => !current)}
+                        >
+                            {sidebarResizable ? "Use fixed width" : "Enable drag resizing"}
                         </button>
                         <CustomChatTrigger disabled={!enabled} />
                         <div className="ops-status" role="status" aria-label="Current yard status">

@@ -22,6 +22,7 @@
         <h1>Nova Chat SDK Plain HTML Example</h1>
         <button id="demo-toast" type="button">Host-page action target</button>
         <button id="presentation-toggle" type="button">Switch to sidebar</button>
+        <button id="resize-toggle" type="button">Enable drag resizing</button>
       </main>
     </div>
     <script>
@@ -42,6 +43,8 @@
       });
 
       var presentationMode = "popover";
+      var sidebarWidth = 384;
+      var sidebarResizable = false;
       function initNova() {
         WpNova("init", {
           publicSurfaceId: "srf_live_replace_me",
@@ -49,7 +52,7 @@
           mount: "#nova-layout",
           presentation:
             presentationMode === "sidebar"
-              ? { mode: "sidebar", width: 384 }
+              ? { mode: "sidebar", width: sidebarWidth, resizable: sidebarResizable }
               : { mode: "popover" },
         });
       }
@@ -59,6 +62,16 @@
         this.textContent =
           presentationMode === "popover" ? "Switch to sidebar" : "Switch to pop-over";
         initNova();
+      });
+
+      document.getElementById("resize-toggle").addEventListener("click", function () {
+        sidebarResizable = !sidebarResizable;
+        this.textContent = sidebarResizable ? "Use fixed width" : "Enable drag resizing";
+        initNova();
+      });
+
+      window.addEventListener("wp-nova:sidebar-resize", (event) => {
+        sidebarWidth = event.detail.width;
       });
 
       initNova();

@@ -1,5 +1,10 @@
-import { Component } from "@angular/core";
-import { NovaChatComponent, type SdkConfig, type ToolDefinition } from "@wp-nova/chat-sdk-angular";
+import { Component, HostListener } from "@angular/core";
+import {
+    NovaChatComponent,
+    type SdkConfig,
+    type SidebarResizeDetail,
+    type ToolDefinition,
+} from "@wp-nova/chat-sdk-angular";
 
 type StayStatus = "Inquiry" | "Reserved" | "In house" | "Follow up";
 type PresentationMode = "popover" | "sidebar";
@@ -127,6 +132,9 @@ const initialTickets: SupportTicket[] = [
                 <div class="site-header-actions">
                     <button type="button" (click)="togglePresentation()">
                         {{ presentationMode === "popover" ? "Dock assistant" : "Use pop-over" }}
+                    </button>
+                    <button type="button" (click)="toggleSidebarResize()">
+                        {{ sidebarResizable ? "Use fixed width" : "Enable drag resizing" }}
                     </button>
                     <div class="mood-board">
                         <span>Today</span>
@@ -324,7 +332,14 @@ export class AppComponent {
     events: LogEvent[] = [createEvent("system", "Angular concierge example loaded.")];
     settings = readInitialSettings();
     presentationMode: PresentationMode = "popover";
-    sdkConfig = buildSdkConfig(this.settings, this.presentationMode);
+    sidebarWidth = 384;
+    sidebarResizable = false;
+    sdkConfig = buildSdkConfig(
+        this.settings,
+        this.presentationMode,
+        this.sidebarWidth,
+        this.sidebarResizable,
+    );
     tools: ToolDefinition[] = [
         {
             name: "select_booking",
@@ -432,7 +447,27 @@ export class AppComponent {
 
     togglePresentation(): void {
         this.presentationMode = this.presentationMode === "popover" ? "sidebar" : "popover";
-        this.sdkConfig = buildSdkConfig(this.settings, this.presentationMode);
+        this.updateSdkConfig();
+    }
+
+    toggleSidebarResize(): void {
+        this.sidebarResizable = !this.sidebarResizable;
+        this.updateSdkConfig();
+    }
+
+    @HostListener("window:wp-nova:sidebar-resize", ["$event"])
+    rememberSidebarWidth(event: CustomEvent<SidebarResizeDetail>): void {
+        this.sidebarWidth = event.detail.width;
+        this.updateSdkConfig();
+    }
+
+    private updateSdkConfig(): void {
+        this.sdkConfig = buildSdkConfig(
+            this.settings,
+            this.presentationMode,
+            this.sidebarWidth,
+            this.sidebarResizable,
+        );
     }
 
     updateGuestSearch(event: Event): void {
@@ -574,7 +609,12 @@ function readInitialSettings(): SdkSettings {
     };
 }
 
-function buildSdkConfig(settings: SdkSettings, presentationMode: PresentationMode): SdkConfig {
+function buildSdkConfig(
+    settings: SdkSettings,
+    presentationMode: PresentationMode,
+    sidebarWidth: number,
+    sidebarResizable: boolean,
+): SdkConfig {
     return {
         publicSurfaceId: settings.publicSurfaceId,
         tokenEndpoint: settings.tokenEndpoint,
@@ -585,7 +625,9 @@ function buildSdkConfig(settings: SdkSettings, presentationMode: PresentationMod
         triggerIconColor: "light",
         mount: "#nova-layout",
         presentation:
-            presentationMode === "sidebar" ? { mode: "sidebar", width: 384 } : { mode: "popover" },
+            presentationMode === "sidebar"
+                ? { mode: "sidebar", width: sidebarWidth, resizable: sidebarResizable }
+                : { mode: "popover" },
         safeValueSelectors: parseSelectorList(settings.safeValueSelectors),
         voiceMode: true,
     };
