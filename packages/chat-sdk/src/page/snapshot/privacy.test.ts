@@ -46,7 +46,7 @@ test("an ignored SDK shell does not advertise controls or make the snapshot part
     }
 });
 
-test("data-ai-context respects ignore, viewport, sensitivity, and caps", () => {
+test("data-ai-context respects ignore, rendered layout, sensitivity, and caps", () => {
     const document = new FakeDocument();
     const included = new FakeElement(
         "div",
@@ -112,7 +112,7 @@ test("data-ai-context respects ignore, viewport, sensitivity, and caps", () => {
 
         assert.equal(context.aiFields?.summary, "Visible summary");
         assert.equal(context.aiFields?.ignored, undefined);
-        assert.equal(context.aiFields?.offscreen, undefined);
+        assert.equal(context.aiFields?.offscreen, "Offscreen context");
         assert.equal(context.aiFields?.secret_token, undefined);
         assert.equal(context.aiFields?.long?.length, 500);
     } finally {
