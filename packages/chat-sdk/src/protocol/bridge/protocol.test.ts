@@ -6,7 +6,7 @@ import { EMBED_SOURCE, SDK_SOURCE } from "../types/index.js";
 import { Bridge } from "./index.js";
 import { restoreWindow } from "./test-support.js";
 
-test("UNAVAILABLE preserves access-request capability fields", () => {
+test("UNAVAILABLE preserves confirmation capability fields", () => {
     const posted: SdkFrame[] = [];
     const iframeWindow = {
         postMessage(frame: SdkFrame) {
@@ -24,7 +24,16 @@ test("UNAVAILABLE preserves access-request capability fields", () => {
     );
 
     bridge.setIframeWindow(iframeWindow);
-    bridge.sendUnavailable("missing@example.com", "No account", "capability", 3600, false);
+    bridge.sendUnavailable(
+        "missing@example.com",
+        "No account",
+        "request-capability",
+        3600,
+        false,
+        true,
+        "creation-capability",
+        1800,
+    );
 
     assert.deepEqual(posted, [
         {
@@ -34,8 +43,11 @@ test("UNAVAILABLE preserves access-request capability fields", () => {
             email: "missing@example.com",
             message: "No account",
             messageIsCustom: false,
-            accessRequestToken: "capability",
+            accessRequestToken: "request-capability",
             accessRequestExpiresIn: 3600,
+            userCreationRequired: true,
+            userCreationToken: "creation-capability",
+            userCreationExpiresIn: 1800,
         },
     ]);
 });

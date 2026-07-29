@@ -142,6 +142,12 @@ export interface UnavailableFrame extends FrameBase {
     accessRequestToken?: string;
     /** Capability lifetime in seconds. */
     accessRequestExpiresIn?: number;
+    /** Whether explicit JIT user creation is available for this identity. */
+    userCreationRequired?: boolean;
+    /** Purpose-scoped capability accepted only by Nova's user-creation endpoint. */
+    userCreationToken?: string;
+    /** User-creation capability lifetime in seconds. */
+    userCreationExpiresIn?: number;
 }
 
 /** Tell the iframe token acquisition failed for transport or malformed-response reasons. */

@@ -42,6 +42,12 @@ export interface UnavailableUserResponse {
     access_request_token?: string;
     /** Capability lifetime in seconds. */
     access_request_expires_in?: number;
+    /** Whether the unresolved identity may explicitly confirm JIT user creation. */
+    user_creation_required?: boolean;
+    /** Purpose-scoped capability accepted only by Nova's user-creation endpoint. */
+    user_creation_token?: string;
+    /** User-creation capability lifetime in seconds. */
+    user_creation_expires_in?: number;
     access_token?: undefined;
 }
 
@@ -66,5 +72,8 @@ export type TokenResult =
           messageIsCustom?: boolean;
           accessRequestToken?: string;
           accessRequestExpiresIn?: number;
+          userCreationRequired?: boolean;
+          userCreationToken?: string;
+          userCreationExpiresIn?: number;
       }
     | { kind: "error"; message: string };

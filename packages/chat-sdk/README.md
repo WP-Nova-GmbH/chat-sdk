@@ -156,6 +156,16 @@ response/status through.
   "access_request_token": "<purpose-scoped capability>",
   "access_request_expires_in": 3600
 }
+
+// JIT-enabled unmatched email: the iframe asks before creating the user
+{
+  "unavailable": true,
+  "email": "user@acme.com",
+  "message": "No Nova account for this email.",
+  "user_creation_required": true,
+  "user_creation_token": "<purpose-scoped capability>",
+  "user_creation_expires_in": 3600
+}
 ```
 
 Never trust browser-supplied identity or expose the integration secret. A bearer

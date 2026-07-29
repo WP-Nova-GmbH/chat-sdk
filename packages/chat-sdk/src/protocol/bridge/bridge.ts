@@ -82,6 +82,9 @@ export class Bridge {
         accessRequestToken?: string,
         accessRequestExpiresIn?: number,
         messageIsCustom?: boolean,
+        userCreationRequired?: boolean,
+        userCreationToken?: string,
+        userCreationExpiresIn?: number,
     ): void {
         this.send({
             type: "UNAVAILABLE",
@@ -90,6 +93,9 @@ export class Bridge {
             messageIsCustom,
             accessRequestToken,
             accessRequestExpiresIn,
+            userCreationRequired,
+            userCreationToken,
+            userCreationExpiresIn,
         });
     }
 
