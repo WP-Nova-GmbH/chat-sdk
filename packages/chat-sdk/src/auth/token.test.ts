@@ -40,6 +40,7 @@ const CONFIG = {
     safeValueSelectors: [],
     voiceModeEnabled: false,
     siteRoutes: [],
+    pageWorkflows: [],
     settle: { quietMs: 200, maxWaitMs: 1600 },
     protocolVersion: 1,
 } satisfies ResolvedConfig;

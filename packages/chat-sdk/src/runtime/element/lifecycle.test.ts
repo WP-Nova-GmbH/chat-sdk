@@ -100,6 +100,314 @@ test("READY protocol range must include the SDK protocol", () => {
     assert.equal(element.isProtocolCompatible(config, 0, 1), false);
 });
 
+test("a ready workflow starts only after the authenticated capable chat opens", () => {
+    const href = "https://app.example/call-center/interventions/abc";
+    const starts: Array<{
+        correlationId: string;
+        workflow: { id: string };
+        expectedUrl: string;
+    }> = [];
+    const openStates: boolean[] = [];
+    const element = makeElement() as {
+        resolved?: ResolvedConfig;
+        bridge?: {
+            sendHostOpenState: (open: boolean) => void;
+            sendStartPageWorkflow: (
+                correlationId: string,
+                workflow: { id: string },
+                expectedUrl: string,
+            ) => void;
+        };
+        iframeReady: boolean;
+        pageWorkflowCapable: boolean;
+        lastAuth?: unknown;
+        open: () => void;
+        setPageReady: (ready: boolean, expectedUrl?: string) => void;
+    };
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { href, origin: "https://app.example", pathname: "/call-center/interventions/abc" },
+    });
+    element.resolved = resolvedConfig({
+        protocolVersion: 2,
+        pageWorkflows: [
+            {
+                id: "summarize-intervention",
+                path: "/call-center/interventions/:interventionId",
+                prompt: "Summarize the call",
+            },
+        ],
+    });
+    element.bridge = {
+        sendHostOpenState: (open) => openStates.push(open),
+        sendStartPageWorkflow: (correlationId, workflow, expectedUrl) =>
+            starts.push({ correlationId, workflow, expectedUrl }),
+    };
+    element.iframeReady = true;
+    element.pageWorkflowCapable = true;
+    element.lastAuth = { kind: "granted", token: "token", expiresIn: 900 };
+
+    element.setPageReady(true);
+    assert.equal(starts.length, 0);
+
+    element.open();
+
+    assert.deepEqual(openStates, [true]);
+    assert.equal(starts.length, 1);
+    assert.equal(starts[0]?.workflow.id, "summarize-intervention");
+    assert.equal(starts[0]?.expectedUrl, href);
+});
+
+test("readiness loss cancels a sent workflow but never cancels a started run", () => {
+    const href = "https://app.example/interventions/abc";
+    const starts: string[] = [];
+    const cancellations: string[] = [];
+    const element = makeElement() as {
+        resolved?: ResolvedConfig;
+        bridge?: {
+            sendHostOpenState: () => void;
+            sendStartPageWorkflow: (correlationId: string) => void;
+            sendCancelPageWorkflow: (correlationId: string) => void;
+        };
+        iframeReady: boolean;
+        pageWorkflowCapable: boolean;
+        lastAuth?: unknown;
+        pageWorkflowAttempt?: { correlationId: string; status: string };
+        handlePageWorkflowStatus: (correlationId: string, status: "started") => void;
+        isWorkflowSnapshotRequestValid: (correlationId: string) => boolean;
+        open: () => void;
+        close: () => void;
+        setPageReady: (ready: boolean) => void;
+    };
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { href, origin: "https://app.example", pathname: "/interventions/abc" },
+    });
+    element.resolved = resolvedConfig({
+        pageWorkflows: [{ id: "summary", path: "/interventions/:id", prompt: "Summarize" }],
+    });
+    element.bridge = {
+        sendHostOpenState: () => undefined,
+        sendStartPageWorkflow: (correlationId) => starts.push(correlationId),
+        sendCancelPageWorkflow: (correlationId) => cancellations.push(correlationId),
+    };
+    element.iframeReady = true;
+    element.pageWorkflowCapable = true;
+    element.lastAuth = { kind: "granted", token: "token", expiresIn: 900 };
+    element.setPageReady(true);
+    element.open();
+
+    const sent = starts[0];
+    assert.ok(sent);
+    assert.equal(element.isWorkflowSnapshotRequestValid(sent), true);
+
+    element.setPageReady(false);
+    assert.deepEqual(cancellations, [sent]);
+    assert.equal(element.isWorkflowSnapshotRequestValid(sent), false);
+    assert.equal(element.pageWorkflowAttempt, undefined);
+
+    element.setPageReady(true);
+    const started = starts[1];
+    assert.ok(started);
+    element.handlePageWorkflowStatus(started, "started");
+    element.close();
+    element.setPageReady(false);
+
+    assert.deepEqual(cancellations, [sent]);
+});
+
+test("an unacknowledged workflow retries with the same correlation id", () => {
+    const href = "https://app.example/interventions/abc";
+    const starts: string[] = [];
+    const timerCallbacks: Array<() => void> = [];
+    Object.defineProperty(globalThis, "setTimeout", {
+        configurable: true,
+        value: (callback: () => void) => {
+            timerCallbacks.push(callback);
+            return timerCallbacks.length;
+        },
+    });
+    Object.defineProperty(globalThis, "clearTimeout", {
+        configurable: true,
+        value: () => undefined,
+    });
+    const element = makeElement() as {
+        resolved?: ResolvedConfig;
+        bridge?: {
+            sendHostOpenState: () => void;
+            sendStartPageWorkflow: (correlationId: string) => void;
+            sendCancelPageWorkflow: () => void;
+        };
+        iframeReady: boolean;
+        pageWorkflowCapable: boolean;
+        lastAuth?: unknown;
+        open: () => void;
+        setPageReady: (ready: boolean) => void;
+    };
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { href, origin: "https://app.example", pathname: "/interventions/abc" },
+    });
+    element.resolved = resolvedConfig({
+        pageWorkflows: [{ id: "summary", path: "/interventions/:id", prompt: "Summarize" }],
+    });
+    element.bridge = {
+        sendHostOpenState: () => undefined,
+        sendStartPageWorkflow: (correlationId) => starts.push(correlationId),
+        sendCancelPageWorkflow: () => undefined,
+    };
+    element.iframeReady = true;
+    element.pageWorkflowCapable = true;
+    element.lastAuth = { kind: "granted", token: "token", expiresIn: 900 };
+    element.setPageReady(true);
+    element.open();
+
+    assert.equal(starts.length, 1);
+    timerCallbacks[0]?.();
+
+    assert.equal(starts.length, 2);
+    assert.equal(starts[1], starts[0]);
+});
+
+test("stale ready URLs never start after SPA navigation", () => {
+    const locationState = {
+        href: "https://app.example/call-center/interventions/abc",
+        origin: "https://app.example",
+        pathname: "/call-center/interventions/abc",
+    };
+    let starts = 0;
+    const element = makeElement() as {
+        resolved?: ResolvedConfig;
+        bridge?: {
+            sendHostOpenState: () => void;
+            sendStartPageWorkflow: () => void;
+        };
+        iframeReady: boolean;
+        pageWorkflowCapable: boolean;
+        lastAuth?: unknown;
+        open: () => void;
+        setPageReady: (ready: boolean) => void;
+    };
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: locationState,
+    });
+    element.resolved = resolvedConfig({
+        pageWorkflows: [
+            { id: "summary", path: "/call-center/interventions/:id", prompt: "Summarize" },
+        ],
+    });
+    element.bridge = {
+        sendHostOpenState: () => undefined,
+        sendStartPageWorkflow: () => {
+            starts++;
+        },
+    };
+    element.iframeReady = true;
+    element.pageWorkflowCapable = true;
+    element.lastAuth = { kind: "granted", token: "token", expiresIn: 900 };
+
+    element.setPageReady(true);
+    locationState.href = "https://app.example/dashboard";
+    locationState.pathname = "/dashboard";
+    element.open();
+
+    assert.equal(starts, 0);
+});
+
+test("skipped attempts retry on a later open transition without looping while open", () => {
+    const href = "https://app.example/interventions/abc";
+    const correlations: string[] = [];
+    const element = makeElement() as {
+        resolved?: ResolvedConfig;
+        bridge?: {
+            sendHostOpenState: () => void;
+            sendStartPageWorkflow: (correlationId: string) => void;
+        };
+        iframeReady: boolean;
+        pageWorkflowCapable: boolean;
+        lastAuth?: unknown;
+        close: () => void;
+        handlePageWorkflowStatus: (correlationId: string, status: "skipped") => void;
+        open: () => void;
+        setPageReady: (ready: boolean) => void;
+    };
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { href, origin: "https://app.example", pathname: "/interventions/abc" },
+    });
+    element.resolved = resolvedConfig({
+        pageWorkflows: [{ id: "summary", path: "/interventions/:id", prompt: "Summarize" }],
+    });
+    element.bridge = {
+        sendHostOpenState: () => undefined,
+        sendStartPageWorkflow: (correlationId) => correlations.push(correlationId),
+    };
+    element.iframeReady = true;
+    element.pageWorkflowCapable = true;
+    element.lastAuth = { kind: "granted", token: "token", expiresIn: 900 };
+    element.setPageReady(true);
+    element.open();
+    const first = correlations[0];
+    assert.ok(first);
+
+    element.handlePageWorkflowStatus(first, "skipped");
+    assert.equal(correlations.length, 1);
+
+    element.close();
+    element.open();
+    assert.equal(correlations.length, 2);
+    assert.notEqual(correlations[1], first);
+});
+
+test("closing an unacknowledged workflow cancels it before a later open retries", () => {
+    const href = "https://app.example/interventions/abc";
+    const correlations: string[] = [];
+    const cancellations: string[] = [];
+    const element = makeElement() as {
+        resolved?: ResolvedConfig;
+        bridge?: {
+            sendHostOpenState: () => void;
+            sendStartPageWorkflow: (correlationId: string) => void;
+            sendCancelPageWorkflow: (correlationId: string) => void;
+        };
+        iframeReady: boolean;
+        pageWorkflowCapable: boolean;
+        lastAuth?: unknown;
+        close: () => void;
+        handlePageWorkflowStatus: (correlationId: string, status: "skipped") => void;
+        open: () => void;
+        setPageReady: (ready: boolean) => void;
+    };
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { href, origin: "https://app.example", pathname: "/interventions/abc" },
+    });
+    element.resolved = resolvedConfig({
+        pageWorkflows: [{ id: "summary", path: "/interventions/:id", prompt: "Summarize" }],
+    });
+    element.bridge = {
+        sendHostOpenState: () => undefined,
+        sendStartPageWorkflow: (correlationId) => correlations.push(correlationId),
+        sendCancelPageWorkflow: (correlationId) => cancellations.push(correlationId),
+    };
+    element.iframeReady = true;
+    element.pageWorkflowCapable = true;
+    element.lastAuth = { kind: "granted", token: "token", expiresIn: 900 };
+    element.setPageReady(true);
+    element.open();
+    const first = correlations[0];
+    assert.ok(first);
+
+    element.close();
+    element.open();
+    assert.deepEqual(cancellations, [first]);
+    assert.equal(correlations.length, 2);
+
+    element.handlePageWorkflowStatus(first, "skipped");
+    assert.equal(correlations.length, 2);
+});
+
 test("live host theme changes reuse the bridge and iframe", () => {
     const sentThemes: string[] = [];
     const panelShadows: string[] = [];
@@ -188,6 +496,7 @@ test("live token-endpoint changes reuse the iframe but acquire fresh auth", () =
     });
     const bridge = {
         sendHostTheme: (_theme: string) => undefined,
+        sendHostOpenState: (_open: boolean) => undefined,
         stop: () => undefined,
     };
     const element = makeElement() as {
@@ -220,6 +529,68 @@ test("live token-endpoint changes reuse the iframe but acquire fresh auth", () =
     assert.equal(element.resolved?.tokenEndpoint, "/token-b");
 });
 
+test("token-endpoint changes revoke the old workflow grant before restart checks", () => {
+    const href = "https://app.example/interventions/abc";
+    const workflow = { id: "summary", path: "/interventions/:id", prompt: "Summarize" };
+    const starts: string[] = [];
+    const cancellations: string[] = [];
+    const initial = resolveConfig({
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token-a",
+        pageWorkflows: [workflow],
+    });
+    const bridge = {
+        sendHostTheme: () => undefined,
+        sendHostOpenState: () => undefined,
+        sendStartPageWorkflow: (correlationId: string) => starts.push(correlationId),
+        sendCancelPageWorkflow: (correlationId: string) => cancellations.push(correlationId),
+        stop: () => undefined,
+    };
+    const element = makeElement() as {
+        resolved?: ResolvedConfig;
+        bridge?: typeof bridge;
+        iframeReady: boolean;
+        pageWorkflowCapable: boolean;
+        isConnected: boolean;
+        lastAuth?: unknown;
+        shell: { render: (config: ResolvedConfig) => void };
+        acquireToken: () => Promise<void>;
+        open: () => void;
+        setPageReady: (ready: boolean) => void;
+        setConfig: (config: {
+            publicSurfaceId: string;
+            tokenEndpoint: string;
+            pageWorkflows: Array<typeof workflow>;
+        }) => void;
+    };
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { href, origin: "https://app.example", pathname: "/interventions/abc" },
+    });
+    element.resolved = initial;
+    element.shell.render(initial);
+    element.bridge = bridge;
+    element.iframeReady = true;
+    element.pageWorkflowCapable = true;
+    element.isConnected = true;
+    element.lastAuth = { kind: "granted", token: "old-token", expiresIn: 900 };
+    element.acquireToken = async () => undefined;
+    element.setPageReady(true);
+    element.open();
+    const initialCorrelation = starts[0];
+    assert.ok(initialCorrelation);
+
+    element.setConfig({
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token-b",
+        pageWorkflows: [workflow],
+    });
+
+    assert.equal(element.lastAuth, undefined);
+    assert.deepEqual(cancellations, [initialCorrelation]);
+    assert.equal(starts.length, 1);
+});
+
 test("presentation switches preserve the open frame, bridge, auth, tools, and token schedule", () => {
     let tokenAcquisitions = 0;
     const initial = resolveConfig({
@@ -228,6 +599,7 @@ test("presentation switches preserve the open frame, bridge, auth, tools, and to
     });
     const bridge = {
         sendHostTheme: (_theme: string) => undefined,
+        sendHostOpenState: (_open: boolean) => undefined,
         stop: () => undefined,
     };
     const auth = { kind: "granted", token: "existing-token", expiresIn: 60 };
@@ -354,8 +726,9 @@ test("READY receives the current host theme before the iframe renders auth state
     const element = makeElement() as {
         resolved?: ResolvedConfig;
         bridge?: { start: () => void; stop: () => void };
+        iframeReady: boolean;
         shell: {
-            frame?: { contentWindow?: Window };
+            frame?: { contentWindow?: Window; dispatch: (name: string, event: Event) => void };
             applyConfig: (config: ResolvedConfig) => void;
             render: (config: ResolvedConfig) => void;
         };
@@ -389,5 +762,23 @@ test("READY receives the current host theme before the iframe renders auth state
         },
         origin: config.iframeOrigin,
     });
+
+    // READY may arrive from the new document before the parent receives its
+    // iframe load event. The post-load READY must establish the final session.
+    element.shell.frame?.dispatch("load", {} as Event);
+    assert.equal(element.iframeReady, false);
+    messageListener?.({
+        origin: config.iframeOrigin,
+        source: iframeWindow,
+        data: {
+            source: EMBED_SOURCE,
+            protocolVersion: config.protocolVersion,
+            type: "READY",
+            minProtocolVersion: config.protocolVersion,
+            maxProtocolVersion: config.protocolVersion,
+        } satisfies EmbedFrame,
+    } as MessageEvent);
+    assert.equal(element.iframeReady, true);
+    assert.equal(posted.filter(({ frame }) => frame.type === "HOST_THEME").length, 2);
     element.bridge?.stop();
 });

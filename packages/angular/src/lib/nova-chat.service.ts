@@ -86,6 +86,13 @@ export class NovaChatService {
             .catch((error) => reportAngularOperationError("toggle", error));
     }
 
+    /** Mark the current route ready (or no longer ready) for automatic workflows. */
+    setPageReady(ready: boolean): void {
+        void this.load()
+            .then((sdk) => sdk.setPageReady(ready))
+            .catch((error) => reportAngularOperationError("setPageReady", error));
+    }
+
     destroy(): void {
         void this.load()
             .then((sdk) => sdk.destroy())

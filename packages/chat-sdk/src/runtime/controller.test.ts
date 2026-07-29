@@ -16,12 +16,15 @@ interface TestController {
     mountRefs: number;
     openChangeListeners: Set<(open: boolean) => void>;
     openState: boolean;
+    pageReady: boolean;
+    pageReadyUrl?: string;
     element?: {
         close?: () => void;
         destroy: () => void;
         isOpen?: boolean;
         open?: () => void;
         removeEventListener: () => void;
+        setPageReady?: (ready: boolean, expectedUrl?: string) => void;
     };
     close: () => void;
     isOpen: () => boolean;
@@ -34,6 +37,7 @@ interface TestController {
         presentationMode: "popover" | "sidebar",
     ) => HTMLElement;
     subscribeOpenChange: (listener: (open: boolean) => void) => () => void;
+    setPageReady: (ready: boolean) => void;
     toggle: () => void;
 }
 
@@ -72,6 +76,8 @@ function freshController(): TestController {
     controller.openChangeListeners.clear();
     controller.openState = false;
     controller.hasPendingOpenState = false;
+    controller.pageReady = false;
+    controller.pageReadyUrl = undefined;
     controller.element = {
         destroy() {
             controller.element = undefined;
@@ -249,6 +255,38 @@ test("an open request made before init is retained for the eventual element", ()
 
     assert.equal(controller.isOpen(), true);
     assert.equal(controller.hasPendingOpenState, true);
+});
+
+test("page readiness records the exact URL and clears explicitly", () => {
+    const controller = freshController();
+    const signals: Array<[boolean, string | undefined]> = [];
+    Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: { location: { href: "https://app.example/interventions/abc" } },
+    });
+    Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: {},
+    });
+    controller.element = {
+        destroy() {
+            controller.element = undefined;
+        },
+        removeEventListener() {},
+        setPageReady(ready, expectedUrl) {
+            signals.push([ready, expectedUrl]);
+        },
+    };
+
+    controller.setPageReady(true);
+    controller.setPageReady(false);
+
+    assert.deepEqual(signals, [
+        [true, "https://app.example/interventions/abc"],
+        [false, undefined],
+    ]);
+    assert.equal(controller.pageReady, false);
+    assert.equal(controller.pageReadyUrl, undefined);
 });
 
 test("sidebar mount resolution requires an explicit, resolvable layout container", () => {

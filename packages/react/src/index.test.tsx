@@ -6,6 +6,7 @@ import {
     registerTool,
     release,
     retain,
+    setPageReady,
     toggle,
     unregisterTool,
 } from "@wp-nova/chat-sdk";
@@ -64,6 +65,7 @@ vi.mock("@wp-nova/chat-sdk", () => {
             h.openListeners.add(listener);
             return () => h.openListeners.delete(listener);
         }),
+        setPageReady: vi.fn(),
         destroy: vi.fn(() => teardown()),
     };
 });
@@ -106,6 +108,7 @@ async function unmount(root: Root): Promise<void> {
 
 let triggerRerender: () => void = () => {};
 let triggerChatToggle: () => Promise<void> = () => Promise.resolve();
+let signalPageReady: (ready: boolean) => Promise<void> = () => Promise.resolve();
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -116,6 +119,7 @@ beforeEach(() => {
     document.body.innerHTML = "";
     triggerRerender = () => {};
     triggerChatToggle = () => Promise.resolve();
+    signalPageReady = () => Promise.resolve();
 });
 
 describe("NovaChatProvider — R1 shared-singleton teardown", () => {
@@ -265,6 +269,34 @@ describe("NovaChatProvider — R5 stable config", () => {
         expect(retain).toHaveBeenCalledTimes(1);
         expect(release).not.toHaveBeenCalled();
     });
+
+    it("re-initializes in place when page workflow definitions change", async () => {
+        const firstWorkflow = {
+            id: "summary",
+            path: "/interventions/:id",
+            prompt: "Summarize the call",
+        };
+        const root = await mount(
+            <NovaChatProvider config={{ ...config, pageWorkflows: [firstWorkflow] }}>
+                child
+            </NovaChatProvider>,
+        );
+        expect(init).toHaveBeenCalledTimes(1);
+
+        const nextWorkflow = { ...firstWorkflow, prompt: "Summarize and recommend next actions" };
+        await rerender(
+            root,
+            <NovaChatProvider config={{ ...config, pageWorkflows: [nextWorkflow] }}>
+                child
+            </NovaChatProvider>,
+        );
+
+        expect(init).toHaveBeenCalledTimes(2);
+        expect(init).toHaveBeenLastCalledWith({
+            ...config,
+            pageWorkflows: [nextWorkflow],
+        });
+    });
 });
 
 describe("NovaChatProvider — R20 stable tools", () => {
@@ -309,6 +341,7 @@ describe("host-owned chat controls", () => {
         const chat = useNovaChat();
         const open = useNovaChatOpenState();
         triggerChatToggle = chat.toggle;
+        signalPageReady = chat.setPageReady;
         return (
             <button aria-expanded={open} onClick={() => void chat.toggle()} type="button">
                 {open ? "Close assistant" : "Open assistant"}
@@ -340,5 +373,21 @@ describe("host-owned chat controls", () => {
 
         expect(button?.getAttribute("aria-expanded")).toBe("false");
         expect(button?.textContent).toBe("Open assistant");
+    });
+
+    it("forwards explicit page readiness through the provider API", async () => {
+        await mount(
+            <NovaChatProvider config={config}>
+                <CustomTrigger />
+            </NovaChatProvider>,
+        );
+
+        await act(async () => {
+            await signalPageReady(true);
+            await signalPageReady(false);
+        });
+
+        expect(setPageReady).toHaveBeenNthCalledWith(1, true);
+        expect(setPageReady).toHaveBeenNthCalledWith(2, false);
     });
 });

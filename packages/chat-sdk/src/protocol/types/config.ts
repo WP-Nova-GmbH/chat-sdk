@@ -4,6 +4,19 @@ import type { SiteRoute } from "./page.js";
 // SDK init config
 // ---------------------------------------------------------------------------
 
+/**
+ * An automatic workflow the host may start after it explicitly reports that a
+ * matching page has finished loading.
+ */
+export interface PageWorkflowDefinition {
+    /** Stable integrator-owned identifier used for cache and status correlation. */
+    id: string;
+    /** Exact same-origin pathname template. `:param` occupies exactly one segment. */
+    path: string;
+    /** Instructions for the page-context-only workflow. */
+    prompt: string;
+}
+
 /** Host-page color mode forwarded to the embedded chat UI. */
 export type HostTheme = "light" | "dark";
 
@@ -100,6 +113,12 @@ export interface SdkConfig {
      * user can actually reach — filter by role/permissions before init.
      */
     routes?: SiteRoute[];
+    /**
+     * Automatic page workflows. The host must separately call
+     * `setPageReady(true)` once the matching route's data has rendered. Workflows
+     * run only while the chat panel is open.
+     */
+    pageWorkflows?: PageWorkflowDefinition[];
     /**
      * Tuning for the post-action DOM settle before snapshot capture.
      * `quietMs` is the mutation-free window that counts as settled (default 200,

@@ -41,6 +41,8 @@ export interface NovaChatApi {
     open: () => Promise<void>;
     close: () => Promise<void>;
     toggle: () => Promise<void>;
+    /** Mark the current route ready (or no longer ready) for automatic workflows. */
+    setPageReady: (ready: boolean) => Promise<void>;
     destroy: () => Promise<void>;
 }
 
@@ -126,6 +128,9 @@ function useSdkApi(): NovaChatApi {
             toggle() {
                 return runQueued((sdk) => sdk.toggle());
             },
+            setPageReady(ready) {
+                return runQueued((sdk) => sdk.setPageReady(ready));
+            },
             destroy() {
                 return runQueued((sdk) => sdk.destroy());
             },
@@ -180,6 +185,7 @@ export function NovaChatProvider({
         config.safeValueSelectors,
         config.voiceMode,
         config.routes,
+        config.pageWorkflows,
         config.protocolVersion,
     ]);
     // Intentionally re-derive only on the primitive configKey + mount identity,
@@ -311,6 +317,7 @@ export function useNovaTool(tool: NovaToolDefinition) {
 
 export type {
     ChatPresentation,
+    PageWorkflowDefinition,
     SdkConfig,
     SidebarResizeDetail,
     ToolDefinition,

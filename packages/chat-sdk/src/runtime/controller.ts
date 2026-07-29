@@ -22,6 +22,7 @@ export type Command =
     | ["open"]
     | ["close"]
     | ["toggle"]
+    | ["setPageReady", boolean]
     | ["retain"]
     | ["release"]
     | ["destroy"]
@@ -44,6 +45,8 @@ class SdkController {
     private element?: WpNovaChatElement;
     private openState = false;
     private hasPendingOpenState = false;
+    private pageReady = false;
+    private pageReadyUrl?: string;
     private readonly openChangeListeners = new Set<OpenChangeListener>();
     /** Live mount count. The shared element is torn down only when it hits 0. */
     private mountRefs = 0;
@@ -78,6 +81,9 @@ class SdkController {
                 break;
             case "toggle":
                 this.toggle();
+                break;
+            case "setPageReady":
+                this.setPageReady(rest[0] === true);
                 break;
             case "retain":
                 this.retain();
@@ -125,6 +131,19 @@ class SdkController {
         return () => this.openChangeListeners.delete(listener);
     }
 
+    /** Mark the current host URL ready (or no longer ready) for automatic workflows. */
+    setPageReady(ready: boolean): void {
+        if (ready) {
+            assertBrowserRuntime();
+            this.pageReady = true;
+            this.pageReadyUrl = window.location.href;
+        } else {
+            this.pageReady = false;
+            this.pageReadyUrl = undefined;
+        }
+        this.element?.setPageReady(this.pageReady, this.pageReadyUrl);
+    }
+
     /**
      * Register a live mount. Called once per mount lifecycle (NOT per `init`), so
      * repeated re-inits never disturb the count. Pairs with `release`.
@@ -161,6 +180,7 @@ class SdkController {
 
             element.moveTo(mountTarget);
             element.setConfig(config);
+            element.setPageReady(this.pageReady, this.pageReadyUrl);
             if (!initialMount) return;
 
             this.element = element;
@@ -183,6 +203,8 @@ class SdkController {
         element?.removeEventListener(OPEN_CHANGE_EVENT, this.onElementOpenChange);
         this.element = undefined;
         this.hasPendingOpenState = false;
+        this.pageReady = false;
+        this.pageReadyUrl = undefined;
         this.updateOpenState(false);
     }
 
@@ -290,6 +312,14 @@ export function close(): void {
 /** Toggle the shared chat panel between open and closed. */
 export function toggle(): void {
     WpNova("toggle");
+}
+
+/**
+ * Tell the SDK whether the current page has finished rendering the content an
+ * automatic workflow may read.
+ */
+export function setPageReady(ready: boolean): void {
+    WpNova("setPageReady", ready);
 }
 
 /** Return the controller's current (or pre-init requested) open state. */

@@ -1,8 +1,10 @@
 // Config normalization + protocol tunables for the SDK.
 
 import { DEFAULT_SETTLE, type SettleOptions } from "../page/settle.js";
+import { pageWorkflowPathsOverlap } from "../page/workflows.js";
 import {
     type HostTheme,
+    type PageWorkflowDefinition,
     PROTOCOL_VERSION,
     type SdkConfig,
     type SiteRoute,
@@ -81,6 +83,8 @@ export interface ResolvedConfig {
     voiceModeEnabled: boolean;
     /** Validated integrator-declared site routes attached to every page capture. */
     siteRoutes: SiteRoute[];
+    /** Validated automatic page workflows evaluated after an explicit ready signal. */
+    pageWorkflows: PageWorkflowDefinition[];
     /** Clamped post-action settle tuning for the pre-capture mutation wait. */
     settle: SettleOptions;
     protocolVersion: number;
@@ -145,6 +149,7 @@ function resolvePresentation(presentation: SdkConfig["presentation"]): ResolvedP
  * truncated in production.
  */
 const MAX_SITE_ROUTES = 100;
+const MAX_PAGE_WORKFLOWS = 20;
 
 /**
  * Keep only well-formed routes: a same-origin path (leading "/" but not "//",
@@ -175,6 +180,64 @@ function resolveSiteRoutes(routes: SdkConfig["routes"]): SiteRoute[] {
             `[wp-nova] config.routes declares ${resolved.length} routes; only the first ${MAX_SITE_ROUTES} are used`,
         );
         return resolved.slice(0, MAX_SITE_ROUTES);
+    }
+    return resolved;
+}
+
+/**
+ * Keep the workflow surface deliberately small while rejecting ambiguous or
+ * malformed definitions. One workflow per id and path guarantees deterministic
+ * automatic dispatch.
+ */
+function resolvePageWorkflows(workflows: SdkConfig["pageWorkflows"]): PageWorkflowDefinition[] {
+    if (!Array.isArray(workflows)) return [];
+
+    const seenIds = new Set<string>();
+    const seenPaths = new Set<string>();
+    const resolved: PageWorkflowDefinition[] = [];
+    for (const workflow of workflows) {
+        const id = typeof workflow?.id === "string" ? workflow.id.trim() : "";
+        const path = typeof workflow?.path === "string" ? workflow.path.trim() : "";
+        const prompt = typeof workflow?.prompt === "string" ? workflow.prompt.trim() : "";
+        const normalizedSeparators = path.replace(/\\/g, "/");
+        const segments = path.split("/");
+        const validParameters = segments.every(
+            (segment) => !segment.startsWith(":") || /^:[A-Za-z_][A-Za-z0-9_]*$/.test(segment),
+        );
+        const validPath =
+            path.startsWith("/") &&
+            !normalizedSeparators.startsWith("//") &&
+            !/[?#]/.test(path) &&
+            validParameters &&
+            path.length <= 500;
+        const validId = /^[A-Za-z][A-Za-z0-9_-]{0,79}$/.test(id);
+        const validPrompt = prompt.length > 0 && prompt.length <= 8_000;
+        const overlapsExistingPath = resolved.some((candidate) =>
+            pageWorkflowPathsOverlap(candidate.path, path),
+        );
+
+        if (
+            !validId ||
+            !validPrompt ||
+            !validPath ||
+            seenIds.has(id) ||
+            seenPaths.has(path) ||
+            overlapsExistingPath
+        ) {
+            console.warn(
+                `[wp-nova] ignoring invalid or duplicate page workflow ${JSON.stringify(workflow)}`,
+            );
+            continue;
+        }
+        seenIds.add(id);
+        seenPaths.add(path);
+        resolved.push({ id, path, prompt });
+    }
+    if (resolved.length > MAX_PAGE_WORKFLOWS) {
+        console.warn(
+            `[wp-nova] config.pageWorkflows declares ${resolved.length} workflows; only the first ${MAX_PAGE_WORKFLOWS} are used`,
+        );
+        return resolved.slice(0, MAX_PAGE_WORKFLOWS);
     }
     return resolved;
 }
@@ -263,6 +326,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
             : [],
         voiceModeEnabled,
         siteRoutes: resolveSiteRoutes(config.routes),
+        pageWorkflows: resolvePageWorkflows(config.pageWorkflows),
         settle: resolveSettle(config.settle),
         protocolVersion: config.protocolVersion ?? PROTOCOL_VERSION,
     };

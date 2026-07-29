@@ -281,3 +281,56 @@ test("site routes are capped at the server-side bound", () => {
         console.warn = originalWarn;
     }
 });
+
+test("page workflows default to empty and keep a minimal validated definition", () => {
+    assert.deepEqual(resolveConfig(REQUIRED_CONFIG).pageWorkflows, []);
+
+    const config = resolveConfig({
+        ...REQUIRED_CONFIG,
+        pageWorkflows: [
+            {
+                id: " summarize-intervention ",
+                path: " /call-center/interventions/:interventionId ",
+                prompt: " Summarize the transcript ",
+            },
+        ],
+    });
+
+    assert.deepEqual(config.pageWorkflows, [
+        {
+            id: "summarize-intervention",
+            path: "/call-center/interventions/:interventionId",
+            prompt: "Summarize the transcript",
+        },
+    ]);
+});
+
+test("page workflows reject malformed and ambiguous definitions", () => {
+    const warnings: unknown[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => void warnings.push(args);
+    try {
+        const config = resolveConfig({
+            ...REQUIRED_CONFIG,
+            pageWorkflows: [
+                { id: "valid", path: "/items/:itemId", prompt: "Summarize" },
+                { id: "valid", path: "/other/:id", prompt: "Duplicate id" },
+                { id: "other", path: "/items/:itemId", prompt: "Duplicate path" },
+                { id: "empty-prompt", path: "/empty", prompt: " " },
+                { id: "bad-param", path: "/items/:123", prompt: "Invalid" },
+                { id: "query", path: "/items?all=true", prompt: "Invalid" },
+                { id: "9bad", path: "/invalid-id", prompt: "Invalid" },
+                { id: "long-path", path: `/${"x".repeat(500)}`, prompt: "Invalid" },
+                { id: "long-prompt", path: "/long-prompt", prompt: "x".repeat(8001) },
+                { id: "overlap", path: "/items/new", prompt: "Ambiguous" },
+            ],
+        });
+
+        assert.deepEqual(config.pageWorkflows, [
+            { id: "valid", path: "/items/:itemId", prompt: "Summarize" },
+        ]);
+        assert.equal(warnings.length, 9);
+    } finally {
+        console.warn = originalWarn;
+    }
+});

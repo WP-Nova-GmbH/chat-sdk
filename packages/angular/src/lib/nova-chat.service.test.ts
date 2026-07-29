@@ -5,6 +5,7 @@ import { NovaChatService } from "./nova-chat.service";
 const sdk = vi.hoisted(() => ({
     close: vi.fn(),
     open: vi.fn(),
+    setPageReady: vi.fn(),
     toggle: vi.fn(),
 }));
 
@@ -19,17 +20,21 @@ describe("NovaChatService host controls", () => {
         vi.clearAllMocks();
     });
 
-    it("delegates open, close and toggle to the shared SDK controller", async () => {
+    it("delegates host controls and page readiness to the shared SDK controller", async () => {
         const injector = Injector.create({ providers: [] });
         const service = runInInjectionContext(injector, () => new NovaChatService());
 
         service.open();
         service.close();
         service.toggle();
+        service.setPageReady(true);
+        service.setPageReady(false);
         await flushDynamicImport();
 
         expect(sdk.open).toHaveBeenCalledTimes(1);
         expect(sdk.close).toHaveBeenCalledTimes(1);
         expect(sdk.toggle).toHaveBeenCalledTimes(1);
+        expect(sdk.setPageReady).toHaveBeenNthCalledWith(1, true);
+        expect(sdk.setPageReady).toHaveBeenNthCalledWith(2, false);
     });
 });

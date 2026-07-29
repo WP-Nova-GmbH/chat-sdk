@@ -13,7 +13,7 @@
 //   - Errors are EXPLICIT `*_ERROR` frames, never a successful-but-empty result
 //     (the POC's `resolve(null)` ambiguity is fixed here).
 
-import type { HostTheme } from "./config.js";
+import type { HostTheme, PageWorkflowDefinition } from "./config.js";
 import type { PageContext } from "./page.js";
 import type {
     ClientToolCall,
@@ -168,6 +168,36 @@ export interface HostThemeFrame extends FrameBase {
     theme: HostTheme;
 }
 
+/** Keep the hosted iframe synchronized with SDK-owned launcher/panel state. */
+export interface HostOpenStateFrame extends FrameBase {
+    source: SdkSource;
+    type: "HOST_OPEN_STATE";
+    open: boolean;
+}
+
+/**
+ * Start one configured workflow against a page the host explicitly marked
+ * ready. The iframe captures fresh context before invoking the backend.
+ */
+export interface StartPageWorkflowFrame extends FrameBase {
+    source: SdkSource;
+    type: "START_PAGE_WORKFLOW";
+    correlationId: string;
+    workflow: PageWorkflowDefinition;
+    /** Exact page URL recorded when the host reported readiness. */
+    expectedUrl: string;
+}
+
+/**
+ * Withdraw a workflow trigger that the iframe has not acknowledged as started.
+ * The iframe must ignore this frame once backend execution has begun.
+ */
+export interface CancelPageWorkflowFrame extends FrameBase {
+    source: SdkSource;
+    type: "CANCEL_PAGE_WORKFLOW";
+    correlationId: string;
+}
+
 /** Union of every frame the SDK sends to the iframe. */
 export type SdkFrame =
     | AuthTokenFrame
@@ -178,7 +208,10 @@ export type SdkFrame =
     | RegisterToolsFrame
     | UnavailableFrame
     | AuthErrorFrame
-    | HostThemeFrame;
+    | HostThemeFrame
+    | HostOpenStateFrame
+    | StartPageWorkflowFrame
+    | CancelPageWorkflowFrame;
 
 // ---------------------------------------------------------------------------
 // Wire frames — iframe → SDK (source = "wp-nova-embed")
@@ -196,6 +229,8 @@ export interface ReadyFrame extends FrameBase {
     minProtocolVersion?: number;
     /** Highest protocol version the iframe supports. */
     maxProtocolVersion?: number;
+    /** Additive features the rolling iframe understands at this protocol version. */
+    capabilities?: Array<"page-workflows">;
 }
 
 /** The iframe asks the SDK for a fresh page snapshot. */
@@ -203,6 +238,11 @@ export interface RequestSnapshotFrame extends FrameBase {
     source: EmbedSource;
     type: "REQUEST_SNAPSHOT";
     correlationId: string;
+    /**
+     * START_PAGE_WORKFLOW correlation when this capture is for an automatic
+     * workflow. Omitted for ordinary chat and client-tool snapshots.
+     */
+    workflowCorrelationId?: string;
 }
 
 /** The iframe asks the SDK to run a client tool (after any confirmation gate). */
@@ -273,6 +313,18 @@ export interface SurfaceThemeFrame extends FrameBase {
     triggerIconColor?: string | null;
 }
 
+/** Lifecycle acknowledgement for an automatically-started page workflow. */
+export interface PageWorkflowStatusFrame extends FrameBase {
+    source: EmbedSource;
+    type: "PAGE_WORKFLOW_STATUS";
+    correlationId: string;
+    status: "started" | "cached" | "completed" | "failed" | "skipped";
+    /** Standalone workflow result made available by Nova Ark. */
+    resultId?: string;
+    /** Optional user-safe diagnostic for skipped/failed attempts. */
+    message?: string;
+}
+
 /** Union of every frame the iframe sends to the SDK. */
 export type EmbedFrame =
     | ReadyFrame
@@ -282,7 +334,8 @@ export type EmbedFrame =
     | ConfirmationResultFrame
     | AuthExpiredFrame
     | MinimizeFrame
-    | SurfaceThemeFrame;
+    | SurfaceThemeFrame
+    | PageWorkflowStatusFrame;
 
 /** Any bridge frame in either direction. */
 export type BridgeFrame = SdkFrame | EmbedFrame;
