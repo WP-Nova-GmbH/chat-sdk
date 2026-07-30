@@ -44,6 +44,8 @@ import {
   type HostTheme,
   type SidebarResizeDetail,
   type SettleOptions,
+  type SiteCapabilitiesConfig,
+  type SiteCapabilitiesProvider,
 } from "@wp-nova/chat-sdk";
 ```
 
@@ -82,6 +84,13 @@ export type ChatPresentation =
   | { mode?: "popover" }
   | { mode: "sidebar"; width?: number; resizable?: boolean };
 
+export type SiteCapabilitiesProvider = () => unknown | Promise<unknown>;
+
+export interface SiteCapabilitiesConfig {
+  provider: SiteCapabilitiesProvider;
+  description?: string;
+}
+
 export interface SdkConfig {
   publicSurfaceId: string;
   tokenEndpoint: string;
@@ -99,6 +108,7 @@ export interface SdkConfig {
   safeValueSelectors?: string[];
   voiceMode?: boolean;
   routes?: SiteRoute[];
+  siteCapabilities?: SiteCapabilitiesConfig;
   settle?: {
     quietMs?: number;
     maxWaitMs?: number;
@@ -123,6 +133,10 @@ page's current color mode to the iframe without reading an iframe-owned cookie.
 Changing it through another `init` call updates the existing iframe in place
 without acquiring a new token. Notably, `voiceMode` (default `false`) enables
 the embedded voice button and delegates microphone access to the Nova iframe.
+`siteCapabilities` enables the reserved, read-only `get_site_capabilities` tool;
+Nova supplies its default model instruction and the host provider supplies its
+live JSON-serializable result. The optional description override must contain
+20–2,000 characters.
 See [Configuration](./configuration.md) for the full options table.
 
 `presentation` defaults to `{ mode: "popover" }`. Sidebar width defaults to
@@ -168,6 +182,9 @@ collide with a built-in action, the description is at least 20 characters,
 `inputSchema` is a plain object, `mutating` is boolean, and mutating tools
 have non-empty `confirmationCopy`. Nova applies additional bounded size and
 complexity checks. See [Tools and guided workflows](./tools.md).
+
+`get_site_capabilities` is also reserved. Configure it through
+`SdkConfig.siteCapabilities`; do not pass it to `registerTool`.
 
 `registerToolHandler(name, handler)` and `unregisterToolHandler(name)` remain
 available as deprecated execution-only compatibility helpers. Handler-only tools

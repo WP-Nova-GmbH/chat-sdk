@@ -17,6 +17,12 @@ init({
   routes: [
     { path: "/customers", description: "Customer lookup list with search" },
   ],
+  siteCapabilities: {
+    provider: () => ({
+      features: ["Search customers", "Create support tickets"],
+      automaticWorkflows: ["Prepare a renewal summary on customer pages"],
+    }),
+  },
   settle: {
     maxWaitMs: 5000,
     waitForNavigationSignal: true,
@@ -44,6 +50,7 @@ init({
 | `safeValueSelectors` | No | CSS selectors that opt field values into page snapshot capture. Field values still pass sensitivity checks. |
 | `voiceMode` | No | Enables the embedded voice button and delegates microphone access to the Nova iframe. Defaults to `false`. |
 | `routes` | No | Your site's navigable routes (`{ path, description }`), so the agent can navigate straight to a known page instead of hopping through visible links. See [Site routes](#site-routes). |
+| `siteCapabilities` | No | Enables Nova's `get_site_capabilities` lookup with a live, permission-aware host result. See [Site capability discovery](#site-capability-discovery). |
 | `settle` | No | Post-action snapshot readiness: `quietMs`, `maxWaitMs`, and `waitForNavigationSignal`. See [Post-action snapshots](#post-action-snapshots). |
 | `protocolVersion` | No | Bridge protocol override for compatibility testing. Do not set in normal integrations. |
 
@@ -188,6 +195,54 @@ Routes let the agent reach known pages that are not linked in the current snapsh
 For permission filtering, parameter-id guidance, semantic controls, and router
 integration, read [Navigation and async pages](./navigation.md).
 
+## Site Capability Discovery
+
+`siteCapabilities` gives Nova an authoritative answer when someone asks what it
+can do on the current site. The SDK defines and advertises the read-only
+`get_site_capabilities` tool with no arguments. Its default model instruction
+requires the tool before every answer about available features, actions,
+workflows, offers, or site-specific abilities, including "can you …?" questions.
+The host supplies only the current result:
+
+```ts
+init({
+  publicSurfaceId: "surf_...",
+  tokenEndpoint: "/api/nova-token",
+  siteCapabilities: {
+    provider: async () => {
+      const permissions = await session.getPermissions();
+      return {
+        summary: "I can help the signed-in user work in Acme CRM.",
+        features: [
+          "Find customers and open their records",
+          ...(permissions.canCreateTickets ? ["Create support tickets"] : []),
+        ],
+        automaticWorkflows: [
+          {
+            name: "Renewal summary",
+            availability: "Runs automatically when an eligible customer page opens",
+            output: "A concise account and renewal-risk summary in chat",
+          },
+        ],
+        limitations: ["I cannot approve refunds for this user"],
+      };
+    },
+  },
+});
+```
+
+Return JSON-serializable, user-facing data below Nova's 32 KiB tool-result
+limit. Derive it from the same feature flags, permissions, and current product
+configuration as the host UI. Do not return secrets, hidden permissions, or
+internal implementation details. The provider runs when the model calls the
+tool, so its result can reflect live access changes without rebuilding the SDK.
+
+The surface's Page Tools setting must be enabled because the lookup executes in
+the host page. The SDK owns the default description so new integrations get the
+correct call behavior without prompt authoring. An advanced integration may set
+`siteCapabilities.description` (20–2,000 characters), but the override should
+still explicitly require a call before every site-capability answer.
+
 ## Post-Action Snapshots
 
 After an action or tool, the SDK waits for DOM quiet before recapturing.
@@ -231,10 +286,12 @@ fresh auth through the existing iframe. Presentation, mount, theme, and
 launcher color changes apply to the current element; a `theme` update additionally sends
 `HOST_THEME` to the existing iframe without fetching auth.
 
-A direct `init` call also refreshes `routes` and `settle`. Treat settle options
-as mount-time configuration in framework integrations; the React wrapper
-observes route and theme changes, but changing only `settle` does not trigger
-its re-initialization. Keep framework config objects stable and remount or
+A direct `init` call also refreshes `routes`, `siteCapabilities`, and `settle`.
+The capability lookup is advertised, updated, or removed in place without
+replacing the iframe. Treat settle options as mount-time configuration in
+framework integrations; the React wrapper observes route, theme, and capability
+provider changes, but changing only `settle` does not trigger its
+re-initialization. Keep framework config objects stable and remount or
 re-initialize deliberately when readiness behavior must change.
 
 ## Panel Lifecycle

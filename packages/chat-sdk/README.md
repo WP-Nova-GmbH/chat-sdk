@@ -72,6 +72,7 @@ init({ publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
 | `safeValueSelectors` | no | Selectors that opt safe field values into snapshots. |
 | `voiceMode` | no | Enables voice and iframe microphone delegation. |
 | `routes` | no | Permission-filtered `{ path, description }[]`, max 100. |
+| `siteCapabilities` | no | Live host result for Nova's SDK-defined capability-discovery tool. |
 | `settle` | no | `quietMs`, `maxWaitMs`, and `waitForNavigationSignal`. |
 
 ## Pop-over or docked sidebar
@@ -174,6 +175,34 @@ cookie session because the SDK does not inherit the app's bearer header.
 
 The SDK refreshes proactively at about 80% of `expires_in` and reactively after
 iframe `AUTH_EXPIRED`, always through `tokenEndpoint`.
+
+## Site capability discovery
+
+The current routes and callable tools are not a complete product description.
+Provide a live capability guide so Nova can accurately answer "what can you do
+here?", including automatic workflows and future host features:
+
+```ts
+init({
+  publicSurfaceId: "surf_…",
+  tokenEndpoint: "/api/nova-token",
+  siteCapabilities: {
+    provider: () => ({
+      features: ["Search customers", "Create support tickets"],
+      automaticWorkflows: [
+        "Prepare a renewal summary when an eligible customer page opens",
+      ],
+    }),
+  },
+});
+```
+
+The SDK advertises a reserved, read-only `get_site_capabilities` tool. Nova owns
+its default description, which requires a call before capability answers; the
+host owns only the permission-aware, JSON-serializable provider result. Page
+Tools must be enabled on the surface. Advanced integrations may override
+`siteCapabilities.description` with a 20–2,000-character instruction that
+preserves the same mandatory lookup behavior.
 
 ## Integrator tools
 
