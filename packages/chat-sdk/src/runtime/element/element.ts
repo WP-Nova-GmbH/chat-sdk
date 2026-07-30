@@ -282,8 +282,11 @@ export class WpNovaChatElement extends HTMLElement {
                         "The automatic page workflow is no longer active for this page",
                     );
                 }
-                return this.withSiteRoutes(
-                    capturePageContext(this.resolved?.safeValueSelectors ?? []),
+                return this.withConfiguredPageContext(
+                    capturePageContext(
+                        this.resolved?.safeValueSelectors ?? [],
+                        this.resolved?.hostLocale,
+                    ),
                 );
             },
             onClientToolRequest: (call, signal) => this.runClientTool(call, signal),
@@ -510,9 +513,23 @@ export class WpNovaChatElement extends HTMLElement {
      * Applied at the element (the one owner of the resolved config) so every
      * capture path — snapshot requests and post-tool snapshots — carries them.
      */
-    private withSiteRoutes(context: PageContext): PageContext {
+    private withConfiguredPageContext(context: PageContext): PageContext {
         const siteRoutes = this.resolved?.siteRoutes;
-        return siteRoutes?.length ? { ...context, siteRoutes } : context;
+        const hostLocale = this.resolved?.hostLocale;
+        if (!siteRoutes?.length && !hostLocale) return context;
+
+        return {
+            ...context,
+            ...(siteRoutes?.length ? { siteRoutes } : {}),
+            ...(hostLocale
+                ? {
+                      languageSignals: {
+                          ...context.languageSignals,
+                          hostLocale,
+                      },
+                  }
+                : {}),
+        };
     }
 
     /** Dispatch a client tool to the navigation executor or the integrator registry. */
@@ -526,7 +543,7 @@ export class WpNovaChatElement extends HTMLElement {
             ? await executeNavigation(call, safeSelectors, signal, settle)
             : await this.registry.run(call, safeSelectors, signal, settle);
         return result.snapshot
-            ? { ...result, snapshot: this.withSiteRoutes(result.snapshot) }
+            ? { ...result, snapshot: this.withConfiguredPageContext(result.snapshot) }
             : result;
     }
 

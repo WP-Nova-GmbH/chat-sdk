@@ -120,6 +120,20 @@ test("host theme defaults to light and accepts an explicit dark mode", () => {
     assert.equal(resolveConfig({ ...REQUIRED_CONFIG, theme: "dark" }).theme, "dark");
 });
 
+test("host locale is optional, canonicalized, and rejects malformed tags", () => {
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => void warnings.push(args);
+    try {
+        assert.equal(resolveConfig(REQUIRED_CONFIG).hostLocale, undefined);
+        assert.equal(resolveConfig({ ...REQUIRED_CONFIG, locale: " de-de " }).hostLocale, "de-DE");
+        assert.equal(resolveConfig({ ...REQUIRED_CONFIG, locale: "not_a_locale" }).hostLocale, undefined);
+        assert.equal(warnings.length, 1);
+    } finally {
+        console.warn = originalWarn;
+    }
+});
+
 test("SDK launcher defaults to enabled and supports host-owned controls", () => {
     assert.equal(resolveConfig(REQUIRED_CONFIG).launcherEnabled, true);
     assert.equal(resolveConfig({ ...REQUIRED_CONFIG, launcher: true }).launcherEnabled, true);

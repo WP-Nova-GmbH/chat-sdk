@@ -92,6 +92,12 @@ export interface SdkConfig {
      */
     theme?: HostTheme;
     /**
+     * Active host-application locale as a BCP 47 tag. Automatic page workflows
+     * use it as the user-intent fallback when visible page content is mixed or
+     * ambiguous. Re-running init updates future captures without reloading chat.
+     */
+    locale?: string;
+    /**
      * Per-surface safe-value selector allowlist. A field value is captured in
      * the Visible Page Snapshot ONLY when it opts in (via `data-wp-nova-include`
      * or by matching one of these selectors) AND passes every sensitivity check.

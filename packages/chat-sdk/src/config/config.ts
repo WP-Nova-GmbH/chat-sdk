@@ -1,5 +1,6 @@
 // Config normalization + protocol tunables for the SDK.
 
+import { normalizeLocale } from "../page/language.js";
 import { DEFAULT_SETTLE, type SettleOptions } from "../page/settle.js";
 import { pageWorkflowPathsOverlap } from "../page/workflows.js";
 import {
@@ -75,6 +76,8 @@ export interface ResolvedConfig {
     launcherEnabled: boolean;
     /** Host page color mode forwarded to the iframe; defaults to light. */
     theme: HostTheme;
+    /** Canonical active locale explicitly supplied by the host application. */
+    hostLocale?: string;
     /** True when the host config supplied a launcher/accent color for first paint. */
     hasFirstPaintLauncherColor: boolean;
     /** Per-surface safe-value selector allowlist (default-deny; empty by default). */
@@ -141,6 +144,15 @@ function resolvePresentation(presentation: SdkConfig["presentation"]): ResolvedP
         Math.min(Math.max(width, SIDEBAR_WIDTH_MIN), SIDEBAR_WIDTH_MAX),
         resizable,
     );
+}
+
+function resolveHostLocale(locale: SdkConfig["locale"]): string | undefined {
+    if (locale == null) return undefined;
+    const normalized = normalizeLocale(locale);
+    if (!normalized) {
+        console.warn(`[wp-nova] ignoring invalid host locale ${JSON.stringify(locale)}`);
+    }
+    return normalized;
 }
 
 /**
@@ -320,6 +332,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
         triggerIconColor: config.triggerIconColor || "light",
         launcherEnabled: config.launcher !== false,
         theme,
+        hostLocale: resolveHostLocale(config.locale),
         hasFirstPaintLauncherColor,
         safeValueSelectors: Array.isArray(config.safeValueSelectors)
             ? config.safeValueSelectors.filter((s) => typeof s === "string" && s.trim())

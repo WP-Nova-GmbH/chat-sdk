@@ -1,4 +1,5 @@
 import type { PageContext, PageStructuredData } from "../../protocol/types/index.js";
+import { capturePageLanguageSignals } from "../language.js";
 import { captureVisiblePageSnapshot } from "./capture.js";
 import { FIELD_VALUE_CAP } from "./constants.js";
 import { hasSensitiveDescriptor, isExcludedSubtree, isVisible, normalizeText } from "./dom.js";
@@ -55,7 +56,10 @@ function captureSelection(): string | undefined {
  * and the user's selection. Throws only on a genuine DOM failure (the bridge
  * maps that to a `capture_error` frame — never a silent empty result).
  */
-export function capturePageContext(safeSelectors: string[] = []): PageContext {
+export function capturePageContext(
+    safeSelectors: string[] = [],
+    hostLocale?: string,
+): PageContext {
     return {
         url: location.href,
         path: location.pathname,
@@ -63,6 +67,7 @@ export function capturePageContext(safeSelectors: string[] = []): PageContext {
         selection: captureSelection(),
         structuredData: captureStructuredData(),
         aiFields: captureAiFields(),
+        languageSignals: capturePageLanguageSignals(hostLocale),
         snapshot: captureVisiblePageSnapshot(safeSelectors),
     };
 }
