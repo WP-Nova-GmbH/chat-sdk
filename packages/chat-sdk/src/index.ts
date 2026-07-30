@@ -15,6 +15,8 @@ export type {
     PageContext,
     PageWorkflowDefinition,
     SdkConfig,
+    SiteCapabilitiesConfig,
+    SiteCapabilitiesProvider,
     SiteRoute,
     SurfaceDisplaySettings,
     ToolDefinition,

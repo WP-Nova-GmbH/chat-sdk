@@ -3,6 +3,7 @@ import test from "node:test";
 import { type ResolvedConfig, resolveConfig } from "../../config/config.js";
 import type { EmbedFrame, SdkFrame } from "../../protocol/types/index.js";
 import { EMBED_SOURCE } from "../../protocol/types/index.js";
+import { SITE_CAPABILITIES_TOOL_NAME, ToolRegistry } from "../../tools/tools.js";
 import {
     makeElement,
     resetElementTestGlobals,
@@ -83,6 +84,38 @@ test("config changes that toggle voice mode reset the iframe", () => {
     assert.equal(element.lastAuth, undefined);
     assert.equal(element.resolved?.voiceModeEnabled, true);
     assert.equal(new URL(element.resolved?.iframeSrc ?? "").searchParams.get("voice"), "1");
+});
+
+test("siteCapabilities config advertises and removes the SDK-defined lookup in place", () => {
+    const registry = new ToolRegistry();
+    const element = makeElement() as {
+        setConfig: (config: {
+            publicSurfaceId: string;
+            tokenEndpoint: string;
+            siteCapabilities?: {
+                provider: () => unknown;
+            };
+        }) => void;
+        setRegistry: (registry: ToolRegistry) => void;
+    };
+    element.setRegistry(registry);
+
+    element.setConfig({
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token",
+        siteCapabilities: {
+            provider: () => ({ features: ["Prepare renewal summary"] }),
+        },
+    });
+
+    assert.equal(registry.advertisedTools()[0]?.name, SITE_CAPABILITIES_TOOL_NAME);
+
+    element.setConfig({
+        publicSurfaceId: "surf_1",
+        tokenEndpoint: "/token",
+    });
+
+    assert.deepEqual(registry.advertisedTools(), []);
 });
 
 test("READY protocol range must include the SDK protocol", () => {

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ToolDefinition } from "../protocol/types/index.js";
-import { ToolRegistry } from "./tools.js";
+import {
+    SITE_CAPABILITIES_TOOL_DESCRIPTION,
+    SITE_CAPABILITIES_TOOL_NAME,
+    ToolRegistry,
+} from "./tools.js";
 
 const ORIGINALS = {
     document: Object.getOwnPropertyDescriptor(globalThis, "document"),
@@ -99,6 +103,57 @@ test("unregisterTool removes the advertised spec", () => {
     assert.deepEqual(registry.advertisedTools(), []);
 });
 
+test("siteCapabilities advertises the SDK-defined lookup and returns the live host result", async () => {
+    installEmptyDom();
+    const registry = new ToolRegistry();
+    let currentCapabilities = {
+        features: ["Search customers"],
+        automaticWorkflows: ["Prepare renewal summary"],
+    };
+    registry.setSiteCapabilities({
+        provider: async () => currentCapabilities,
+    });
+
+    assert.deepEqual(registry.advertisedTools(), [
+        {
+            name: SITE_CAPABILITIES_TOOL_NAME,
+            description: SITE_CAPABILITIES_TOOL_DESCRIPTION,
+            args_schema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {},
+            },
+            mutating: false,
+        },
+    ]);
+
+    currentCapabilities = {
+        features: ["Search customers", "Create tickets"],
+        automaticWorkflows: ["Prepare renewal summary"],
+    };
+    const result = await registry.run({ name: SITE_CAPABILITIES_TOOL_NAME });
+
+    assert.deepEqual(result.result, currentCapabilities);
+});
+
+test("siteCapabilities supports a description override and is removed on re-init", () => {
+    const registry = new ToolRegistry();
+    const changes: unknown[] = [];
+    const description =
+        "Call before answering any question about the capabilities available in Acme CRM.";
+    registry.setOnChange((tools) => changes.push(tools));
+
+    registry.setSiteCapabilities({
+        description,
+        provider: () => ({ features: [] }),
+    });
+    assert.equal(registry.advertisedTools()[0]?.description, description);
+
+    registry.setSiteCapabilities(undefined);
+    assert.deepEqual(registry.advertisedTools(), []);
+    assert.equal(changes.length, 2);
+});
+
 test("registered tool execution returns handler result and a fresh snapshot", async () => {
     installEmptyDom();
     const registry = new ToolRegistry();
@@ -174,6 +229,14 @@ test("registerTool rejects invalid or unsafe definitions", () => {
     assert.throws(() => registry.register(validTool({ name: "Click Me" })), /lowercase letters/);
     assert.throws(() => registry.register(validTool({ name: "click" })), /reserved/);
     assert.throws(
+        () => registry.register(validTool({ name: SITE_CAPABILITIES_TOOL_NAME })),
+        /reserved for init\.siteCapabilities/,
+    );
+    assert.throws(
+        () => registry.unregister(SITE_CAPABILITIES_TOOL_NAME),
+        /configured through init\.siteCapabilities/,
+    );
+    assert.throws(
         () => registry.register(validTool({ description: "too short" })),
         /at least 20 characters/,
     );
@@ -185,5 +248,25 @@ test("registerTool rejects invalid or unsafe definitions", () => {
     assert.throws(
         () => registry.register(validTool({ mutating: true, confirmationCopy: undefined })),
         /confirmationCopy/,
+    );
+    assert.throws(
+        () => registry.setSiteCapabilities({} as never),
+        /requires a `provider` function/,
+    );
+    assert.throws(
+        () =>
+            registry.setSiteCapabilities({
+                description: "too short",
+                provider: () => ({}),
+            }),
+        /at least 20 characters/,
+    );
+    assert.throws(
+        () =>
+            registry.setSiteCapabilities({
+                description: "x".repeat(2001),
+                provider: () => ({}),
+            }),
+        /at most 2000 characters/,
     );
 });

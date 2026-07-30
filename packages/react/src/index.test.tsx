@@ -297,6 +297,56 @@ describe("NovaChatProvider — R5 stable config", () => {
             pageWorkflows: [nextWorkflow],
         });
     });
+
+    it("updates site capabilities only when provider identity or description changes", async () => {
+        const firstProvider = () => ({ features: ["Search customers"] });
+        const secondProvider = () => ({ features: ["Search customers", "Create tickets"] });
+        const root = await mount(
+            <NovaChatProvider
+                config={{
+                    ...config,
+                    siteCapabilities: { provider: firstProvider },
+                }}
+            >
+                child
+            </NovaChatProvider>,
+        );
+        expect(init).toHaveBeenCalledTimes(1);
+
+        // A fresh wrapper object with the same provider is semantically unchanged.
+        await rerender(
+            root,
+            <NovaChatProvider
+                config={{
+                    ...config,
+                    siteCapabilities: { provider: firstProvider },
+                }}
+            >
+                child
+            </NovaChatProvider>,
+        );
+        expect(init).toHaveBeenCalledTimes(1);
+
+        await rerender(
+            root,
+            <NovaChatProvider
+                config={{
+                    ...config,
+                    siteCapabilities: {
+                        description:
+                            "Always check the current Acme capabilities before describing them.",
+                        provider: secondProvider,
+                    },
+                }}
+            >
+                child
+            </NovaChatProvider>,
+        );
+
+        expect(init).toHaveBeenCalledTimes(2);
+        expect(retain).toHaveBeenCalledTimes(1);
+        expect(release).not.toHaveBeenCalled();
+    });
 });
 
 describe("NovaChatProvider — R20 stable tools", () => {

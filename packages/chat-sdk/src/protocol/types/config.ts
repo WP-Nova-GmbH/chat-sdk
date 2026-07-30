@@ -20,6 +20,27 @@ export interface PageWorkflowDefinition {
 /** Host-page color mode forwarded to the embedded chat UI. */
 export type HostTheme = "light" | "dark";
 
+/** Resolves the capabilities the current host user can use on this site. */
+export type SiteCapabilitiesProvider = () => unknown | Promise<unknown>;
+
+/**
+ * Host-owned result provider for Nova's SDK-defined capability-discovery tool.
+ *
+ * Nova owns the tool name, schema, and default model instruction. The host owns
+ * only the current, permission-aware result and may optionally strengthen the
+ * instruction with site-specific wording.
+ */
+export interface SiteCapabilitiesConfig {
+    /** Returns a JSON-serializable, user-facing description of current capabilities. */
+    provider: SiteCapabilitiesProvider;
+    /**
+     * Optional advanced override for the model-facing tool instruction.
+     * Keep the instruction explicit that the tool must be called before every
+     * answer about site-specific capabilities, features, actions, or workflows.
+     */
+    description?: string;
+}
+
 /**
  * How the SDK shell is presented on the host page.
  *
@@ -125,6 +146,14 @@ export interface SdkConfig {
      * run only while the chat panel is open.
      */
     pageWorkflows?: PageWorkflowDefinition[];
+    /**
+     * Enables Nova's SDK-defined capability-discovery tool. The SDK supplies
+     * the tool name, empty input schema, read-only classification, and a strong
+     * default instruction that makes this the authoritative source whenever a
+     * user asks what Nova can do on the current site. The host supplies only a
+     * live, permission-aware result provider.
+     */
+    siteCapabilities?: SiteCapabilitiesConfig;
     /**
      * Tuning for the post-action DOM settle before snapshot capture.
      * `quietMs` is the mutation-free window that counts as settled (default 200,

@@ -186,12 +186,17 @@ export function NovaChatProvider({
         config.voiceMode,
         config.routes,
         config.pageWorkflows,
+        config.siteCapabilities?.description,
         config.protocolVersion,
     ]);
     // Intentionally re-derive only on the primitive configKey + mount identity,
-    // never on the per-render config object reference (that is the R5 bug).
-    // biome-ignore lint/correctness/useExhaustiveDependencies: configKey + mount identity are the intended triggers, not the per-render config reference (R5).
-    const stableConfig = useMemo(() => config, [configKey, config.mount]);
+    // and capability-provider identity, never on the per-render config object
+    // reference (that is the R5 bug).
+    // biome-ignore lint/correctness/useExhaustiveDependencies: configKey + mount/provider identity are the intended triggers, not the per-render config reference (R5).
+    const stableConfig = useMemo(
+        () => config,
+        [configKey, config.mount, config.siteCapabilities?.provider],
+    );
 
     useEffect(() => {
         if (!enabled) {
@@ -320,6 +325,8 @@ export type {
     PageWorkflowDefinition,
     SdkConfig,
     SidebarResizeDetail,
+    SiteCapabilitiesConfig,
+    SiteCapabilitiesProvider,
     ToolDefinition,
     ToolHandler,
 } from "@wp-nova/chat-sdk";

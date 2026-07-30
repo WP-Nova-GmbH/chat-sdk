@@ -84,6 +84,7 @@ export class WpNovaChatElement extends HTMLElement {
     setConfig(config: SdkConfig): void {
         this.markSnapshotIgnored();
         const next = resolveConfig(config);
+        this.registry.setSiteCapabilities(config.siteCapabilities);
         const current = this.resolved;
         const requiresFrameReset = current ? this.requiresFrameReset(current, next) : false;
         const tokenEndpointChanged = current?.tokenEndpoint !== next.tokenEndpoint;
