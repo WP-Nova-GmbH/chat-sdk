@@ -5,16 +5,66 @@ import type { SiteRoute } from "./page.js";
 // ---------------------------------------------------------------------------
 
 /**
- * An automatic workflow the host may start after it explicitly reports that a
- * matching page has finished loading.
+ * JSON-serializable value accepted in deterministic required-tool input and
+ * output assertions.
  */
+export type JsonValue =
+    | null
+    | boolean
+    | number
+    | string
+    | JsonValue[]
+    | { [key: string]: JsonValue };
+
+/** Stable reference to a host site or server-side backend tool contract. */
+export type WorkflowToolReference =
+    | { location: "site"; toolId: string; contractVersion: string }
+    | { location: "backend"; connectionKey: string; toolId: string; contractVersion: string };
+
+/** One top-level input argument binding for deterministic required evidence. */
+export type WorkflowInputBinding =
+    | { kind: "literal"; value: JsonValue }
+    | { kind: "path"; parameter: string };
+
+/** RFC 6901 assertion checked against a required-tool result. */
+export type WorkflowOutputAssertion =
+    | { pointer: string; operator: "exists" }
+    | { pointer: string; operator: "nonEmpty" }
+    | { pointer: string; operator: "equals"; value: JsonValue };
+
+/** One deterministic read-only tool call made before research begins. */
+export interface PageWorkflowRequiredTool {
+    id: string;
+    tool: WorkflowToolReference;
+    inputs: Record<string, WorkflowInputBinding>;
+    outputAssertions?: WorkflowOutputAssertion[];
+}
+
+/** A read-only backend tool the platform research loop may choose to invoke. */
+export interface PageWorkflowAvailableBackendTool {
+    connectionKey: string;
+    toolId: string;
+    contractVersion: string;
+}
+
+/** The fixed platform-owned automatic workflow profile. */
+export interface PageWorkflowExecution {
+    mode: "research-and-compose";
+    availableBackendTools?: PageWorkflowAvailableBackendTool[];
+}
+
+/** An automatic workflow the host starts after the matching page is ready. */
 export interface PageWorkflowDefinition {
     /** Stable integrator-owned identifier used for cache and status correlation. */
     id: string;
     /** Exact same-origin pathname template. `:param` occupies exactly one segment. */
     path: string;
-    /** Instructions for the page-context-only workflow. */
+    /** Platform-owned execution mode; custom agent graphs are not supported. */
+    execution: PageWorkflowExecution;
+    /** Instructions for the fixed research-and-compose workflow. */
     prompt: string;
+    /** Deterministic evidence fetched before the bounded research loop. */
+    requiredTools?: PageWorkflowRequiredTool[];
 }
 
 /** Host-page color mode forwarded to the embedded chat UI. */

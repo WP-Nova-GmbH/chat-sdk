@@ -5,6 +5,7 @@ import {
     matchingPageWorkflow,
     pageWorkflowPathsOverlap,
 } from "./workflows.js";
+import type { PageWorkflowDefinition } from "../protocol/types/config.js";
 
 test("matches exact static and :param pathname segments", () => {
     assert.equal(
@@ -32,9 +33,19 @@ test("matches exact static and :param pathname segments", () => {
 });
 
 test("returns the sole configured workflow matching a pathname", () => {
-    const workflows = [
-        { id: "orders", path: "/orders/:id", prompt: "Summarize the order" },
-        { id: "intervention", path: "/interventions/:id", prompt: "Summarize the call" },
+    const workflows: PageWorkflowDefinition[] = [
+        {
+            id: "orders",
+            path: "/orders/:id",
+            prompt: "Summarize the order",
+            execution: { mode: "research-and-compose" },
+        },
+        {
+            id: "intervention",
+            path: "/interventions/:id",
+            prompt: "Summarize the call",
+            execution: { mode: "research-and-compose" },
+        },
     ];
 
     assert.equal(matchingPageWorkflow(workflows, "/interventions/abc")?.id, "intervention");
@@ -42,9 +53,19 @@ test("returns the sole configured workflow matching a pathname", () => {
 });
 
 test("fails closed when static and parameterized templates overlap", () => {
-    const workflows = [
-        { id: "all-items", path: "/items/:id", prompt: "Summarize the item" },
-        { id: "new-item", path: "/items/new", prompt: "Explain item creation" },
+    const workflows: PageWorkflowDefinition[] = [
+        {
+            id: "all-items",
+            path: "/items/:id",
+            prompt: "Summarize the item",
+            execution: { mode: "research-and-compose" },
+        },
+        {
+            id: "new-item",
+            path: "/items/new",
+            prompt: "Explain item creation",
+            execution: { mode: "research-and-compose" },
+        },
     ];
 
     assert.equal(matchingPageWorkflow(workflows, "/items/new"), undefined);

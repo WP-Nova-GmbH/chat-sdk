@@ -2,7 +2,11 @@
 
 import { normalizeLocale } from "../page/language.js";
 import { DEFAULT_SETTLE, type SettleOptions } from "../page/settle.js";
-import { pageWorkflowPathsOverlap } from "../page/workflows.js";
+import {
+    normalizePageWorkflowExecution,
+    normalizeWorkflowRequirements,
+    pageWorkflowPathsOverlap,
+} from "../page/workflows.js";
 import {
     type HostTheme,
     type PageWorkflowDefinition,
@@ -211,6 +215,8 @@ function resolvePageWorkflows(workflows: SdkConfig["pageWorkflows"]): PageWorkfl
         const id = typeof workflow?.id === "string" ? workflow.id.trim() : "";
         const path = typeof workflow?.path === "string" ? workflow.path.trim() : "";
         const prompt = typeof workflow?.prompt === "string" ? workflow.prompt.trim() : "";
+        const execution = normalizePageWorkflowExecution(workflow?.execution);
+        const requiredTools = normalizeWorkflowRequirements(workflow?.requiredTools, path);
         const normalizedSeparators = path.replace(/\\/g, "/");
         const segments = path.split("/");
         const validParameters = segments.every(
@@ -232,6 +238,8 @@ function resolvePageWorkflows(workflows: SdkConfig["pageWorkflows"]): PageWorkfl
             !validId ||
             !validPrompt ||
             !validPath ||
+            !execution ||
+            !requiredTools ||
             seenIds.has(id) ||
             seenPaths.has(path) ||
             overlapsExistingPath
@@ -243,7 +251,13 @@ function resolvePageWorkflows(workflows: SdkConfig["pageWorkflows"]): PageWorkfl
         }
         seenIds.add(id);
         seenPaths.add(path);
-        resolved.push({ id, path, prompt });
+        resolved.push({
+            id,
+            path,
+            prompt,
+            execution,
+            ...(requiredTools.length ? { requiredTools } : {}),
+        });
     }
     if (resolved.length > MAX_PAGE_WORKFLOWS) {
         console.warn(

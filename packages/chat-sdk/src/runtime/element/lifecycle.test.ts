@@ -168,6 +168,7 @@ test("a ready workflow starts only after the authenticated capable chat opens", 
                 id: "summarize-intervention",
                 path: "/call-center/interventions/:interventionId",
                 prompt: "Summarize the call",
+                execution: { mode: "research-and-compose" },
             },
         ],
     });
@@ -217,7 +218,14 @@ test("readiness loss cancels a sent workflow but never cancels a started run", (
         value: { href, origin: "https://app.example", pathname: "/interventions/abc" },
     });
     element.resolved = resolvedConfig({
-        pageWorkflows: [{ id: "summary", path: "/interventions/:id", prompt: "Summarize" }],
+        pageWorkflows: [
+            {
+                id: "summary",
+                path: "/interventions/:id",
+                prompt: "Summarize",
+                execution: { mode: "research-and-compose" },
+            },
+        ],
     });
     element.bridge = {
         sendHostOpenState: () => undefined,
@@ -282,7 +290,14 @@ test("an unacknowledged workflow retries with the same correlation id", () => {
         value: { href, origin: "https://app.example", pathname: "/interventions/abc" },
     });
     element.resolved = resolvedConfig({
-        pageWorkflows: [{ id: "summary", path: "/interventions/:id", prompt: "Summarize" }],
+        pageWorkflows: [
+            {
+                id: "summary",
+                path: "/interventions/:id",
+                prompt: "Summarize",
+                execution: { mode: "research-and-compose" },
+            },
+        ],
     });
     element.bridge = {
         sendHostOpenState: () => undefined,
@@ -327,7 +342,12 @@ test("stale ready URLs never start after SPA navigation", () => {
     });
     element.resolved = resolvedConfig({
         pageWorkflows: [
-            { id: "summary", path: "/call-center/interventions/:id", prompt: "Summarize" },
+            {
+                id: "summary",
+                path: "/call-center/interventions/:id",
+                prompt: "Summarize",
+                execution: { mode: "research-and-compose" },
+            },
         ],
     });
     element.bridge = {
@@ -370,7 +390,14 @@ test("skipped attempts retry on a later open transition without looping while op
         value: { href, origin: "https://app.example", pathname: "/interventions/abc" },
     });
     element.resolved = resolvedConfig({
-        pageWorkflows: [{ id: "summary", path: "/interventions/:id", prompt: "Summarize" }],
+        pageWorkflows: [
+            {
+                id: "summary",
+                path: "/interventions/:id",
+                prompt: "Summarize",
+                execution: { mode: "research-and-compose" },
+            },
+        ],
     });
     element.bridge = {
         sendHostOpenState: () => undefined,
@@ -417,7 +444,14 @@ test("closing an unacknowledged workflow cancels it before a later open retries"
         value: { href, origin: "https://app.example", pathname: "/interventions/abc" },
     });
     element.resolved = resolvedConfig({
-        pageWorkflows: [{ id: "summary", path: "/interventions/:id", prompt: "Summarize" }],
+        pageWorkflows: [
+            {
+                id: "summary",
+                path: "/interventions/:id",
+                prompt: "Summarize",
+                execution: { mode: "research-and-compose" },
+            },
+        ],
     });
     element.bridge = {
         sendHostOpenState: () => undefined,
@@ -564,7 +598,12 @@ test("live token-endpoint changes reuse the iframe but acquire fresh auth", () =
 
 test("token-endpoint changes revoke the old workflow grant before restart checks", () => {
     const href = "https://app.example/interventions/abc";
-    const workflow = { id: "summary", path: "/interventions/:id", prompt: "Summarize" };
+    const workflow = {
+        id: "summary",
+        path: "/interventions/:id",
+        prompt: "Summarize",
+        execution: { mode: "research-and-compose" as const },
+    };
     const starts: string[] = [];
     const cancellations: string[] = [];
     const initial = resolveConfig({

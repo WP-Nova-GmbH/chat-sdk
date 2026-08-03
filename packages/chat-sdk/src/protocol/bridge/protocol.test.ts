@@ -110,6 +110,7 @@ test("page workflow frames preserve the additive protocol-v2 contract", () => {
             id: "summarize-intervention",
             path: "/call-center/interventions/:interventionId",
             prompt: "Summarize the call",
+            execution: { mode: "research-and-compose" },
         },
         "https://host.example/call-center/interventions/abc",
     );
@@ -131,6 +132,7 @@ test("page workflow frames preserve the additive protocol-v2 contract", () => {
                 id: "summarize-intervention",
                 path: "/call-center/interventions/:interventionId",
                 prompt: "Summarize the call",
+                execution: { mode: "research-and-compose" },
             },
             expectedUrl: "https://host.example/call-center/interventions/abc",
         },

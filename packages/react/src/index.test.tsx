@@ -275,6 +275,7 @@ describe("NovaChatProvider — R5 stable config", () => {
             id: "summary",
             path: "/interventions/:id",
             prompt: "Summarize the call",
+            execution: { mode: "research-and-compose" as const },
         };
         const root = await mount(
             <NovaChatProvider config={{ ...config, pageWorkflows: [firstWorkflow] }}>
@@ -283,7 +284,11 @@ describe("NovaChatProvider — R5 stable config", () => {
         );
         expect(init).toHaveBeenCalledTimes(1);
 
-        const nextWorkflow = { ...firstWorkflow, prompt: "Summarize and recommend next actions" };
+        const nextWorkflow = {
+            ...firstWorkflow,
+            prompt: "Summarize and recommend next actions",
+            execution: { mode: "research-and-compose" as const },
+        };
         await rerender(
             root,
             <NovaChatProvider config={{ ...config, pageWorkflows: [nextWorkflow] }}>

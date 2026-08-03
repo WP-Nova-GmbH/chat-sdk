@@ -127,7 +127,10 @@ test("host locale is optional, canonicalized, and rejects malformed tags", () =>
     try {
         assert.equal(resolveConfig(REQUIRED_CONFIG).hostLocale, undefined);
         assert.equal(resolveConfig({ ...REQUIRED_CONFIG, locale: " de-de " }).hostLocale, "de-DE");
-        assert.equal(resolveConfig({ ...REQUIRED_CONFIG, locale: "not_a_locale" }).hostLocale, undefined);
+        assert.equal(
+            resolveConfig({ ...REQUIRED_CONFIG, locale: "not_a_locale" }).hostLocale,
+            undefined,
+        );
         assert.equal(warnings.length, 1);
     } finally {
         console.warn = originalWarn;
@@ -306,6 +309,7 @@ test("page workflows default to empty and keep a minimal validated definition", 
                 id: " summarize-intervention ",
                 path: " /call-center/interventions/:interventionId ",
                 prompt: " Summarize the transcript ",
+                execution: { mode: "research-and-compose" },
             },
         ],
     });
@@ -315,6 +319,7 @@ test("page workflows default to empty and keep a minimal validated definition", 
             id: "summarize-intervention",
             path: "/call-center/interventions/:interventionId",
             prompt: "Summarize the transcript",
+            execution: { mode: "research-and-compose" },
         },
     ]);
 });
@@ -327,23 +332,136 @@ test("page workflows reject malformed and ambiguous definitions", () => {
         const config = resolveConfig({
             ...REQUIRED_CONFIG,
             pageWorkflows: [
-                { id: "valid", path: "/items/:itemId", prompt: "Summarize" },
-                { id: "valid", path: "/other/:id", prompt: "Duplicate id" },
-                { id: "other", path: "/items/:itemId", prompt: "Duplicate path" },
-                { id: "empty-prompt", path: "/empty", prompt: " " },
-                { id: "bad-param", path: "/items/:123", prompt: "Invalid" },
-                { id: "query", path: "/items?all=true", prompt: "Invalid" },
-                { id: "9bad", path: "/invalid-id", prompt: "Invalid" },
-                { id: "long-path", path: `/${"x".repeat(500)}`, prompt: "Invalid" },
-                { id: "long-prompt", path: "/long-prompt", prompt: "x".repeat(8001) },
-                { id: "overlap", path: "/items/new", prompt: "Ambiguous" },
+                {
+                    id: "valid",
+                    path: "/items/:itemId",
+                    prompt: "Summarize",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "valid",
+                    path: "/other/:id",
+                    prompt: "Duplicate id",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "other",
+                    path: "/items/:itemId",
+                    prompt: "Duplicate path",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "empty-prompt",
+                    path: "/empty",
+                    prompt: " ",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "bad-param",
+                    path: "/items/:123",
+                    prompt: "Invalid",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "query",
+                    path: "/items?all=true",
+                    prompt: "Invalid",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "9bad",
+                    path: "/invalid-id",
+                    prompt: "Invalid",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "long-path",
+                    path: `/${"x".repeat(500)}`,
+                    prompt: "Invalid",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "long-prompt",
+                    path: "/long-prompt",
+                    prompt: "x".repeat(8001),
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "overlap",
+                    path: "/items/new",
+                    prompt: "Ambiguous",
+                    execution: { mode: "research-and-compose" },
+                },
             ],
         });
 
         assert.deepEqual(config.pageWorkflows, [
-            { id: "valid", path: "/items/:itemId", prompt: "Summarize" },
+            {
+                id: "valid",
+                path: "/items/:itemId",
+                prompt: "Summarize",
+                execution: { mode: "research-and-compose" },
+            },
         ]);
         assert.equal(warnings.length, 9);
+    } finally {
+        console.warn = originalWarn;
+    }
+});
+
+test("page workflows require research-and-compose and normalize optional read-tool references", () => {
+    const warnings: unknown[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => void warnings.push(args);
+    try {
+        const config = resolveConfig({
+            ...REQUIRED_CONFIG,
+            pageWorkflows: [
+                { id: "missing", path: "/missing", prompt: "Missing mode" } as never,
+                {
+                    id: "research",
+                    path: "/cases/:caseId",
+                    prompt: "Research the documented next step.",
+                    execution: {
+                        mode: "research-and-compose",
+                        availableBackendTools: [
+                            {
+                                connectionKey: " telect ",
+                                toolId: " call_history ",
+                                contractVersion: " 1 ",
+                            },
+                        ],
+                    },
+                },
+                {
+                    id: "duplicate-tool",
+                    path: "/duplicate",
+                    prompt: "Invalid tool declarations.",
+                    execution: {
+                        mode: "research-and-compose",
+                        availableBackendTools: [
+                            { connectionKey: "telect", toolId: "history", contractVersion: "1" },
+                            { connectionKey: "telect", toolId: "history", contractVersion: "1" },
+                        ],
+                    },
+                },
+            ],
+        });
+
+        assert.deepEqual(config.pageWorkflows, [
+            {
+                id: "research",
+                path: "/cases/:caseId",
+                prompt: "Research the documented next step.",
+                execution: {
+                    mode: "research-and-compose",
+                    availableBackendTools: [
+                        { connectionKey: "telect", toolId: "call_history", contractVersion: "1" },
+                    ],
+                },
+            },
+        ]);
+        assert.equal(warnings.length, 2);
     } finally {
         console.warn = originalWarn;
     }
