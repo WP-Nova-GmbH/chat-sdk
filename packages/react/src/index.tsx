@@ -182,6 +182,7 @@ export function NovaChatProvider({
         config.launcher,
         config.presentation,
         config.theme,
+        config.locale,
         config.safeValueSelectors,
         config.voiceMode,
         config.routes,

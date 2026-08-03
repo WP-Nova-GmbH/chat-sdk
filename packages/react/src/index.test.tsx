@@ -214,6 +214,23 @@ describe("NovaChatProvider — R5 stable config", () => {
         expect(release).not.toHaveBeenCalled();
     });
 
+    it("re-initializes in place when the host locale changes", async () => {
+        const root = await mount(
+            <NovaChatProvider config={{ ...config, locale: "en" }}>child</NovaChatProvider>,
+        );
+        expect(init).toHaveBeenCalledTimes(1);
+
+        await rerender(
+            root,
+            <NovaChatProvider config={{ ...config, locale: "de" }}>child</NovaChatProvider>,
+        );
+
+        expect(init).toHaveBeenCalledTimes(2);
+        expect(init).toHaveBeenLastCalledWith({ ...config, locale: "de" });
+        expect(retain).toHaveBeenCalledTimes(1);
+        expect(release).not.toHaveBeenCalled();
+    });
+
     it("re-initializes in place when a theme-specific launcher color changes", async () => {
         const root = await mount(
             <NovaChatProvider config={{ ...config, theme: "dark", triggerColorDark: "#111111" }}>
