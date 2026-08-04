@@ -47,6 +47,40 @@ export interface PageWorkflowAvailableBackendTool {
     contractVersion: string;
 }
 
+/** A source declaration a read-only workflow backend tool may return. */
+export interface PageWorkflowEvidenceSource {
+    /** Internal source key. Nova replaces this before a model or browser sees it. */
+    id: string;
+    /** Short operator-facing record name, never customer data or a raw provider id. */
+    label: string;
+    /** Optional provenance description, not a source excerpt. */
+    description?: string;
+    /** ISO timestamp at which this evidence was observed, when available. */
+    observedAt?: string;
+}
+
+/** Standard optional source envelope at the top level of a workflow tool result. */
+export interface PageWorkflowEvidenceEnvelope {
+    sources: PageWorkflowEvidenceSource[];
+}
+
+/** Origin classes exposed by Nova for a completed workflow citation. */
+export type PageWorkflowCitationOrigin =
+    | "page"
+    | "required-tool"
+    | "backend-tool"
+    | "connector";
+
+/** Safe, opaque citation metadata returned with a completed workflow result. */
+export interface PageWorkflowCitationSource {
+    /** Result-local citation token such as `s1`; this is not a provider identifier. */
+    reference: string;
+    origin: PageWorkflowCitationOrigin;
+    title: string;
+    description: string;
+    observedAt?: string;
+}
+
 /** The fixed platform-owned automatic workflow profile. */
 export interface PageWorkflowExecution {
     mode: "research-and-compose";

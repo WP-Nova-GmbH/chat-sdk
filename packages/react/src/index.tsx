@@ -323,7 +323,11 @@ export function useNovaTool(tool: NovaToolDefinition) {
 
 export type {
     ChatPresentation,
+    PageWorkflowCitationOrigin,
+    PageWorkflowCitationSource,
     PageWorkflowDefinition,
+    PageWorkflowEvidenceEnvelope,
+    PageWorkflowEvidenceSource,
     SdkConfig,
     SidebarResizeDetail,
     SiteCapabilitiesConfig,

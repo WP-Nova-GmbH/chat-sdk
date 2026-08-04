@@ -1,6 +1,10 @@
 export type {
     ChatPresentation,
+    PageWorkflowCitationOrigin,
+    PageWorkflowCitationSource,
     PageWorkflowDefinition,
+    PageWorkflowEvidenceEnvelope,
+    PageWorkflowEvidenceSource,
     SdkConfig,
     SidebarResizeDetail,
     ToolDefinition,
