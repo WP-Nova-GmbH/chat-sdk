@@ -3,7 +3,7 @@ id: tools
 title: Tools and guided workflows
 ---
 
-Nova embedded chat can use conversation tools, built-in page controls, and SDK-defined host tools. They have different owners and security rules.
+Nova embedded chat can use conversation tools, built-in page controls, SDK-defined host tools, and server-side backend tools. They have different owners and security rules.
 
 ## Tool categories
 
@@ -13,9 +13,16 @@ Nova embedded chat can use conversation tools, built-in page controls, and SDK-d
 | Site capability discovery | `get_site_capabilities` | Nova defines; host provides the live result | `siteCapabilities.provider` in SDK config. Requires Page Tools. |
 | Built-in page control | `navigate`, `click`, `open_record`, `set_filter`, `scroll_to`, `refresh_context` | Nova declares; SDK executes | No custom handler. Requires Page Navigation. |
 | SDK-defined host tool | `list_customers`, `create_ticket`, `set_customer_status` | Your integration | Yes, registered with the complete tool definition. Requires Page Tools. |
+| Backend tool | `call_intervention_history`, domain-specific research tools | Your server/Nova connection | No browser handler. Configure and authorize server-to-server. |
 | Nova server tool | Knowledge search or other Nova-side capabilities | Nova | No host-page handler. Availability depends on the Nova agent. |
 
 Do not register `request_user_input` or a built-in page-control name. Those names are reserved. Browser tools execute sequentially across turns; design a multi-step workflow as a sequence of grounded calls, not parallel browser operations.
+
+Backend tools are not SDK-defined page tools. Keep their API keys, schemas,
+catalogs, and permission checks on the server. Automatic page workflows may use
+only the read-only tools listed in `availableBackendTools`; write tools remain
+confirmation-gated chat actions. See [Automatic page workflows](./page-workflows.md)
+for connection keys, contract versions, required evidence, and citations.
 
 ## Built-in page controls
 

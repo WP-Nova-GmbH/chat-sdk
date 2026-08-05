@@ -60,6 +60,10 @@ Sinon, `<wp-nova-chat-mount [tools]="tools" />` reçoit des définitions
 complètes. Filtrez routes/outils par permissions et émettez
 `wp-nova:settled` après le rendu des données de la route Angular.
 
+Pour `pageWorkflows`, appelez `nova.setPageReady(false)` pendant le chargement
+et `nova.setPageReady(true)` après le rendu. Passez `locale` et les workflows
+filtrés par permissions. Voir les [workflows automatiques de page](./page-workflows.md).
+
 Si le thème hôte peut changer après l’amorçage, liez la `SdkConfig` actuelle à
 l’input `config` du composant ou appelez
 `NovaChatService.init(updatedConfig)`. Un changement de `theme` met à jour le

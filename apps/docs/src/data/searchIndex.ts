@@ -56,6 +56,13 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
                 "Built-in controls, SDK-defined tools, grounded choices, validation, and safe mutations.",
         },
         {
+            title: "Automatic page workflows",
+            docId: "page-workflows",
+            section: "Guides",
+            description:
+                "Research-and-compose runs, page readiness, backend evidence tools, and citations.",
+        },
+        {
             title: "Events",
             docId: "events",
             section: "Guides",
@@ -151,6 +158,13 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
                 "Eingebaute Aktionen, SDK-Tools, fundierte Auswahlen und sichere Mutationen.",
         },
         {
+            title: "Automatische Seiten-Workflows",
+            docId: "page-workflows",
+            section: "Anleitungen",
+            description:
+                "Research-and-compose, Seiten-Readiness, Backend-Evidenz und Zitate.",
+        },
+        {
             title: "Ereignisse",
             docId: "events",
             section: "Anleitungen",
@@ -242,6 +256,13 @@ const searchIndexByLocale: Record<string, SearchEntry[]> = {
             docId: "tools",
             section: "Guides",
             description: "Actions intégrées, outils SDK, choix fondés et mutations sûres.",
+        },
+        {
+            title: "Workflows automatiques de page",
+            docId: "page-workflows",
+            section: "Guides",
+            description:
+                "Exécutions research-and-compose, readiness, preuves backend et citations.",
         },
         {
             title: "Événements",

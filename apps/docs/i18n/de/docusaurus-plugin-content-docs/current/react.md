@@ -58,6 +58,11 @@ Halte Konfiguration, Routen und Tool-Definitionen mit
 den Provider oberhalb des Route-Outlets. Asynchrone Routen müssen nach
 `wp-nova:navigate` mit `wp-nova:settled` ihre Readiness signalisieren.
 
+Für `pageWorkflows` setze `useNovaChat().setPageReady(false)` während des
+Ladens und `setPageReady(true)` nach dem Rendern. Übergib `locale` und
+berechtigungsgefilterte Workflows in der Config. Siehe
+[Automatische Seiten-Workflows](./page-workflows.md).
+
 Leite `config.theme` aus dem aktuellen Hell-/Dunkelzustand der Host-Anwendung
 ab. Bei einer Änderung aktualisiert der Provider Launcher, Panel und bestehendes
 iframe ohne neuen Token-Abruf oder Verlust der Konversation.

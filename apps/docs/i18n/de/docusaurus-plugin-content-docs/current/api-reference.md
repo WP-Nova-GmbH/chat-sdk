@@ -31,6 +31,7 @@ import {
   registerTool,
   unregisterTool,
   destroy,
+  setPageReady,
   DEFAULT_SETTLE,
   SETTLED_EVENT,
   defineElement,
@@ -52,6 +53,29 @@ export type ChatPresentation =
   | { mode?: "popover" }
   | { mode: "sidebar"; width?: number; resizable?: boolean };
 
+type WorkflowToolReference =
+  | { location: "site"; toolId: string; contractVersion: string }
+  | { location: "backend"; connectionKey: string; toolId: string; contractVersion: string };
+type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+type WorkflowInputBinding =
+  | { kind: "literal"; value: JsonValue }
+  | { kind: "path"; parameter: string };
+type WorkflowOutputAssertion =
+  | { pointer: string; operator: "exists" | "nonEmpty" }
+  | { pointer: string; operator: "equals"; value: JsonValue };
+type PageWorkflowRequiredTool = {
+  id: string;
+  tool: WorkflowToolReference;
+  inputs: Record<string, WorkflowInputBinding>;
+  outputAssertions?: WorkflowOutputAssertion[];
+};
+
 export interface SdkConfig {
   publicSurfaceId: string;
   tokenEndpoint: string;
@@ -66,9 +90,24 @@ export interface SdkConfig {
   triggerIconColor?: "light" | "dark" | string;
   launcher?: boolean;
   theme?: HostTheme;
+  locale?: string;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
   routes?: Array<{ path: string; description: string }>;
+  pageWorkflows?: Array<{
+    id: string;
+    path: string;
+    execution: {
+      mode: "research-and-compose";
+      availableBackendTools?: Array<{
+        connectionKey: string;
+        toolId: string;
+        contractVersion: string;
+      }>;
+    };
+    prompt: string;
+    requiredTools?: PageWorkflowRequiredTool[];
+  }>;
   settle?: {
     quietMs?: number;
     maxWaitMs?: number;
@@ -135,6 +174,9 @@ export interface UnavailableUserResponse {
   message_is_custom?: boolean;
   access_request_token?: string;
   access_request_expires_in?: number;
+  user_creation_required?: boolean;
+  user_creation_token?: string;
+  user_creation_expires_in?: number;
   access_token?: undefined;
 }
 ```
@@ -143,6 +185,28 @@ export interface UnavailableUserResponse {
 iframe lokalisiert. Der Wert `true` kennzeichnet von Administratoren verfassten
 Text, der unverändert angezeigt wird. Gib die vollständige Antwort weiter, damit
 die Aktion zum Anfordern des Zugriffs verfügbar ist.
+
+Nova sendet entweder das Berechtigungspaar für eine Zugriffsanfrage oder das
+Berechtigungspaar für bestätigte JIT-Erstellung; beide Gruppen werden in einer
+Plattformantwort nie kombiniert. Der strukturelle SDK-Typ bleibt permissiv,
+damit ein Proxy zusätzliche Felder unverändert weiterreichen kann.
+
+`locale` ist ein optionales BCP-47-Locale. `pageWorkflows` startet auf passenden
+Seiten begrenzte `research-and-compose`-Abläufe. Siehe
+[Automatische Seiten-Workflows](./page-workflows.md) für `requiredTools`,
+Backend-Tool-Verträge, Readiness und Quellen.
+
+Seitenkontext kann außerdem `languageSignals` enthalten:
+
+```ts
+languageSignals?: {
+  hostLocale?: string;
+  documentLocale?: string;
+  browserLocales?: string[];
+}
+```
+
+Diese Werte sind normalisierte Sprachhinweise, keine Autorisierung.
 
 ### Custom Element
 

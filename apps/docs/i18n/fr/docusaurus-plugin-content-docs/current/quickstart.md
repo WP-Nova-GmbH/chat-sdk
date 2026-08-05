@@ -7,7 +7,8 @@ title: Démarrage rapide
 
 Avant l’installation, décidez de l’authentification, des utilisateurs/modules,
 de Page Reading/Navigation/Tools, des outils hôte, des routes, de la
-confidentialité, de la disponibilité asynchrone et de la couleur primaire.
+confidentialité, de la readiness asynchrone, du provisioning JIT, des workflows
+et de la couleur primaire.
 Choisissez ensuite la balise script ou npm.
 
 ### Balise script
@@ -99,9 +100,10 @@ app.post("/api/nova-token", async (req, res) => {
     },
     body: JSON.stringify({
       email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
       publicSurfaceId: req.body.publicSurfaceId,
       origin: req.body.origin,
-      externalUserId: user.id,
     }),
   });
 
@@ -124,9 +126,41 @@ contient aucun token de chat :
 }
 ```
 
+En mode JIT avec confirmation, Nova renvoie à la place :
+
+```json
+{
+  "unavailable": true,
+  "email": "person@example.com",
+  "message": "Aucun compte Nova n’a été trouvé.",
+  "message_is_custom": false,
+  "user_creation_required": true,
+  "user_creation_token": "<autorisation limitée à cet usage>",
+  "user_creation_expires_in": 3600
+}
+```
+
 Transmettez le statut et le corps sans modification. `message_is_custom: false`
 permet à l’iframe d’afficher le message intégré de Nova dans la langue active de
 l’interface ; le texte personnalisé d’un administrateur est marqué `true`.
+
+Si les workflows utilisent des outils backend, le backend peut transmettre à
+Nova un `backendToolGrants` optionnel de forme
+`{ connectionKey, grant, allowedToolIds? }`. Ces grants viennent uniquement du
+serveur fiable, sont liés à l’utilisateur et à la session, et n’arrivent jamais
+dans le navigateur.
+
+La surface choisit `existing_only` ou `jit_active_member`. En mode JIT avec
+confirmation, l’iframe demande une confirmation explicite, utilise ensuite le
+token de création limité avec `POST /embed/users`, puis rafraîchit la session de
+chat normale. Une réponse réussie vaut `{ "status": "access_available" }`. Une
+surface peut désactiver cette confirmation ; le provisioning a alors lieu lors
+du minting et peut créer une adhésion facturable. Transmettez tous les champs
+sans modification et ne faites jamais confiance à l’identité fournie par le
+navigateur. La création JIT est soumise à une limite de débit séparée.
+Le mode de provisioning et `POST /embed/users` sont des contrats de plateforme
+Nova, pas des champs de configuration du SDK, et exigent le déploiement Nova
+correspondant.
 
 ### Routes et disponibilité
 
@@ -136,3 +170,6 @@ asynchrone, utilisez `settle.waitForNavigationSignal: true` et émettez
 `wp-nova:settled` seulement après le rendu de la route et de ses données. Un
 timeout marque l’instantané `unsettled`, afin que Nova puisse appeler
 `refresh_context`.
+
+Pour les workflows automatiques de page, les outils backend et les sources,
+voir [Workflows automatiques de page](./page-workflows.md).

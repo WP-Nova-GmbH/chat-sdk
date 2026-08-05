@@ -14,7 +14,7 @@ const sidebars: SidebarsConfig = {
             label: "Guides",
             collapsible: true,
             collapsed: false,
-            items: ["configuration", "navigation", "dom-access", "tools", "events", "theming"],
+            items: ["configuration", "navigation", "dom-access", "tools", "page-workflows", "events", "theming"],
         },
         {
             type: "category",

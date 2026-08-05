@@ -21,11 +21,20 @@ const novaConfig = {
   publicSurfaceId: import.meta.env.VITE_NOVA_PUBLIC_SURFACE_ID,
   tokenEndpoint: "/api/nova-token",
   baseUrl: import.meta.env.VITE_NOVA_BASE_URL,
+  locale: "en-GB",
   routes: [
     { path: "/customers", description: "Customer lookup list with search" },
     {
       path: "/customers/:customerId",
       description: "Customer detail; obtain customerId from /customers",
+    },
+  ],
+  pageWorkflows: [
+    {
+      id: "customer-brief",
+      path: "/customers/:customerId",
+      execution: { mode: "research-and-compose" },
+      prompt: "Summarize the loaded customer with cited evidence.",
     },
   ],
   settle: {
@@ -44,6 +53,13 @@ export function App() {
 ```
 
 Only expose browser-safe values through `VITE_*` or equivalent public env variables. Keep `NOVA_INTEGRATION_SECRET` on the backend.
+
+Inside a child component, call `const chat = useNovaChat()`, then use
+`chat.setPageReady(false)` while a matching route is loading and
+`chat.setPageReady(true)` after its data is rendered. Keep the provider above
+the route outlet so the iframe and workflow state survive SPA navigation. See
+[Automatic page workflows](./page-workflows.md) for required backend evidence,
+same-URL refresh behavior, and citation handling.
 
 Derive `config.theme` from the host application's current `light`/`dark` state.
 When it changes, the provider re-initializes the singleton in place: the core

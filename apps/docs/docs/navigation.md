@@ -115,6 +115,14 @@ A robust adapter keeps the pending destination in a ref, waits until `useLocatio
 
 Keep the provider above the route outlet so it remains mounted during this sequence.
 
+Automatic page workflows can reuse the same underlying route-data readiness,
+but `setPageReady` is independent from `wp-nova:settled`: the latter only ends
+a pending snapshot settle. Call `setPageReady(false)` while the route's
+evidence is invalid or loading, then call `setPageReady(true)` after the
+destination data is rendered. A
+workflow can start only for the matching `pageWorkflows` path. See
+[Automatic page workflows](./page-workflows.md).
+
 ## After custom tools
 
 Custom tools also receive a settled post-action snapshot. After mutations, wait

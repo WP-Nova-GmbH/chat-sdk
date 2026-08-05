@@ -116,6 +116,13 @@ Ein robuster Adapter hält das ausstehende Ziel in einer Ref, wartet, bis `useLo
 
 Platziere den Provider oberhalb des Routen-Outlets, damit er während dieser Sequenz gemountet bleibt.
 
+Automatische Seiten-Workflows können dieselbe Daten-Readiness verwenden, aber
+`setPageReady` ist unabhängig von `wp-nova:settled`; dieses beendet nur das
+Snapshot-Settling. Setze mit `setPageReady(false)` während des Ladens aus und
+mit `setPageReady(true)` nach dem Rendern wieder ein. Die Seite muss exakt zur
+`pageWorkflows`-Vorlage passen.
+Siehe [Automatische Seiten-Workflows](./page-workflows.md).
+
 ## Nach benutzerdefinierten Tools
 
 Auch benutzerdefinierte Tools erhalten nach der Aktion einen vollständig gesetzten Snapshot. Warte nach Mutationen auf die API, aktualisiere sichtbare Daten und gib eine stabile URL zurück. Melde eine erfolgreiche Mutation nicht allein deshalb als fehlgeschlagen, weil eine spätere Cache-Aktualisierung gescheitert ist. Siehe [Tools und geführte Abläufe](./tools.md).

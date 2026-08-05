@@ -19,6 +19,9 @@ Le protocole de bridge est volontairement explicite. Chaque frame porte un tag d
 | `CLIENT_TOOL_REQUEST` | iframe vers SDK | Demande une action de navigation intégrée ou un outil enregistré. |
 | `CLIENT_TOOL_RESULT` | SDK vers iframe | Renvoie le résultat de l’outil et un instantané frais. |
 | `CLIENT_TOOL_ERROR` | SDK vers iframe | Renvoie des détails d’échec typés comme `no_handler` ou `timeout`. |
+| `START_PAGE_WORKFLOW` | SDK vers iframe | Démarre le workflow `research-and-compose` correspondant. |
+| `CANCEL_PAGE_WORKFLOW` | SDK vers iframe | Annule un workflow qui n’a pas encore démarré. |
+| `PAGE_WORKFLOW_STATUS` | iframe vers SDK | Signale `started`, `cached`, `completed`, `failed` ou `skipped`. |
 | `REGISTER_TOOLS` | SDK vers iframe | Annonce les spécifications d’outils SDK actuellement enregistrées. |
 | `SURFACE_THEME` | iframe vers SDK | Applique les valeurs de thème fiables de la surface au lanceur géré par le SDK. |
 | `MINIMIZE` | iframe vers SDK | Masque le panneau géré par le SDK depuis son en-tête sans retirer l’iframe ni la faire naviguer. |
@@ -28,6 +31,10 @@ Le protocole de bridge est volontairement explicite. Chaque frame porte un tag d
 Le SDK renouvelle proactivement vers 80 % de `expires_in` et réactivement lorsque l’iframe émet `AUTH_EXPIRED`.
 
 Les échecs de transport sont retentés avec backoff et cooldown. Une réponse utilisateur indisponible est terminale et envoyée à l’iframe sous la forme `UNAVAILABLE`.
+
+La readiness d’un workflow utilise `setPageReady(false)` pendant le chargement
+et `setPageReady(true)` après le rendu. Un rafraîchissement de la même URL
+conserve une exécution déjà commencée.
 
 Les SPA utilisent aussi `wp-nova:navigate` pour le routeur same-origin et
 `wp-nova:settled` pour signaler que la vue cible est rendue. Si la limite

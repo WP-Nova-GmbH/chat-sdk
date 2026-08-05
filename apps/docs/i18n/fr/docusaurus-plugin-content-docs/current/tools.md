@@ -3,7 +3,9 @@ id: tools
 title: Outils et workflows guidés
 ---
 
-Le chat intégré Nova peut utiliser des outils de conversation, des contrôles de page intégrés et des outils de l’application hôte définis par le SDK. Ils n’ont ni les mêmes propriétaires ni les mêmes règles de sécurité.
+Le chat intégré Nova peut utiliser des outils de conversation, des contrôles de page
+intégrés, des outils de l’application hôte définis par le SDK et des outils
+backend serveur. Ils n’ont ni les mêmes propriétaires ni les mêmes règles de sécurité.
 
 ## Catégories d’outils
 
@@ -12,9 +14,16 @@ Le chat intégré Nova peut utiliser des outils de conversation, des contrôles 
 | Conversation | `request_user_input` | Iframe/backend Nova | Non. L’iframe affiche la carte de choix et y répond. |
 | Contrôle de page intégré | `navigate`, `click`, `open_record`, `set_filter`, `scroll_to`, `refresh_context` | Nova les déclare ; le SDK les exécute | Aucun handler personnalisé. Nécessite Page Navigation. |
 | Outil de l’application hôte défini par le SDK | `list_customers`, `create_ticket`, `set_customer_status` | Votre intégration | Oui, enregistré avec la définition complète de l’outil. Nécessite Page Tools. |
+| Outil backend | Recherche métier | Serveur/connexion Nova | Aucun handler navigateur ; autorisation côté serveur. |
 | Outil serveur Nova | Recherche dans les connaissances ou autres capacités côté Nova | Nova | Aucun handler sur la page hôte. Sa disponibilité dépend de l’agent Nova. |
 
 N’enregistrez ni `request_user_input` ni le nom d’un contrôle de page intégré. Ces noms sont réservés. Les outils du navigateur s’exécutent séquentiellement sur plusieurs tours ; concevez un workflow en plusieurs étapes comme une suite d’appels fondés sur des données réelles, et non comme des opérations navigateur parallèles.
+
+Les outils backend ne sont pas enregistrés avec `registerTool`. Les clés API,
+catalogues et `connectionKey`/`toolId`/`contractVersion` restent côté serveur.
+Les workflows automatiques utilisent uniquement les outils de recherche en
+lecture seule ; les écritures restent des actions de chat confirmées. Voir les
+[workflows automatiques de page](./page-workflows.md).
 
 ## Contrôles de page intégrés
 

@@ -36,13 +36,24 @@ Eine Bearer-SPA sollte daher über einen separat geschützten Endpoint eine kurz
 opake `HttpOnly`-Session erzeugen, die der Token-Endpoint auflöst und beim
 Logout widerruft.
 
+### Benutzerauflösung und JIT
+
+Die E-Mail wird normalisiert. `existing_only` lässt unbekannte Benutzer
+unverfügbar; `jit_active_member` kann eine echte aktive Mitgliedschaft erzeugen.
+Mit Bestätigung geschieht dies erst nach der ausdrücklichen Aktion im iframe.
+`user_creation_token` ist zweckgebunden, kurzlebig, rate-limitiert und kein
+Chat-Token. Optionale Namen dürfen nur aus der vertrauenswürdigen Server-Session
+kommen. Gib `user_creation_required`, Token und Ablaufzeit unverändert weiter.
+
 ### Tool-Berechtigungen
 
 SDK-Code deklariert Tools vollständig über `registerTool`; die Surface hat nur
 einen Page-Tools-Freigabeschalter. Nova validiert die Definition und entscheidet
 serverseitig, ob die iframe-Bestätigung erforderlich ist. Registriere ein Tool
 nur, wenn der aktuelle Benutzer auch die zugrunde liegende UI/API-Aktion
-ausführen darf. Backend-Autorisierung bleibt Pflicht.
+ausführen darf. Backend-Autorisierung bleibt Pflicht. Backend-Tools für
+automatische Workflows laufen serverseitig; API-Schlüssel gehören nicht in den
+Browser und Schreibvorgänge brauchen eine Bestätigung.
 
 ### CSP und Framing
 

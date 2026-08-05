@@ -19,7 +19,7 @@ interface ExampleEnv {
 export default defineConfig((configEnv) => {
     const env = readExampleEnv(configEnv);
     return {
-        plugins: [novaTokenProxyPlugin("release-react-example", env)],
+        plugins: [novaTokenProxyPlugin(env)],
     };
 });
 
@@ -37,7 +37,7 @@ function readExampleEnv({ mode }: ConfigEnv): ExampleEnv {
 // comes from your authenticated session), forwards { email, publicSurfaceId,
 // origin } to Nova POST /embed/session with the integration secret, and passes
 // Nova's response (token OR unavailable-user) straight back to the SDK.
-function novaTokenProxyPlugin(exampleName: string, env: ExampleEnv): Plugin {
+function novaTokenProxyPlugin(env: ExampleEnv): Plugin {
     return {
         name: "nova-token-dev-proxy",
         /** Reports a missing example user email without preventing Vite from starting. */
@@ -88,7 +88,6 @@ function novaTokenProxyPlugin(exampleName: string, env: ExampleEnv): Plugin {
                             email: env.testEmail,
                             publicSurfaceId,
                             origin,
-                            externalUserId: `${exampleName}:${env.testEmail}`,
                         }),
                     });
                 } catch (error) {

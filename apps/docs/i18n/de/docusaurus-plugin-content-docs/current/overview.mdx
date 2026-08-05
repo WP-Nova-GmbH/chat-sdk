@@ -26,6 +26,8 @@ Die SDK-Bridge verarbeitet drei Fähigkeiten der Host-Seite:
 - SDK-definierte Integrator-Tools, die deine App mit dem vollständigen Vertrag
   und Handler über `registerTool` registriert. Die Surface-Einstellung
   „Page Tools“ ist nur die serverseitige Freigabe.
+- Serverseitige Backend-Tools und automatische `research-and-compose`-
+  Workflows über `pageWorkflows`, die erst nach exakter Seiten-Readiness starten.
 
 Nova kann zusätzlich `request_user_input` als interaktive Auswahlkarte im
 iframe anzeigen. Dieses Conversation Tool und die eingebauten Seitenaktionen
@@ -49,3 +51,6 @@ werden nicht im Host registriert.
    Snapshots, Routen und registrierte Tool-Spezifikationen.
 5. Nach Seitenaktionen wartet das SDK auf eine gerenderte Zielansicht, bevor es
    einen neuen Snapshot sendet.
+6. Ein unbekannter Benutzer bleibt in `existing_only` unverfügbar; eine
+   bestätigte JIT-Surface kann mit einem zweckgebundenen Creation-Token eine
+   aktive Mitgliedschaft anlegen.

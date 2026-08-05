@@ -2,7 +2,7 @@
 
 Angular standalone component and service wrappers for the Nova Chat SDK.
 
-📖 **Full documentation:** [https://wp-nova.ai/chat-sdk](https://wp-nova.ai/chat-sdk)
+📖 **Full documentation:** [https://chat.wp-nova.ai](https://chat.wp-nova.ai)
 
 ```ts
 import { provideNovaChat } from "@wp-nova/chat-sdk-angular";
@@ -13,8 +13,17 @@ export const appConfig = {
             publicSurfaceId: "surf_...",
             tokenEndpoint: "/api/nova/embed-token",
             launcher: false,
+            locale: "en-GB",
             routes: [
                 { path: "/customers", description: "Customer lookup list with search." },
+            ],
+            pageWorkflows: [
+                {
+                    id: "customer-brief",
+                    path: "/customers/:customerId",
+                    execution: { mode: "research-and-compose" },
+                    prompt: "Summarize the loaded customer with cited evidence.",
+                },
             ],
             settle: {
                 maxWaitMs: 5000,
@@ -47,6 +56,11 @@ Pass complete `ToolDefinition[]` values to the mount component or call
 host-owned controls; omit `launcher: false` to keep the default SDK button.
 For async Angular Router destinations, dispatch `wp-nova:settled` only after
 the destination's required data has rendered.
+
+Call `nova.setPageReady(false)` while a matching route loads and
+`nova.setPageReady(true)` after it renders. Backend workflow tools run on the
+server and do not need a browser handler. See the
+[workflow guide](https://chat.wp-nova.ai/page-workflows).
 
 For a docked sidebar, place a stable grid/flex container before
 `<wp-nova-chat-mount>` and bind a new config reference when the mode changes:

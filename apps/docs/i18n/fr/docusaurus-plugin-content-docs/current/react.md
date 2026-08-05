@@ -57,6 +57,11 @@ Stabilisez config, routes et définitions avec `useMemo`/`useCallback`,
 filtrez-les par permissions et montez le provider au-dessus de l’outlet. Les
 routes asynchrones doivent émettre `wp-nova:settled` après leur rendu.
 
+Pour `pageWorkflows`, appelez `useNovaChat().setPageReady(false)` pendant le
+chargement puis `setPageReady(true)` après le rendu. Passez `locale` et les
+workflows filtrés par permissions dans la configuration. Voir les
+[workflows automatiques de page](./page-workflows.md).
+
 Dérivez `config.theme` de l’état clair/sombre actuel de l’application hôte. En
 cas de changement, le provider met à jour le lanceur, le panneau et l’iframe
 existante sans récupérer de nouveau token ni perdre la conversation.
