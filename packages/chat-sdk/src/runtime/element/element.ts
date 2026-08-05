@@ -201,7 +201,10 @@ export class WpNovaChatElement extends HTMLElement {
     /**
      * Record whether the host's current route has finished rendering its data.
      * The exact URL is captured with the ready transition so later SPA
-     * navigation cannot accidentally start a stale workflow.
+     * navigation cannot accidentally start a stale workflow. A readiness cycle
+     * on the attempt's own URL (the host re-fetched its data, e.g. on window
+     * refocus) keeps an in-flight attempt so its correlation stays stable and
+     * the iframe's running card survives; only settled attempts re-evaluate.
      */
     setPageReady(ready: boolean, expectedUrl = location.href): void {
         if (!ready) {
@@ -209,8 +212,11 @@ export class WpNovaChatElement extends HTMLElement {
             this.cancelUnstartedPageWorkflow();
             return;
         }
-        if (this.pageReadyUrl !== expectedUrl) {
+        const attempt = this.pageWorkflowAttempt;
+        if (attempt && attempt.expectedUrl !== expectedUrl) {
             this.clearPageWorkflowAttempt(true);
+        } else if (attempt?.status === "finished" && this.pageReadyUrl === undefined) {
+            this.clearPageWorkflowAttempt(false);
         }
         this.pageReadyUrl = expectedUrl;
         this.maybeStartPageWorkflow();

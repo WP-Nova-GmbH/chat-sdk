@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { PageWorkflowDefinition } from "../protocol/types/config.js";
 import {
     matchesPageWorkflowPath,
     matchingPageWorkflow,
     pageWorkflowPathsOverlap,
 } from "./workflows.js";
-import type { PageWorkflowDefinition } from "../protocol/types/config.js";
 
 test("matches exact static and :param pathname segments", () => {
     assert.equal(

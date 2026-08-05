@@ -257,6 +257,150 @@ test("readiness loss cancels a sent workflow but never cancels a started run", (
     assert.deepEqual(cancellations, [sent]);
 });
 
+interface WorkflowLifecycleElement {
+    resolved?: ResolvedConfig;
+    bridge?: {
+        sendHostOpenState: () => void;
+        sendStartPageWorkflow: (correlationId: string) => void;
+        sendCancelPageWorkflow: (correlationId: string) => void;
+    };
+    iframeReady: boolean;
+    pageWorkflowCapable: boolean;
+    lastAuth?: unknown;
+    pageWorkflowAttempt?: { correlationId: string; expectedUrl: string; status: string };
+    handlePageWorkflowStatus: (
+        correlationId: string,
+        status: "started" | "cached" | "completed" | "failed" | "skipped",
+    ) => void;
+    open: () => void;
+    setPageReady: (ready: boolean, expectedUrl?: string) => void;
+}
+
+function makeWorkflowLifecycleElement(
+    href: string,
+    pathname: string,
+    starts: string[],
+    cancellations: string[],
+): WorkflowLifecycleElement {
+    const element = makeElement() as WorkflowLifecycleElement;
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { href, origin: "https://app.example", pathname },
+    });
+    element.resolved = resolvedConfig({
+        pageWorkflows: [
+            {
+                id: "summary",
+                path: "/interventions/:id",
+                prompt: "Summarize",
+                execution: { mode: "research-and-compose" },
+            },
+        ],
+    });
+    element.bridge = {
+        sendHostOpenState: () => undefined,
+        sendStartPageWorkflow: (correlationId) => starts.push(correlationId),
+        sendCancelPageWorkflow: (correlationId) => cancellations.push(correlationId),
+    };
+    element.iframeReady = true;
+    element.pageWorkflowCapable = true;
+    element.lastAuth = { kind: "granted", token: "token", expiresIn: 900 };
+    return element;
+}
+
+test("a same-URL readiness cycle keeps a started workflow's correlation", () => {
+    const href = "https://app.example/interventions/abc";
+    const starts: string[] = [];
+    const cancellations: string[] = [];
+    const element = makeWorkflowLifecycleElement(
+        href,
+        "/interventions/abc",
+        starts,
+        cancellations,
+    );
+    element.setPageReady(true);
+    element.open();
+
+    const started = starts[0];
+    assert.ok(started);
+    element.handlePageWorkflowStatus(started, "started");
+
+    // The host re-fetches its data (e.g. on window refocus) and flaps
+    // readiness on the same URL while the run is still generating.
+    element.setPageReady(false);
+    element.setPageReady(true);
+
+    assert.deepEqual(cancellations, []);
+    assert.deepEqual(starts, [started]);
+    assert.equal(element.pageWorkflowAttempt?.correlationId, started);
+    assert.equal(element.pageWorkflowAttempt?.status, "started");
+});
+
+test("a same-URL readiness cycle re-evaluates a finished workflow", () => {
+    const href = "https://app.example/interventions/abc";
+    const starts: string[] = [];
+    const cancellations: string[] = [];
+    const element = makeWorkflowLifecycleElement(
+        href,
+        "/interventions/abc",
+        starts,
+        cancellations,
+    );
+    element.setPageReady(true);
+    element.open();
+
+    const first = starts[0];
+    assert.ok(first);
+    element.handlePageWorkflowStatus(first, "started");
+    element.handlePageWorkflowStatus(first, "completed");
+
+    element.setPageReady(false);
+    element.setPageReady(true);
+
+    assert.equal(starts.length, 2);
+    assert.notEqual(starts[1], first);
+    assert.deepEqual(cancellations, []);
+
+    // Re-asserting readiness without a cycle never restarts the attempt.
+    element.handlePageWorkflowStatus(starts[1] as string, "started");
+    element.setPageReady(true);
+    assert.equal(starts.length, 2);
+});
+
+test("readiness on a different URL replaces a started attempt", () => {
+    const href = "https://app.example/interventions/abc";
+    const starts: string[] = [];
+    const cancellations: string[] = [];
+    const element = makeWorkflowLifecycleElement(
+        href,
+        "/interventions/abc",
+        starts,
+        cancellations,
+    );
+    element.setPageReady(true);
+    element.open();
+
+    const first = starts[0];
+    assert.ok(first);
+    element.handlePageWorkflowStatus(first, "started");
+
+    const nextHref = "https://app.example/interventions/def";
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: { href: nextHref, origin: "https://app.example", pathname: "/interventions/def" },
+    });
+    element.setPageReady(false);
+    element.setPageReady(true, nextHref);
+
+    assert.equal(starts.length, 2);
+    assert.notEqual(starts[1], first);
+    assert.equal(element.pageWorkflowAttempt?.correlationId, starts[1]);
+    assert.equal(element.pageWorkflowAttempt?.expectedUrl, nextHref);
+    // Started attempts are never cancel-framed; the new page's attempt
+    // simply replaces the old one.
+    assert.deepEqual(cancellations, []);
+});
+
 test("an unacknowledged workflow retries with the same correlation id", () => {
     const href = "https://app.example/interventions/abc";
     const starts: string[] = [];
