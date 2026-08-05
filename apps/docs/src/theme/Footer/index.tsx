@@ -13,7 +13,7 @@ const footerContent = {
         more: "More",
         security: "Security",
         release: "Release & CDN",
-        builtWith: "Built with Docusaurus · nova-chat-sdk v1.0"
+        builtWith: "Built with Docusaurus · nova-chat-sdk v1.1"
     },
     de: {
         tagline: "Der Assistent, den du einbettest und steuerst. Gebaut in Ulm, Deutschland.",
@@ -25,7 +25,7 @@ const footerContent = {
         more: "Mehr",
         security: "Sicherheit",
         release: "Versionierung & CDN",
-        builtWith: "Gebaut mit Docusaurus · nova-chat-sdk v1.0"
+        builtWith: "Gebaut mit Docusaurus · nova-chat-sdk v1.1"
     },
     fr: {
         tagline: "L'assistant que vous intégrez et contrôlez. Conçu à Ulm, en Allemagne.",
@@ -37,7 +37,7 @@ const footerContent = {
         more: "Plus",
         security: "Sécurité",
         release: "Publication et CDN",
-        builtWith: "Construit avec Docusaurus · nova-chat-sdk v1.0"
+        builtWith: "Construit avec Docusaurus · nova-chat-sdk v1.1"
     }
 } satisfies Record<string, Record<string, string>>;
 

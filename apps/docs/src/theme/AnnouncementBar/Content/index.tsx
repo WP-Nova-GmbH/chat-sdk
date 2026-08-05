@@ -6,15 +6,15 @@ import styles from "./styles.module.css";
 
 const announcementContent = {
     en: {
-        message: "Nova Chat SDK v1.0 is now generally available",
+        message: "Nova Chat SDK v1.1 is now generally available",
         cta: "Get started ->"
     },
     de: {
-        message: "Nova Chat SDK v1.0 ist jetzt allgemein verfügbar",
+        message: "Nova Chat SDK v1.1 ist jetzt allgemein verfügbar",
         cta: "Loslegen ->"
     },
     fr: {
-        message: "Nova Chat SDK v1.0 est maintenant disponible",
+        message: "Nova Chat SDK v1.1 est maintenant disponible",
         cta: "Démarrer ->"
     }
 } satisfies Record<string, { cta: string; message: string }>;

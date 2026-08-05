@@ -10,9 +10,9 @@ export interface DocsRelease {
 
 export const currentDocsRelease = {
     versionName: "current",
-    sdkLine: "1.0",
-    label: "v1.0 latest",
-    npmRange: ">=1.0.0 <1.1.0",
+    sdkLine: "1.1",
+    label: "v1.1 latest",
+    npmRange: ">=1.1.0 <1.2.0",
 } satisfies DocsRelease;
 
 export const historicalDocsReleases = [] satisfies DocsRelease[];

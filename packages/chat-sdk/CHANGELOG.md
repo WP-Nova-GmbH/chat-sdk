@@ -1,6 +1,6 @@
 # @wp-nova/chat-sdk
 
-## 1.0.7
+## 1.1.0
 
 ### Minor Changes
 
