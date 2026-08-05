@@ -5,7 +5,22 @@ React provider and hooks for the Nova Chat SDK.
 📖 **Full documentation:** [https://wp-nova.ai/chat-sdk](https://wp-nova.ai/chat-sdk)
 
 ```tsx
-import { NovaChatProvider, useNovaTool } from "@wp-nova/chat-sdk-react";
+import {
+    NovaChatProvider,
+    useNovaChat,
+    useNovaChatOpenState,
+    useNovaTool,
+} from "@wp-nova/chat-sdk-react";
+
+function AssistantButton() {
+    const chat = useNovaChat();
+    const open = useNovaChatOpenState();
+    return (
+        <button aria-expanded={open} onClick={() => void chat.toggle()} type="button">
+            {open ? "Close assistant" : "Open assistant"}
+        </button>
+    );
+}
 
 function Tools() {
     useNovaTool({
@@ -33,6 +48,7 @@ export function App() {
                 theme: "dark",
                 triggerColorLight: "#7E54E4",
                 triggerColorDark: "#A991F2",
+                launcher: false,
                 routes: [
                     { path: "/customers", description: "Customer lookup list with search." },
                 ],
@@ -42,6 +58,7 @@ export function App() {
                 },
             }}
         >
+            <AssistantButton />
             <Tools />
         </NovaChatProvider>
     );
@@ -55,3 +72,30 @@ provider above the route outlet. For async router destinations, connect
 Update `config.theme` from the host application's light/dark mode; changing only
 that field updates the existing iframe without re-fetching auth or resetting the
 conversation.
+
+For a docked sidebar, render a stable grid/flex container before the provider
+effect runs and configure it as the mount:
+
+```tsx
+const config = useMemo(
+    () => ({
+        ...novaConfig,
+        mount: "#nova-layout",
+        presentation:
+            mode === "sidebar"
+                ? ({ mode: "sidebar", width, resizable: true } as const)
+                : ({ mode: "popover" } as const),
+    }),
+    [mode, width],
+);
+```
+
+Use `grid-template-columns: minmax(0, 1fr) auto` and give the container an
+available block size. Changing `mode` re-initializes the singleton in place and
+preserves the iframe, auth, tools, open state, and conversation. The core falls
+back to pop-over when the container cannot fit the sidebar plus `384px` of main
+content. Omit `resizable` for a fixed width. When it is enabled, listen for the
+bubbling `wp-nova:sidebar-resize` event and store `event.detail.width` in the
+`width` state if the choice should survive later config updates. See the
+[presentation documentation](https://chat.wp-nova.ai/configuration#presentation)
+for the complete layout and sizing contract.

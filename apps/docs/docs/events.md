@@ -68,3 +68,10 @@ Two window events integrate an SPA router with the SDK:
 If the hard wait cap is reached, the SDK returns a snapshot with
 `unsettled: true`; Nova can call `refresh_context`. See
 [Navigation and async pages](./navigation.md).
+
+An opt-in resizable sidebar also emits `wp-nova:sidebar-resize`. The event
+bubbles out of the custom element, is composed across its shadow boundary, and
+contains `{ width: number }` in `detail`. It fires when a pointer drag commits
+and after every supported keyboard resize. Store the reported, clamped width
+and pass it back as `presentation.width` if the choice should persist across
+later `init()` calls or page loads.

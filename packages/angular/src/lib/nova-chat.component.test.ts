@@ -173,10 +173,19 @@ describe("NovaChatComponent — R4 change-aware sync", () => {
         component.ngOnInit();
         vi.clearAllMocks();
 
-        component.config = { ...config, title: "Renamed" };
+        component.config = {
+            ...config,
+            mount: "#nova-layout",
+            presentation: { mode: "sidebar", width: 480, resizable: true },
+        };
         component.ngOnChanges(changeOf("config"));
 
         expect(service.init).toHaveBeenCalledTimes(1);
+        expect(service.init).toHaveBeenCalledWith({
+            ...config,
+            mount: "#nova-layout",
+            presentation: { mode: "sidebar", width: 480, resizable: true },
+        });
         // Tools did not change, so the tool registry is left untouched.
         expect(service.registerTool).not.toHaveBeenCalled();
         expect(service.unregisterTool).not.toHaveBeenCalled();

@@ -10,6 +10,16 @@ export interface PageStructuredData {
     meta?: Record<string, string>;
 }
 
+/** Language hints captured separately from the page's untrusted visible text. */
+export interface PageLanguageSignals {
+    /** Active locale explicitly supplied by the host application. */
+    hostLocale?: string;
+    /** Canonicalized language declared by the host document's root element. */
+    documentLocale?: string;
+    /** Canonicalized browser preference list, in preference order. */
+    browserLocales?: string[];
+}
+
 /**
  * The page capture the SDK produces in the host page on `REQUEST_SNAPSHOT`.
  *
@@ -33,6 +43,8 @@ export interface PageContext {
     structuredData?: PageStructuredData;
     /** Explicit `data-ai-context` fields when a site provides them. */
     aiFields?: Record<string, string | undefined>;
+    /** Host, document, and browser language hints for automatic page workflows. */
+    languageSignals?: PageLanguageSignals;
     // --- WS4 Visible Page Snapshot (forward-declared; populated later) -------
     /** The structured Visible Page Snapshot (WS4). */
     snapshot?: VisiblePageSnapshot;

@@ -27,15 +27,20 @@ const CONFIG = {
     baseUrl: "https://chat.wp-nova.ai",
     iframeOrigin: "https://chat.wp-nova.ai",
     iframeSrc: "https://chat.wp-nova.ai/embed/chat?surface=surf_1",
+    presentationMode: "popover",
+    sidebarWidth: 384,
+    sidebarResizable: false,
     title: "Assistant",
     accent: "#8665e3",
     triggerColor: "#8665e3",
     triggerIconColor: "light",
+    launcherEnabled: true,
     theme: "light",
     hasFirstPaintLauncherColor: true,
     safeValueSelectors: [],
     voiceModeEnabled: false,
     siteRoutes: [],
+    pageWorkflows: [],
     settle: { quietMs: 200, maxWaitMs: 1600 },
     protocolVersion: 1,
 } satisfies ResolvedConfig;
@@ -158,6 +163,9 @@ test("an explicit unavailable body survives a proxy-rewritten non-2xx status", a
                 message_is_custom: false,
                 access_request_token: "request-capability",
                 access_request_expires_in: 3600,
+                user_creation_required: true,
+                user_creation_token: "creation-capability",
+                user_creation_expires_in: 1800,
             }),
         }),
     });
@@ -170,6 +178,9 @@ test("an explicit unavailable body survives a proxy-rewritten non-2xx status", a
             messageIsCustom: false,
             accessRequestToken: "request-capability",
             accessRequestExpiresIn: 3600,
+            userCreationRequired: true,
+            userCreationToken: "creation-capability",
+            userCreationExpiresIn: 1800,
         });
     } finally {
         __resetTokenCooldownForTests();

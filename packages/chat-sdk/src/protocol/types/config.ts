@@ -4,8 +4,142 @@ import type { SiteRoute } from "./page.js";
 // SDK init config
 // ---------------------------------------------------------------------------
 
+/**
+ * JSON-serializable value accepted in deterministic required-tool input and
+ * output assertions.
+ */
+export type JsonValue =
+    | null
+    | boolean
+    | number
+    | string
+    | JsonValue[]
+    | { [key: string]: JsonValue };
+
+/** Stable reference to a host site or server-side backend tool contract. */
+export type WorkflowToolReference =
+    | { location: "site"; toolId: string; contractVersion: string }
+    | { location: "backend"; connectionKey: string; toolId: string; contractVersion: string };
+
+/** One top-level input argument binding for deterministic required evidence. */
+export type WorkflowInputBinding =
+    | { kind: "literal"; value: JsonValue }
+    | { kind: "path"; parameter: string };
+
+/** RFC 6901 assertion checked against a required-tool result. */
+export type WorkflowOutputAssertion =
+    | { pointer: string; operator: "exists" }
+    | { pointer: string; operator: "nonEmpty" }
+    | { pointer: string; operator: "equals"; value: JsonValue };
+
+/** One deterministic read-only tool call made before research begins. */
+export interface PageWorkflowRequiredTool {
+    id: string;
+    tool: WorkflowToolReference;
+    inputs: Record<string, WorkflowInputBinding>;
+    outputAssertions?: WorkflowOutputAssertion[];
+}
+
+/** A read-only backend tool the platform research loop may choose to invoke. */
+export interface PageWorkflowAvailableBackendTool {
+    connectionKey: string;
+    toolId: string;
+    contractVersion: string;
+}
+
+/** A source declaration a read-only workflow backend tool may return. */
+export interface PageWorkflowEvidenceSource {
+    /** Internal source key. Nova replaces this before a model or browser sees it. */
+    id: string;
+    /** Short operator-facing record name, never customer data or a raw provider id. */
+    label: string;
+    /** Optional provenance description, not a source excerpt. */
+    description?: string;
+    /** ISO timestamp at which this evidence was observed, when available. */
+    observedAt?: string;
+}
+
+/** Standard optional source envelope at the top level of a workflow tool result. */
+export interface PageWorkflowEvidenceEnvelope {
+    sources: PageWorkflowEvidenceSource[];
+}
+
+/** Origin classes exposed by Nova for a completed workflow citation. */
+export type PageWorkflowCitationOrigin =
+    | "page"
+    | "required-tool"
+    | "backend-tool"
+    | "connector";
+
+/** Safe, opaque citation metadata returned with a completed workflow result. */
+export interface PageWorkflowCitationSource {
+    /** Result-local citation token such as `s1`; this is not a provider identifier. */
+    reference: string;
+    origin: PageWorkflowCitationOrigin;
+    title: string;
+    description: string;
+    observedAt?: string;
+}
+
+/** The fixed platform-owned automatic workflow profile. */
+export interface PageWorkflowExecution {
+    mode: "research-and-compose";
+    availableBackendTools?: PageWorkflowAvailableBackendTool[];
+}
+
+/** An automatic workflow the host starts after the matching page is ready. */
+export interface PageWorkflowDefinition {
+    /** Stable integrator-owned identifier used for cache and status correlation. */
+    id: string;
+    /** Exact same-origin pathname template. `:param` occupies exactly one segment. */
+    path: string;
+    /** Platform-owned execution mode; custom agent graphs are not supported. */
+    execution: PageWorkflowExecution;
+    /** Instructions for the fixed research-and-compose workflow. */
+    prompt: string;
+    /** Deterministic evidence fetched before the bounded research loop. */
+    requiredTools?: PageWorkflowRequiredTool[];
+}
+
 /** Host-page color mode forwarded to the embedded chat UI. */
 export type HostTheme = "light" | "dark";
+
+/** Resolves the capabilities the current host user can use on this site. */
+export type SiteCapabilitiesProvider = () => unknown | Promise<unknown>;
+
+/**
+ * Host-owned result provider for Nova's SDK-defined capability-discovery tool.
+ *
+ * Nova owns the tool name, schema, and default model instruction. The host owns
+ * only the current, permission-aware result and may optionally strengthen the
+ * instruction with site-specific wording.
+ */
+export interface SiteCapabilitiesConfig {
+    /** Returns a JSON-serializable, user-facing description of current capabilities. */
+    provider: SiteCapabilitiesProvider;
+    /**
+     * Optional advanced override for the model-facing tool instruction.
+     * Keep the instruction explicit that the tool must be called before every
+     * answer about site-specific capabilities, features, actions, or workflows.
+     */
+    description?: string;
+}
+
+/**
+ * How the SDK shell is presented on the host page.
+ *
+ * Pop-over mode keeps the existing fixed launcher/panel behavior. Sidebar mode
+ * participates in the host's grid/flex layout and therefore requires `mount`.
+ */
+export type ChatPresentation =
+    | { mode?: "popover" }
+    | {
+          mode: "sidebar";
+          /** Requested docked width in pixels. Numeric values are clamped to 320–640. */
+          width?: number;
+          /** Adds an accessible drag handle for live width changes. Defaults to false. */
+          resizable?: boolean;
+      };
 
 /** Public configuration passed to `WpNova('init', config)` / `<wp-nova-chat>`. */
 export interface SdkConfig {
@@ -26,8 +160,16 @@ export interface SdkConfig {
      * `<baseUrl>/embed/chat`. Defaults to the production chat host.
      */
     baseUrl?: string;
-    /** Host DOM element (or selector) to mount into; defaults to document.body. */
+    /**
+     * Host DOM element (or selector) to mount into. Defaults to document.body
+     * for pop-over mode; required for sidebar mode.
+     */
     mount?: string | HTMLElement;
+    /**
+     * Shell presentation. Defaults to the existing fixed pop-over. Re-running
+     * init with a different value updates the existing iframe in place.
+     */
+    presentation?: ChatPresentation;
     /** Launcher / panel title shown before surface theming arrives. */
     title?: string;
     /** Accent color for the pre-auth launcher shell. */
@@ -44,10 +186,22 @@ export interface SdkConfig {
     /** Launcher icon color for the pre-auth shell: "light", "dark", or a hex color. */
     triggerIconColor?: string;
     /**
+     * Whether the SDK-owned launcher button is shown. Defaults to true. Set to
+     * false when the host page provides its own control and uses the public
+     * open/close/toggle API.
+     */
+    launcher?: boolean;
+    /**
      * Host page color mode forwarded to the embedded chat. Defaults to "light".
      * Re-running init with a new value updates the existing iframe in place.
      */
     theme?: HostTheme;
+    /**
+     * Active host-application locale as a BCP 47 tag. Automatic page workflows
+     * use it as the user-intent fallback when visible page content is mixed or
+     * ambiguous. Re-running init updates future captures without reloading chat.
+     */
+    locale?: string;
     /**
      * Per-surface safe-value selector allowlist. A field value is captured in
      * the Visible Page Snapshot ONLY when it opts in (via `data-wp-nova-include`
@@ -70,6 +224,20 @@ export interface SdkConfig {
      * user can actually reach — filter by role/permissions before init.
      */
     routes?: SiteRoute[];
+    /**
+     * Automatic page workflows. The host must separately call
+     * `setPageReady(true)` once the matching route's data has rendered. Workflows
+     * run only while the chat panel is open.
+     */
+    pageWorkflows?: PageWorkflowDefinition[];
+    /**
+     * Enables Nova's SDK-defined capability-discovery tool. The SDK supplies
+     * the tool name, empty input schema, read-only classification, and a strong
+     * default instruction that makes this the authoritative source whenever a
+     * user asks what Nova can do on the current site. The host supplies only a
+     * live, permission-aware result provider.
+     */
+    siteCapabilities?: SiteCapabilitiesConfig;
     /**
      * Tuning for the post-action DOM settle before snapshot capture.
      * `quietMs` is the mutation-free window that counts as settled (default 200,

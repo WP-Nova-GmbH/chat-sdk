@@ -52,6 +52,120 @@ conversation reset. Changes to `triggerColorLight` and `triggerColorDark`
 update the existing launcher without remounting. Keep the config memoized as
 described below.
 
+## Switchable Pop-over and Sidebar
+
+Use a stable grid/flex mount and include `presentation` in the provider config.
+The React wrapper treats presentation content as meaningful config, so changing
+the mode or width re-runs core `init()` without replacing the iframe:
+
+```tsx
+import { useEffect, useMemo, useState } from "react";
+import {
+  NovaChatProvider,
+  type SidebarResizeDetail,
+} from "@wp-nova/chat-sdk-react";
+
+export function App() {
+  const [mode, setMode] = useState<"popover" | "sidebar">("popover");
+  const [width, setWidth] = useState(420);
+
+  useEffect(() => {
+    const rememberWidth = (event: Event) =>
+      setWidth((event as CustomEvent<SidebarResizeDetail>).detail.width);
+    window.addEventListener("wp-nova:sidebar-resize", rememberWidth);
+    return () =>
+      window.removeEventListener("wp-nova:sidebar-resize", rememberWidth);
+  }, []);
+
+  const config = useMemo(
+    () => ({
+      ...novaConfig,
+      mount: "#nova-layout",
+      presentation:
+        mode === "sidebar"
+          ? ({ mode: "sidebar", width, resizable: true } as const)
+          : ({ mode: "popover" } as const),
+    }),
+    [mode, width],
+  );
+
+  return (
+    <NovaChatProvider config={config}>
+      <div
+        id="nova-layout"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) auto",
+          minHeight: "100dvh",
+          alignItems: "stretch",
+        }}
+      >
+        <main style={{ minWidth: 0 }}>
+          <button
+            type="button"
+            onClick={() =>
+              setMode((current) =>
+                current === "popover" ? "sidebar" : "popover"
+              )
+            }
+          >
+            Switch presentation
+          </button>
+          <Routes />
+        </main>
+      </div>
+    </NovaChatProvider>
+  );
+}
+```
+
+The mount must exist before the provider effect runs. Keep it stable across
+mode changes so Nova remains the final layout child; the host controls column
+order and vertical sizing. See [Configuration: Presentation](./configuration.md#presentation)
+for fixed versus resizable width, validation, persistence, and responsive
+fallback.
+
+## Custom Launcher
+
+The built-in launcher is enabled by default. Set `launcher: false` and render a
+host-owned button inside the provider when it needs to match your application UI.
+
+```tsx
+import {
+  NovaChatProvider,
+  useNovaChat,
+  useNovaChatOpenState,
+} from "@wp-nova/chat-sdk-react";
+
+function AssistantButton() {
+  const chat = useNovaChat();
+  const open = useNovaChatOpenState();
+
+  return (
+    <button
+      aria-expanded={open}
+      onClick={() => void chat.toggle()}
+      type="button"
+    >
+      {open ? "Close assistant" : "Open assistant"}
+    </button>
+  );
+}
+
+export function App() {
+  return (
+    <NovaChatProvider config={{ ...novaConfig, launcher: false }}>
+      <AssistantButton />
+      <Routes />
+    </NovaChatProvider>
+  );
+}
+```
+
+`useNovaChat()` exposes `open()`, `close()`, and `toggle()`.
+`useNovaChatOpenState()` follows all transitions, including minimize actions
+inside the iframe, so labels and `aria-expanded` remain accurate.
+
 ## Registering Tools with Definitions
 
 If your tools are stable inside one component, pass them through the `tools` prop:

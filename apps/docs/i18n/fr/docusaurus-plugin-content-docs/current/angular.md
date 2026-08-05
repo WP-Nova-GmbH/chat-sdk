@@ -36,7 +36,7 @@ import { NovaChatComponent, NovaChatService } from "@wp-nova/chat-sdk-angular";
   template: `<wp-nova-chat-mount />`,
 })
 export class AppComponent {
-  private readonly nova = inject(NovaChatService);
+  readonly nova = inject(NovaChatService);
 
   constructor() {
     this.nova.registerTool({
@@ -66,3 +66,50 @@ l’input `config` du composant ou appelez
 lanceur, le panneau et l’iframe existante sans récupérer de nouveau token ni
 perdre la conversation. `triggerColorLight` et `triggerColorDark` mettent le
 lanceur existant à jour sans remontage.
+
+### Pop-over et barre latérale interchangeables
+
+Placez un conteneur grid/flex stable avant
+`<wp-nova-chat-mount>` et liez une nouvelle référence `SdkConfig` lorsque la
+présentation change :
+
+```ts
+mode: "popover" | "sidebar" = "popover";
+config: SdkConfig = this.buildConfig();
+
+togglePresentation() {
+  this.mode = this.mode === "popover" ? "sidebar" : "popover";
+  this.config = this.buildConfig();
+}
+
+private buildConfig(): SdkConfig {
+  return {
+    publicSurfaceId: "surf_...",
+    tokenEndpoint: "/api/nova-token",
+    mount: "#nova-layout",
+    presentation:
+      this.mode === "sidebar"
+        ? { mode: "sidebar", width: 420, resizable: true }
+        : { mode: "popover" },
+  };
+}
+```
+
+Le conteneur de montage utilise généralement
+`grid-template-columns: minmax(0, 1fr) auto`, une hauteur disponible définie
+et `min-width: 0` sur le contenu principal. Angular réagit à la nouvelle
+référence de configuration ; le SDK cœur préserve l’iframe,
+l’authentification, les outils, l’état ouvert/fermé et la conversation. Voir
+[Configuration : présentation](./configuration.md#présentation) pour la
+validation de largeur et le fallback responsive.
+Sans `resizable`, la largeur reste fixe. Lorsque le glisser est activé,
+l’application hôte doit enregistrer `event.detail.width` depuis
+`wp-nova:sidebar-resize` dans une nouvelle référence de configuration.
+
+Pour un bouton fourni par la page hôte, définissez `launcher: false`.
+`NovaChatService` fournit `open()`, `close()` et `toggle()` :
+
+```html
+<button type="button" (click)="nova.toggle()">Assistant</button>
+<wp-nova-chat-mount />
+```

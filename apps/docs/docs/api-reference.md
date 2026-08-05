@@ -9,6 +9,9 @@ The script-tag build installs `window.WpNova`. Calls made before the SDK loads a
 
 ```ts
 WpNova("init", config);
+WpNova("open");
+WpNova("close");
+WpNova("toggle");
 WpNova("registerTool", tool);
 WpNova("unregisterTool", name);
 WpNova("destroy");
@@ -20,6 +23,11 @@ WpNova("destroy");
 import {
   WpNova,
   init,
+  open,
+  close,
+  toggle,
+  isOpen,
+  subscribeOpenChange,
   destroy,
   registerTool,
   unregisterTool,
@@ -27,36 +35,80 @@ import {
   release,
   defineElement,
   ELEMENT_TAG,
+  OPEN_CHANGE_EVENT,
+  SIDEBAR_RESIZE_EVENT,
   WpNovaChatElement,
   DEFAULT_SETTLE,
   SETTLED_EVENT,
+  type ChatPresentation,
   type HostTheme,
+  type SidebarResizeDetail,
   type SettleOptions,
+  type SiteCapabilitiesConfig,
+  type SiteCapabilitiesProvider,
 } from "@wp-nova/chat-sdk";
 ```
 
 `WpNova(command, ...args)` and the named helpers call the same singleton controller.
+
+## Panel Controls
+
+The SDK-owned launcher is enabled by default. Set `launcher: false` when the
+host page provides its own button, then control the same singleton panel through
+`open()`, `close()`, or `toggle()`. Calls made before `init()` are retained and
+applied when the element mounts.
+
+```ts
+import { init, toggle } from "@wp-nova/chat-sdk";
+
+init({
+  publicSurfaceId: "surf_...",
+  tokenEndpoint: "/api/nova-token",
+  launcher: false,
+});
+
+document.querySelector("#assistant")?.addEventListener("click", toggle);
+```
+
+`isOpen()` returns the current state. `subscribeOpenChange(listener)` reports
+transitions from every source, including the iframe minimize control, and
+returns an unsubscribe function. The mounted custom element also emits a
+bubbling `wp-nova:open-change` event with `{ open: boolean }` in `detail`.
 
 ## SdkConfig
 
 ```ts
 export type HostTheme = "light" | "dark";
 
+export type ChatPresentation =
+  | { mode?: "popover" }
+  | { mode: "sidebar"; width?: number; resizable?: boolean };
+
+export type SiteCapabilitiesProvider = () => unknown | Promise<unknown>;
+
+export interface SiteCapabilitiesConfig {
+  provider: SiteCapabilitiesProvider;
+  description?: string;
+}
+
 export interface SdkConfig {
   publicSurfaceId: string;
   tokenEndpoint: string;
   baseUrl?: string;
   mount?: string | HTMLElement;
+  presentation?: ChatPresentation;
   title?: string;
   accent?: string;
   triggerColor?: string;
   triggerColorLight?: string;
   triggerColorDark?: string;
   triggerIconColor?: "light" | "dark" | string;
+  launcher?: boolean;
   theme?: HostTheme;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
   routes?: SiteRoute[];
+  siteCapabilities?: SiteCapabilitiesConfig;
   settle?: {
     quietMs?: number;
     maxWaitMs?: number;
@@ -81,7 +133,20 @@ page's current color mode to the iframe without reading an iframe-owned cookie.
 Changing it through another `init` call updates the existing iframe in place
 without acquiring a new token. Notably, `voiceMode` (default `false`) enables
 the embedded voice button and delegates microphone access to the Nova iframe.
+`siteCapabilities` enables the reserved, read-only `get_site_capabilities` tool;
+Nova supplies its default model instruction and the host provider supplies its
+live JSON-serializable result. The optional description override must contain
+20–2,000 characters.
 See [Configuration](./configuration.md) for the full options table.
+
+`presentation` defaults to `{ mode: "popover" }`. Sidebar width defaults to
+`384`, numeric values are clamped to `320–640`, and invalid runtime widths warn
+and fall back to `384`. Sidebar mode requires an explicit, resolvable `mount`.
+Its effective mode falls back to pop-over whenever the mount is narrower than
+`sidebarWidth + 384px`. Sidebar width is fixed unless `resizable: true`; then
+the built-in separator supports pointer and keyboard resizing and emits
+`wp-nova:sidebar-resize` with `SidebarResizeDetail` after each committed
+change.
 
 `settle` controls post-action snapshot readiness. Defaults are
 `quietMs: 200`, `maxWaitMs: 1600`, and
@@ -117,6 +182,9 @@ collide with a built-in action, the description is at least 20 characters,
 `inputSchema` is a plain object, `mutating` is boolean, and mutating tools
 have non-empty `confirmationCopy`. Nova applies additional bounded size and
 complexity checks. See [Tools and guided workflows](./tools.md).
+
+`get_site_capabilities` is also reserved. Configure it through
+`SdkConfig.siteCapabilities`; do not pass it to `registerTool`.
 
 `registerToolHandler(name, handler)` and `unregisterToolHandler(name)` remain
 available as deprecated execution-only compatibility helpers. Handler-only tools
@@ -227,7 +295,17 @@ export const SETTLED_EVENT = "wp-nova:settled";
 
 ## Custom Element
 
-The SDK defines `<wp-nova-chat>` lazily and idempotently. You can pre-place the element in the DOM, but most integrations should let `init` create and mount it.
+The SDK defines `<wp-nova-chat>` lazily and idempotently. You can pre-place the
+element in the DOM, but most integrations should let `init` create and mount
+it. The element reflects requested and responsive presentation as
+`data-wpn-presentation` and `data-wpn-effective-presentation`; the validated
+width is available internally as `--wpn-sidebar-width`.
+`data-wpn-sidebar-resizable` reflects the opt-in resize handle.
+
+An effective sidebar panel is a labelled `complementary` region. An effective
+pop-over keeps its non-modal `dialog` semantics. `data-wp-nova-ignore` excludes
+the SDK subtree from host page snapshots without hiding either presentation
+from the accessibility tree.
 
 ```ts
 import { ELEMENT_TAG, defineElement } from "@wp-nova/chat-sdk";
@@ -242,6 +320,13 @@ console.log(ELEMENT_TAG); // "wp-nova-chat"
 same-origin document navigation. `wp-nova:settled` ends a pending post-action
 wait after the requested route and data render. See
 [Navigation and async pages](./navigation.md) for the router adapter.
+
+`wp-nova:sidebar-resize` is a bubbling, composed
+`CustomEvent<SidebarResizeDetail>` with `{ width: number }`. It fires when an
+opt-in sidebar pointer drag commits and after every supported keyboard resize.
+Use `SIDEBAR_RESIZE_EVENT` instead of repeating the event-name string in npm
+integrations. The event reports the effective clamped width; pass it back as
+`presentation.width` to persist the user's choice across later `init()` calls.
 
 ## Shared Mount Lifecycle
 

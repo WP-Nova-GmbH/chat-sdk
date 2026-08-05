@@ -2,7 +2,15 @@ import { resolveConfig } from "../config/config.js";
 import { formatErrorMessage } from "../config/diagnostics.js";
 import type { SdkConfig, ToolDefinition, ToolHandler } from "../protocol/types/index.js";
 import { ToolRegistry } from "../tools/tools.js";
-import { defineElement, ELEMENT_TAG, type WpNovaChatElement } from "./element/index.js";
+import {
+    defineElement,
+    ELEMENT_TAG,
+    OPEN_CHANGE_EVENT,
+    type OpenChangeDetail,
+    type WpNovaChatElement,
+} from "./element/index.js";
+
+export type OpenChangeListener = (open: boolean) => void;
 
 /** Commands the queued `WpNova(...)` dispatcher accepts. */
 export type Command =
@@ -11,6 +19,10 @@ export type Command =
     | ["unregisterTool", string]
     | ["registerToolHandler", string, ToolHandler]
     | ["unregisterToolHandler", string]
+    | ["open"]
+    | ["close"]
+    | ["toggle"]
+    | ["setPageReady", boolean]
     | ["retain"]
     | ["release"]
     | ["destroy"]
@@ -31,8 +43,17 @@ export interface QueuedWpNova {
 class SdkController {
     private readonly registry = new ToolRegistry();
     private element?: WpNovaChatElement;
+    private openState = false;
+    private hasPendingOpenState = false;
+    private pageReady = false;
+    private pageReadyUrl?: string;
+    private readonly openChangeListeners = new Set<OpenChangeListener>();
     /** Live mount count. The shared element is torn down only when it hits 0. */
     private mountRefs = 0;
+    private readonly onElementOpenChange = (event: Event): void => {
+        const detail = (event as CustomEvent<OpenChangeDetail>).detail;
+        if (typeof detail?.open === "boolean") this.updateOpenState(detail.open);
+    };
 
     dispatch = (...args: Command): void => {
         const [command, ...rest] = args;
@@ -52,6 +73,18 @@ class SdkController {
             case "unregisterToolHandler":
                 this.registry.unregisterHandler(rest[0] as string);
                 break;
+            case "open":
+                this.open();
+                break;
+            case "close":
+                this.close();
+                break;
+            case "toggle":
+                this.toggle();
+                break;
+            case "setPageReady":
+                this.setPageReady(rest[0] === true);
+                break;
             case "retain":
                 this.retain();
                 break;
@@ -65,6 +98,51 @@ class SdkController {
                 console.warn(`[wp-nova] unknown command: ${String(command)}`);
         }
     };
+
+    open(): void {
+        if (this.element) {
+            this.element.open();
+            return;
+        }
+        this.hasPendingOpenState = true;
+        this.updateOpenState(true);
+    }
+
+    close(): void {
+        if (this.element) {
+            this.element.close();
+            return;
+        }
+        this.hasPendingOpenState = true;
+        this.updateOpenState(false);
+    }
+
+    toggle(): void {
+        if (this.element?.isOpen ?? this.openState) this.close();
+        else this.open();
+    }
+
+    isOpen(): boolean {
+        return this.openState;
+    }
+
+    subscribeOpenChange(listener: OpenChangeListener): () => void {
+        this.openChangeListeners.add(listener);
+        return () => this.openChangeListeners.delete(listener);
+    }
+
+    /** Mark the current host URL ready (or no longer ready) for automatic workflows. */
+    setPageReady(ready: boolean): void {
+        if (ready) {
+            assertBrowserRuntime();
+            this.pageReady = true;
+            this.pageReadyUrl = window.location.href;
+        } else {
+            this.pageReady = false;
+            this.pageReadyUrl = undefined;
+        }
+        this.element?.setPageReady(this.pageReady, this.pageReadyUrl);
+    }
 
     /**
      * Register a live mount. Called once per mount lifecycle (NOT per `init`), so
@@ -86,21 +164,33 @@ class SdkController {
     private init(config: SdkConfig): void {
         try {
             assertBrowserRuntime();
-            resolveConfig(config);
+            const resolved = resolveConfig(config);
+            const mountTarget = this.resolveMountTarget(resolved.mount, resolved.presentationMode);
             defineElement();
 
-            if (!this.element) {
-                const existing = document.querySelector(ELEMENT_TAG) as WpNovaChatElement | null;
-                const element =
-                    existing ?? (document.createElement(ELEMENT_TAG) as WpNovaChatElement);
+            const initialMount = !this.element;
+            const element =
+                this.element ??
+                (document.querySelector(ELEMENT_TAG) as WpNovaChatElement | null) ??
+                (document.createElement(ELEMENT_TAG) as WpNovaChatElement);
+            if (initialMount) {
                 element.setRegistry(this.registry);
-                if (!existing) this.mountInto(element, config.mount);
-                element.setConfig(config);
-                this.element = element;
-                return;
+                element.addEventListener(OPEN_CHANGE_EVENT, this.onElementOpenChange);
             }
 
-            this.element.setConfig(config);
+            element.moveTo(mountTarget);
+            element.setConfig(config);
+            element.setPageReady(this.pageReady, this.pageReadyUrl);
+            if (!initialMount) return;
+
+            this.element = element;
+            if (this.hasPendingOpenState) {
+                if (this.openState) element.open();
+                else element.close();
+                this.hasPendingOpenState = false;
+            } else {
+                this.updateOpenState(element.isOpen);
+            }
         } catch (error) {
             console.error(`[wp-nova] chat launcher was not mounted: ${formatErrorMessage(error)}`);
             throw error;
@@ -108,18 +198,58 @@ class SdkController {
     }
 
     private destroy(): void {
-        this.element?.destroy();
+        const element = this.element;
+        element?.destroy();
+        element?.removeEventListener(OPEN_CHANGE_EVENT, this.onElementOpenChange);
         this.element = undefined;
+        this.hasPendingOpenState = false;
+        this.pageReady = false;
+        this.pageReadyUrl = undefined;
+        this.updateOpenState(false);
     }
 
-    private mountInto(element: HTMLElement, mount?: string | HTMLElement): void {
-        let target: HTMLElement | null = document.body;
+    private updateOpenState(open: boolean): void {
+        if (this.openState === open) return;
+        this.openState = open;
+        for (const listener of this.openChangeListeners) {
+            try {
+                listener(open);
+            } catch (error) {
+                console.error(`[wp-nova] open-state listener failed: ${formatErrorMessage(error)}`);
+            }
+        }
+    }
+
+    private resolveMountTarget(
+        mount: SdkConfig["mount"],
+        presentationMode: "popover" | "sidebar",
+    ): HTMLElement {
+        let target: HTMLElement | null = null;
         if (typeof mount === "string") {
             target = document.querySelector(mount);
         } else if (typeof HTMLElement !== "undefined" && mount instanceof HTMLElement) {
             target = mount;
         }
-        (target ?? document.body).appendChild(element);
+
+        if (presentationMode === "sidebar") {
+            if (mount == null) {
+                throw new Error(
+                    "[wp-nova] sidebar presentation requires an explicit `mount` layout container",
+                );
+            }
+            if (!target) {
+                const description =
+                    typeof mount === "string" ? ` selector ${JSON.stringify(mount)}` : "";
+                throw new Error(
+                    `[wp-nova] sidebar presentation could not resolve its \`mount\`${description}`,
+                );
+            }
+            return target;
+        }
+
+        // Keep the original pop-over behavior: an omitted or unresolved mount
+        // falls back to body.
+        return target ?? document.body;
     }
 }
 
@@ -167,6 +297,39 @@ export function registerToolHandler(name: string, handler: ToolHandler): void {
 /** @deprecated Use unregisterTool for SDK-declared tools. */
 export function unregisterToolHandler(name: string): void {
     WpNova("unregisterToolHandler", name);
+}
+
+/** Open the shared chat panel. Safe to call before init; the state is applied on mount. */
+export function open(): void {
+    WpNova("open");
+}
+
+/** Close the shared chat panel without destroying its iframe or conversation. */
+export function close(): void {
+    WpNova("close");
+}
+
+/** Toggle the shared chat panel between open and closed. */
+export function toggle(): void {
+    WpNova("toggle");
+}
+
+/**
+ * Tell the SDK whether the current page has finished rendering the content an
+ * automatic workflow may read.
+ */
+export function setPageReady(ready: boolean): void {
+    WpNova("setPageReady", ready);
+}
+
+/** Return the controller's current (or pre-init requested) open state. */
+export function isOpen(): boolean {
+    return getController().isOpen();
+}
+
+/** Subscribe to open-state transitions. Returns an unsubscribe callback. */
+export function subscribeOpenChange(listener: OpenChangeListener): () => void {
+    return getController().subscribeOpenChange(listener);
 }
 
 /**

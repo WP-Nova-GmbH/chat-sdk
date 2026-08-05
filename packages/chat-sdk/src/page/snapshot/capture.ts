@@ -17,11 +17,11 @@ import {
     accessibleName,
     controlLabel,
     directText,
+    elementRenderState,
     getValueCaptureDecision,
     hasFieldValue,
     isExcludedSubtree,
     isValueField,
-    isVisible,
     mayCaptureValue,
     readValue,
     type ValueCaptureDecision,
@@ -69,6 +69,8 @@ function collect(
     if (!children) return;
     for (const el of Array.from(children)) {
         if (isExcludedSubtree(el)) continue;
+        const renderState = elementRenderState(el);
+        if (!renderState.descendantsMayRender) continue;
 
         const tag = el.tagName.toLowerCase();
 
@@ -80,9 +82,8 @@ function collect(
         // Closed shadow root: the host element renders but its internals are
         // unreadable. (Open roots expose `.shadowRoot`; closed ones return null.)
         const shadow = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
-        const visible = isVisible(el);
 
-        if (visible) {
+        if (renderState.visible) {
             if (tag === "a" && el.getAttribute("href")) {
                 links.push({ el });
             } else if (CONTROL_TAGS.has(tag) || el.getAttribute("contenteditable") !== null) {
@@ -95,7 +96,7 @@ function collect(
         if (textReachable) {
             if (text.budget <= 0) {
                 text.truncated = true;
-            } else if (!visible || tag === "script" || tag === "style" || tag === "noscript") {
+            } else if (tag === "script" || tag === "style" || tag === "noscript") {
                 childTextReachable = false;
             } else if (isValueField(el) && !mayCaptureValue(el, safeSelectors)) {
                 // Default-deny field-value gate: omit typed text unless opted in.
@@ -103,12 +104,18 @@ function collect(
             } else {
                 // Direct text nodes only (avoids duplicating descendant text and
                 // prevents ignored descendants leaking via parent textContent).
-                const own = directText(el);
+                const own = renderState.rendersOwnText ? directText(el) : "";
                 if (own) {
-                    const slice = own.slice(0, text.budget);
-                    text.parts.push(slice);
-                    text.budget -= slice.length;
-                    if (slice.length < own.length) text.truncated = true;
+                    const separatorLength = text.parts.length > 0 ? 1 : 0;
+                    if (text.budget <= separatorLength) {
+                        text.truncated = true;
+                    } else {
+                        text.budget -= separatorLength;
+                        const slice = own.slice(0, text.budget);
+                        text.parts.push(slice);
+                        text.budget -= slice.length;
+                        if (slice.length < own.length) text.truncated = true;
+                    }
                 }
             }
         }

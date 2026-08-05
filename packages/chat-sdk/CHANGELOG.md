@@ -1,5 +1,21 @@
 # @wp-nova/chat-sdk
 
+## 1.0.7
+
+### Minor Changes
+
+- Add host-controlled chat panels with fixed or resizable docked-sidebars while preserving the
+  shared iframe and conversation across presentation changes.
+- Add automatic page workflows with explicit page readiness, full rendered-page context,
+  deterministic required evidence, and optional read-only backend research tools.
+- Add SDK-defined site capability discovery, host/document/browser language signals, workflow
+  evidence sources, and JIT user-creation confirmation forwarding.
+
+### Patch Changes
+
+- Preserve an in-flight workflow and its correlation when a host refreshes page readiness on the
+  same URL, while allowing completed workflows and real navigation to start a new attempt.
+
 ## 1.0.5
 
 ### Patch Changes

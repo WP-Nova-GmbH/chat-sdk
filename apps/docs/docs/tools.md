@@ -10,6 +10,7 @@ Nova embedded chat can use conversation tools, built-in page controls, and SDK-d
 | Category | Examples | Owner | Host handler? |
 | --- | --- | --- | --- |
 | Conversation | `request_user_input` | Nova iframe/backend | No. The iframe renders and answers the choice card. |
+| Site capability discovery | `get_site_capabilities` | Nova defines; host provides the live result | `siteCapabilities.provider` in SDK config. Requires Page Tools. |
 | Built-in page control | `navigate`, `click`, `open_record`, `set_filter`, `scroll_to`, `refresh_context` | Nova declares; SDK executes | No custom handler. Requires Page Navigation. |
 | SDK-defined host tool | `list_customers`, `create_ticket`, `set_customer_status` | Your integration | Yes, registered with the complete tool definition. Requires Page Tools. |
 | Nova server tool | Knowledge search or other Nova-side capabilities | Nova | No host-page handler. Availability depends on the Nova agent. |
@@ -32,6 +33,40 @@ When Page Navigation is enabled, Nova can advertise these actions:
 `highlight` is reserved by the SDK protocol but is not currently advertised as an agent capability. Do not design a workflow that depends on it.
 
 The agent prefers URLs over element handles because URLs survive background re-renders. Handles belong only to the latest snapshot.
+
+## Describe Everything Nova Can Do on the Site
+
+Configure `siteCapabilities` when the site's available features are broader
+than its current routes and callable tools—for example automatic page workflows,
+background assistance, feature-flagged modules, or abilities that Nova should
+explain but does not invoke through a dedicated tool.
+
+Nova owns the `get_site_capabilities` name, empty schema, read-only
+classification, and default description. That description tells the model to
+call it before every answer about what it can do, how it can help, what the site
+offers, or whether a site-specific task is supported. The host owns only a live
+provider result:
+
+```ts
+init({
+  publicSurfaceId: "surf_...",
+  tokenEndpoint: "/api/nova-token",
+  siteCapabilities: {
+    provider: () => ({
+      features: ["Search customers", "Create support tickets"],
+      automaticWorkflows: [
+        "Prepare a renewal summary when an eligible customer page opens",
+      ],
+      limitations: ["Refund approval is not available to this user"],
+    }),
+  },
+});
+```
+
+Keep the result permission-aware, user-facing, JSON-serializable, and below the
+32 KiB tool-result limit. The surface's Page Tools setting must be enabled.
+See [Site capability discovery](./configuration.md#site-capability-discovery)
+for dynamic permission filtering and the optional description override.
 
 ## Register an SDK-defined tool
 

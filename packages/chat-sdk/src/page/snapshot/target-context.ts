@@ -7,9 +7,9 @@ import {
 } from "./constants.js";
 import {
     directText,
+    elementRenderState,
     isExcludedSubtree,
     isValueField,
-    isVisible,
     mayCaptureValue,
     normalizeText,
 } from "./dom.js";
@@ -54,7 +54,9 @@ function collectContextText(
     const walk = (el: Element): void => {
         if (budget <= 0) return;
         if (el === target || isDescendantOf(el, target)) return;
-        if (isExcludedSubtree(el) || !isVisible(el)) return;
+        if (isExcludedSubtree(el)) return;
+        const renderState = elementRenderState(el);
+        if (!renderState.descendantsMayRender) return;
 
         const tag = el.tagName.toLowerCase();
         if (tag === "script" || tag === "style" || tag === "noscript") return;
@@ -62,7 +64,7 @@ function collectContextText(
 
         const fieldLike = isValueField(el);
         const mayReadOwnText = !fieldLike || mayCaptureValue(el, safeSelectors);
-        if (mayReadOwnText) {
+        if (mayReadOwnText && renderState.rendersOwnText) {
             append(directText(el));
         }
         if (fieldLike && !mayReadOwnText) {

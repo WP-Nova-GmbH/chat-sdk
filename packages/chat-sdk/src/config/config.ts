@@ -1,8 +1,15 @@
 // Config normalization + protocol tunables for the SDK.
 
+import { normalizeLocale } from "../page/language.js";
 import { DEFAULT_SETTLE, type SettleOptions } from "../page/settle.js";
 import {
+    normalizePageWorkflowExecution,
+    normalizeWorkflowRequirements,
+    pageWorkflowPathsOverlap,
+} from "../page/workflows.js";
+import {
     type HostTheme,
+    type PageWorkflowDefinition,
     PROTOCOL_VERSION,
     type SdkConfig,
     type SiteRoute,
@@ -21,6 +28,13 @@ export const DEFAULT_TITLE = "Assistant";
  * per-surface theming overrides it via `config.accent` once configured.
  */
 export const DEFAULT_ACCENT = "#8665e3";
+
+/** Existing pop-over width, reused as the default docked sidebar width. */
+export const DEFAULT_SIDEBAR_WIDTH = 384;
+
+/** Supported docked sidebar width range, in CSS pixels. */
+export const SIDEBAR_WIDTH_MIN = 320;
+export const SIDEBAR_WIDTH_MAX = 640;
 
 /** Path the iframe app is mounted at under the base URL. */
 export const EMBED_PATH = "/embed/chat";
@@ -50,14 +64,24 @@ export interface ResolvedConfig {
     /** Full iframe src (`<baseUrl><EMBED_PATH>?surface=<publicSurfaceId>`). */
     iframeSrc: string;
     mount?: string | HTMLElement;
+    /** Requested shell mode before responsive fallback is applied. */
+    presentationMode: "popover" | "sidebar";
+    /** Validated sidebar width in CSS pixels. */
+    sidebarWidth: number;
+    /** Whether the docked sidebar exposes its built-in resize separator. */
+    sidebarResizable: boolean;
     title: string;
     accent: string;
     /** Active-theme launcher/open-button color; falls back to the legacy color/accent. */
     triggerColor: string;
     /** Launcher icon color; supports "light", "dark", or a hex color. */
     triggerIconColor: string;
+    /** Whether the SDK-owned launcher button is visible. */
+    launcherEnabled: boolean;
     /** Host page color mode forwarded to the iframe; defaults to light. */
     theme: HostTheme;
+    /** Canonical active locale explicitly supplied by the host application. */
+    hostLocale?: string;
     /** True when the host config supplied a launcher/accent color for first paint. */
     hasFirstPaintLauncherColor: boolean;
     /** Per-surface safe-value selector allowlist (default-deny; empty by default). */
@@ -66,9 +90,73 @@ export interface ResolvedConfig {
     voiceModeEnabled: boolean;
     /** Validated integrator-declared site routes attached to every page capture. */
     siteRoutes: SiteRoute[];
+    /** Validated automatic page workflows evaluated after an explicit ready signal. */
+    pageWorkflows: PageWorkflowDefinition[];
     /** Clamped post-action settle tuning for the pre-capture mutation wait. */
     settle: SettleOptions;
     protocolVersion: number;
+}
+
+type ResolvedPresentation = Pick<
+    ResolvedConfig,
+    "presentationMode" | "sidebarWidth" | "sidebarResizable"
+>;
+
+function resolvedPresentation(
+    presentationMode: ResolvedConfig["presentationMode"],
+    sidebarWidth = DEFAULT_SIDEBAR_WIDTH,
+    sidebarResizable = false,
+): ResolvedPresentation {
+    return { presentationMode, sidebarWidth, sidebarResizable };
+}
+
+function resolvePresentation(presentation: SdkConfig["presentation"]): ResolvedPresentation {
+    if (presentation == null) {
+        return resolvedPresentation("popover");
+    }
+    if (typeof presentation !== "object") {
+        console.warn(
+            `[wp-nova] ignoring invalid presentation ${JSON.stringify(presentation)}; using popover`,
+        );
+        return resolvedPresentation("popover");
+    }
+
+    const mode = (presentation as { mode?: unknown }).mode;
+    if (mode == null || mode === "popover") {
+        return resolvedPresentation("popover");
+    }
+    if (mode !== "sidebar") {
+        console.warn(
+            `[wp-nova] ignoring invalid presentation mode ${JSON.stringify(mode)}; using popover`,
+        );
+        return resolvedPresentation("popover");
+    }
+
+    const width = (presentation as { width?: unknown }).width;
+    const resizable = (presentation as { resizable?: unknown }).resizable === true;
+    if (width == null) {
+        return resolvedPresentation("sidebar", DEFAULT_SIDEBAR_WIDTH, resizable);
+    }
+    if (typeof width !== "number" || !Number.isFinite(width)) {
+        console.warn(
+            `[wp-nova] ignoring invalid sidebar width ${JSON.stringify(width)}; using ${DEFAULT_SIDEBAR_WIDTH}px`,
+        );
+        return resolvedPresentation("sidebar", DEFAULT_SIDEBAR_WIDTH, resizable);
+    }
+    return resolvedPresentation(
+        "sidebar",
+        Math.min(Math.max(width, SIDEBAR_WIDTH_MIN), SIDEBAR_WIDTH_MAX),
+        resizable,
+    );
+}
+
+function resolveHostLocale(locale: SdkConfig["locale"]): string | undefined {
+    if (locale == null) return undefined;
+    const normalized = normalizeLocale(locale);
+    if (!normalized) {
+        console.warn(`[wp-nova] ignoring invalid host locale ${JSON.stringify(locale)}`);
+    }
+    return normalized;
 }
 
 /**
@@ -77,6 +165,7 @@ export interface ResolvedConfig {
  * truncated in production.
  */
 const MAX_SITE_ROUTES = 100;
+const MAX_PAGE_WORKFLOWS = 20;
 
 /**
  * Keep only well-formed routes: a same-origin path (leading "/" but not "//",
@@ -107,6 +196,74 @@ function resolveSiteRoutes(routes: SdkConfig["routes"]): SiteRoute[] {
             `[wp-nova] config.routes declares ${resolved.length} routes; only the first ${MAX_SITE_ROUTES} are used`,
         );
         return resolved.slice(0, MAX_SITE_ROUTES);
+    }
+    return resolved;
+}
+
+/**
+ * Keep the workflow surface deliberately small while rejecting ambiguous or
+ * malformed definitions. One workflow per id and path guarantees deterministic
+ * automatic dispatch.
+ */
+function resolvePageWorkflows(workflows: SdkConfig["pageWorkflows"]): PageWorkflowDefinition[] {
+    if (!Array.isArray(workflows)) return [];
+
+    const seenIds = new Set<string>();
+    const seenPaths = new Set<string>();
+    const resolved: PageWorkflowDefinition[] = [];
+    for (const workflow of workflows) {
+        const id = typeof workflow?.id === "string" ? workflow.id.trim() : "";
+        const path = typeof workflow?.path === "string" ? workflow.path.trim() : "";
+        const prompt = typeof workflow?.prompt === "string" ? workflow.prompt.trim() : "";
+        const execution = normalizePageWorkflowExecution(workflow?.execution);
+        const requiredTools = normalizeWorkflowRequirements(workflow?.requiredTools, path);
+        const normalizedSeparators = path.replace(/\\/g, "/");
+        const segments = path.split("/");
+        const validParameters = segments.every(
+            (segment) => !segment.startsWith(":") || /^:[A-Za-z_][A-Za-z0-9_]*$/.test(segment),
+        );
+        const validPath =
+            path.startsWith("/") &&
+            !normalizedSeparators.startsWith("//") &&
+            !/[?#]/.test(path) &&
+            validParameters &&
+            path.length <= 500;
+        const validId = /^[A-Za-z][A-Za-z0-9_-]{0,79}$/.test(id);
+        const validPrompt = prompt.length > 0 && prompt.length <= 8_000;
+        const overlapsExistingPath = resolved.some((candidate) =>
+            pageWorkflowPathsOverlap(candidate.path, path),
+        );
+
+        if (
+            !validId ||
+            !validPrompt ||
+            !validPath ||
+            !execution ||
+            !requiredTools ||
+            seenIds.has(id) ||
+            seenPaths.has(path) ||
+            overlapsExistingPath
+        ) {
+            console.warn(
+                `[wp-nova] ignoring invalid or duplicate page workflow ${JSON.stringify(workflow)}`,
+            );
+            continue;
+        }
+        seenIds.add(id);
+        seenPaths.add(path);
+        resolved.push({
+            id,
+            path,
+            prompt,
+            execution,
+            ...(requiredTools.length ? { requiredTools } : {}),
+        });
+    }
+    if (resolved.length > MAX_PAGE_WORKFLOWS) {
+        console.warn(
+            `[wp-nova] config.pageWorkflows declares ${resolved.length} workflows; only the first ${MAX_PAGE_WORKFLOWS} are used`,
+        );
+        return resolved.slice(0, MAX_PAGE_WORKFLOWS);
     }
     return resolved;
 }
@@ -173,6 +330,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
     const hasFirstPaintLauncherColor = Boolean(
         themeTriggerColor || config.triggerColor || config.accent,
     );
+    const presentation = resolvePresentation(config.presentation);
 
     return {
         publicSurfaceId: config.publicSurfaceId,
@@ -181,17 +339,21 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
         iframeOrigin: url.origin,
         iframeSrc: url.toString(),
         mount: config.mount,
+        ...presentation,
         title: config.title || DEFAULT_TITLE,
         accent: config.accent || DEFAULT_ACCENT,
         triggerColor,
         triggerIconColor: config.triggerIconColor || "light",
+        launcherEnabled: config.launcher !== false,
         theme,
+        hostLocale: resolveHostLocale(config.locale),
         hasFirstPaintLauncherColor,
         safeValueSelectors: Array.isArray(config.safeValueSelectors)
             ? config.safeValueSelectors.filter((s) => typeof s === "string" && s.trim())
             : [],
         voiceModeEnabled,
         siteRoutes: resolveSiteRoutes(config.routes),
+        pageWorkflows: resolvePageWorkflows(config.pageWorkflows),
         settle: resolveSettle(config.settle),
         protocolVersion: config.protocolVersion ?? PROTOCOL_VERSION,
     };

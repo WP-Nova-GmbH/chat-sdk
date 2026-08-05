@@ -14,6 +14,15 @@ export interface ValueCaptureDecision {
     omissionReason?: OmittedFieldValue["reason"];
 }
 
+export interface ElementRenderState {
+    /** The element itself has a rendered box and may be a link/control target. */
+    visible: boolean;
+    /** Descendants can still render, including through zero-box wrappers. */
+    descendantsMayRender: boolean;
+    /** Direct text nodes render even when `display: contents` has no own box. */
+    rendersOwnText: boolean;
+}
+
 // --- Visibility + sensitivity helpers ----------------------------------------
 
 /** True when the element (or an ancestor) is hidden, aria-hidden, or ignored. */
@@ -27,25 +36,39 @@ export function isExcludedSubtree(el: Element): boolean {
     return false;
 }
 
-/** True when the element renders with a non-zero box that overlaps the viewport. */
+/**
+ * True when the element participates in rendered layout. Viewport overlap is
+ * intentionally irrelevant: page context includes below-fold content and
+ * descendants of scroll containers without scrolling the host page.
+ */
 export function isVisible(el: Element): boolean {
-    const html = el as HTMLElement;
-    if (!html.getClientRects || html.getClientRects().length === 0) return false;
-    const style = getComputedStyle(html);
-    if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
-        return false;
-    }
-    const rect = html.getBoundingClientRect();
-    if (rect.width === 0 && rect.height === 0) return false;
-    return isInViewport(el);
+    return elementRenderState(el).visible;
 }
 
-/** True when the element's box currently overlaps the viewport. */
-export function isInViewport(el: Element): boolean {
-    const rect = el.getBoundingClientRect();
-    const vh = window.innerHeight || document.documentElement.clientHeight;
-    const vw = window.innerWidth || document.documentElement.clientWidth;
-    return rect.bottom > 0 && rect.right > 0 && rect.top < vh && rect.left < vw;
+/**
+ * Read layout/style once and distinguish an invisible element from a subtree
+ * that cannot render at all. `display: contents` and ordinary zero-box wrappers
+ * have no target box, but their descendants must remain traversable.
+ */
+export function elementRenderState(el: Element): ElementRenderState {
+    const html = el as HTMLElement;
+    const style = getComputedStyle(html);
+    const hiddenSubtree =
+        html.hasAttribute("hidden") || style.display === "none" || style.opacity === "0";
+    if (hiddenSubtree) {
+        return { visible: false, descendantsMayRender: false, rendersOwnText: false };
+    }
+    const hasRenderedBox = Boolean(html.getClientRects && html.getClientRects().length > 0);
+    const rect = html.getBoundingClientRect();
+    const visible =
+        style.visibility !== "hidden" &&
+        hasRenderedBox &&
+        (rect.width !== 0 || rect.height !== 0);
+    return {
+        visible,
+        descendantsMayRender: true,
+        rendersOwnText: visible || (style.display === "contents" && style.visibility !== "hidden"),
+    };
 }
 
 /** Best-effort accessible name (aria-label → labelledby → text → title). */

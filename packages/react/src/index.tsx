@@ -8,6 +8,7 @@ import {
     useEffect,
     useMemo,
     useRef,
+    useState,
 } from "react";
 
 type SdkModule = typeof import("@wp-nova/chat-sdk");
@@ -37,6 +38,11 @@ export interface NovaChatApi {
     retain: () => Promise<void>;
     /** Drop a live mount; the shared element tears down only at the last release. */
     release: () => Promise<void>;
+    open: () => Promise<void>;
+    close: () => Promise<void>;
+    toggle: () => Promise<void>;
+    /** Mark the current route ready (or no longer ready) for automatic workflows. */
+    setPageReady: (ready: boolean) => Promise<void>;
     destroy: () => Promise<void>;
 }
 
@@ -113,6 +119,18 @@ function useSdkApi(): NovaChatApi {
             release() {
                 return runQueued((sdk) => sdk.release());
             },
+            open() {
+                return runQueued((sdk) => sdk.open());
+            },
+            close() {
+                return runQueued((sdk) => sdk.close());
+            },
+            toggle() {
+                return runQueued((sdk) => sdk.toggle());
+            },
+            setPageReady(ready) {
+                return runQueued((sdk) => sdk.setPageReady(ready));
+            },
             destroy() {
                 return runQueued((sdk) => sdk.destroy());
             },
@@ -161,16 +179,25 @@ export function NovaChatProvider({
         config.triggerColorLight,
         config.triggerColorDark,
         config.triggerIconColor,
+        config.launcher,
+        config.presentation,
         config.theme,
+        config.locale,
         config.safeValueSelectors,
         config.voiceMode,
         config.routes,
+        config.pageWorkflows,
+        config.siteCapabilities?.description,
         config.protocolVersion,
     ]);
     // Intentionally re-derive only on the primitive configKey + mount identity,
-    // never on the per-render config object reference (that is the R5 bug).
-    // biome-ignore lint/correctness/useExhaustiveDependencies: configKey + mount identity are the intended triggers, not the per-render config reference (R5).
-    const stableConfig = useMemo(() => config, [configKey, config.mount]);
+    // and capability-provider identity, never on the per-render config object
+    // reference (that is the R5 bug).
+    // biome-ignore lint/correctness/useExhaustiveDependencies: configKey + mount/provider identity are the intended triggers, not the per-render config reference (R5).
+    const stableConfig = useMemo(
+        () => config,
+        [configKey, config.mount, config.siteCapabilities?.provider],
+    );
 
     useEffect(() => {
         if (!enabled) {
@@ -244,6 +271,34 @@ export function useNovaChat(): NovaChatApi {
     return context ?? fallback;
 }
 
+/**
+ * Reactive open state for host-owned controls. The core SDK remains the source
+ * of truth, so iframe minimization and every imperative API path stay in sync.
+ */
+export function useNovaChatOpenState(): boolean {
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+        let unsubscribe: (() => void) | undefined;
+
+        void loadSdk()
+            .then((sdk) => {
+                if (!active) return;
+                unsubscribe = sdk.subscribeOpenChange(setOpen);
+                setOpen(sdk.isOpen());
+            })
+            .catch((error) => reportOperationError("open-state subscription", error));
+
+        return () => {
+            active = false;
+            unsubscribe?.();
+        };
+    }, []);
+
+    return open;
+}
+
 export function useNovaTool(tool: NovaToolDefinition) {
     const api = useNovaChat();
     const toolKey = useMemo(() => toolsSignature([tool]), [tool]);
@@ -266,4 +321,17 @@ export function useNovaTool(tool: NovaToolDefinition) {
     }, [api, toolKey]);
 }
 
-export type { SdkConfig, ToolDefinition, ToolHandler } from "@wp-nova/chat-sdk";
+export type {
+    ChatPresentation,
+    PageWorkflowCitationOrigin,
+    PageWorkflowCitationSource,
+    PageWorkflowDefinition,
+    PageWorkflowEvidenceEnvelope,
+    PageWorkflowEvidenceSource,
+    SdkConfig,
+    SidebarResizeDetail,
+    SiteCapabilitiesConfig,
+    SiteCapabilitiesProvider,
+    ToolDefinition,
+    ToolHandler,
+} from "@wp-nova/chat-sdk";

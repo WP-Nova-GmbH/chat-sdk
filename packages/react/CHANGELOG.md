@@ -1,5 +1,17 @@
 # @wp-nova/chat-sdk-react
 
+## 1.0.7
+
+### Minor Changes
+
+- Expose host chat controls, docked-sidebar configuration, automatic page workflows, site
+  capability discovery, locale updates, and workflow evidence sources through the React wrapper.
+
+### Patch Changes
+
+- Updated dependencies
+  - @wp-nova/chat-sdk@1.0.7
+
 ## 1.0.5
 
 ### Patch Changes

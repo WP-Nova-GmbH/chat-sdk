@@ -1,7 +1,14 @@
-import { NovaChatProvider, type NovaToolDefinition } from "@wp-nova/chat-sdk-react";
-import { useMemo, useState } from "react";
+import {
+    NovaChatProvider,
+    type NovaToolDefinition,
+    type SidebarResizeDetail,
+    useNovaChat,
+    useNovaChatOpenState,
+} from "@wp-nova/chat-sdk-react";
+import { useEffect, useMemo, useState } from "react";
 
 type ManifestStatus = "On time" | "Hold" | "Delayed" | "Released";
+type PresentationMode = "popover" | "sidebar";
 
 interface Shipment {
     id: string;
@@ -133,7 +140,18 @@ export function App() {
     const [events, setEvents] = useState<LogEvent[]>([
         createEvent("system", "React example loaded with rail operations fixture data."),
     ]);
+    const [presentationMode, setPresentationMode] = useState<PresentationMode>("popover");
+    const [sidebarWidth, setSidebarWidth] = useState(384);
+    const [sidebarResizable, setSidebarResizable] = useState(false);
     const settings = useMemo(readInitialSettings, []);
+
+    useEffect(() => {
+        const rememberSidebarWidth = (event: Event) => {
+            setSidebarWidth((event as CustomEvent<SidebarResizeDetail>).detail.width);
+        };
+        window.addEventListener("wp-nova:sidebar-resize", rememberSidebarWidth);
+        return () => window.removeEventListener("wp-nova:sidebar-resize", rememberSidebarWidth);
+    }, []);
 
     const activeShipment =
         shipments.find((shipment) => shipment.id === activeManifestId) ?? defaultShipment;
@@ -154,10 +172,20 @@ export function App() {
             accent: "#167c80",
             triggerColor: "#f0a202",
             triggerIconColor: "dark",
+            launcher: false,
+            mount: "#nova-layout",
+            presentation:
+                presentationMode === "sidebar"
+                    ? ({
+                          mode: "sidebar",
+                          width: sidebarWidth,
+                          resizable: sidebarResizable,
+                      } as const)
+                    : ({ mode: "popover" } as const),
             safeValueSelectors: parseSelectorList(settings.safeValueSelectors),
             voiceMode: true,
         }),
-        [settings],
+        [presentationMode, settings, sidebarResizable, sidebarWidth],
     );
 
     const tools = useMemo<NovaToolDefinition[]>(
@@ -328,15 +356,35 @@ export function App() {
 
     return (
         <NovaChatProvider config={config} enabled={enabled} tools={tools}>
-            <div className="app-shell">
+            <div className="nova-host-layout" id="nova-layout">
+                <div className="app-shell">
                 <header className="ops-header">
                     <div>
                         <p className="eyebrow">RailOps Control Desk</p>
                         <h1>West Corridor Freight Board</h1>
                     </div>
-                    <div className="ops-status" role="status" aria-label="Current yard status">
-                        <span>Shift Delta</span>
-                        <strong data-agent-readable-field>{banner}</strong>
+                    <div className="ops-header-actions">
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setPresentationMode((current) =>
+                                    current === "popover" ? "sidebar" : "popover",
+                                )
+                            }
+                        >
+                            {presentationMode === "popover" ? "Dock assistant" : "Use pop-over"}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setSidebarResizable((current) => !current)}
+                        >
+                            {sidebarResizable ? "Use fixed width" : "Enable drag resizing"}
+                        </button>
+                        <CustomChatTrigger disabled={!enabled} />
+                        <div className="ops-status" role="status" aria-label="Current yard status">
+                            <span>Shift Delta</span>
+                            <strong data-agent-readable-field>{banner}</strong>
+                        </div>
                     </div>
                 </header>
 
@@ -588,6 +636,7 @@ export function App() {
                         </ol>
                     </section>
                 </main>
+                </div>
             </div>
         </NovaChatProvider>
     );
@@ -598,6 +647,25 @@ export function App() {
         );
         recordEvent(setEvents, "button", `${id} status changed to ${status}.`);
     }
+}
+
+function CustomChatTrigger({ disabled }: { disabled: boolean }) {
+    const chat = useNovaChat();
+    const open = useNovaChatOpenState();
+
+    return (
+        <button
+            aria-expanded={open}
+            aria-haspopup="dialog"
+            className="chat-trigger"
+            disabled={disabled}
+            onClick={() => void chat.toggle()}
+            type="button"
+        >
+            <span aria-hidden="true">{open ? "×" : "✦"}</span>
+            {open ? "Close assistant" : "Ask Nova"}
+        </button>
+    );
 }
 
 function readInitialSettings(): SdkSettings {

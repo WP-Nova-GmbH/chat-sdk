@@ -4,12 +4,27 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Nova Chat SDK Plain HTML Example</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: system-ui, sans-serif; }
+      #nova-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        min-height: 100dvh;
+        align-items: stretch;
+      }
+      main { min-width: 0; padding: 2rem; }
+    </style>
   </head>
   <body>
-    <main>
-      <h1>Nova Chat SDK Plain HTML Example</h1>
-      <button id="demo-toast" type="button">Host-page action target</button>
-    </main>
+    <div id="nova-layout">
+      <main>
+        <h1>Nova Chat SDK Plain HTML Example</h1>
+        <button id="demo-toast" type="button">Host-page action target</button>
+        <button id="presentation-toggle" type="button">Switch to sidebar</button>
+        <button id="resize-toggle" type="button">Enable drag resizing</button>
+      </main>
+    </div>
     <script>
       ((w, d, s) => {
         w.WpNova = w.WpNova || ((...args) => {
@@ -27,10 +42,39 @@
         return { ok: true };
       });
 
-      WpNova("init", {
-        publicSurfaceId: "srf_live_replace_me",
-        tokenEndpoint: "/api/nova-token",
+      var presentationMode = "popover";
+      var sidebarWidth = 384;
+      var sidebarResizable = false;
+      function initNova() {
+        WpNova("init", {
+          publicSurfaceId: "srf_live_replace_me",
+          tokenEndpoint: "/api/nova-token",
+          mount: "#nova-layout",
+          presentation:
+            presentationMode === "sidebar"
+              ? { mode: "sidebar", width: sidebarWidth, resizable: sidebarResizable }
+              : { mode: "popover" },
+        });
+      }
+
+      document.getElementById("presentation-toggle").addEventListener("click", function () {
+        presentationMode = presentationMode === "popover" ? "sidebar" : "popover";
+        this.textContent =
+          presentationMode === "popover" ? "Switch to sidebar" : "Switch to pop-over";
+        initNova();
       });
+
+      document.getElementById("resize-toggle").addEventListener("click", function () {
+        sidebarResizable = !sidebarResizable;
+        this.textContent = sidebarResizable ? "Use fixed width" : "Enable drag resizing";
+        initNova();
+      });
+
+      window.addEventListener("wp-nova:sidebar-resize", (event) => {
+        sidebarWidth = event.detail.width;
+      });
+
+      initNova();
     </script>
   </body>
 </html>
