@@ -2,7 +2,7 @@
 
 React provider and hooks for the Nova Chat SDK.
 
-📖 **Full documentation:** [https://wp-nova.ai/chat-sdk](https://wp-nova.ai/chat-sdk)
+📖 **Full documentation:** [https://chat.wp-nova.ai](https://chat.wp-nova.ai)
 
 ```tsx
 import {
@@ -46,11 +46,20 @@ export function App() {
                 publicSurfaceId: "surf_...",
                 tokenEndpoint: "/api/nova/embed-token",
                 theme: "dark",
+                locale: "en-GB",
                 triggerColorLight: "#7E54E4",
                 triggerColorDark: "#A991F2",
                 launcher: false,
                 routes: [
                     { path: "/customers", description: "Customer lookup list with search." },
+                ],
+                pageWorkflows: [
+                    {
+                        id: "customer-brief",
+                        path: "/customers/:customerId",
+                        execution: { mode: "research-and-compose" },
+                        prompt: "Summarize the loaded customer with cited evidence.",
+                    },
                 ],
                 settle: {
                     maxWaitMs: 5000,
@@ -72,6 +81,12 @@ provider above the route outlet. For async router destinations, connect
 Update `config.theme` from the host application's light/dark mode; changing only
 that field updates the existing iframe without re-fetching auth or resetting the
 conversation.
+
+`useNovaChat().setPageReady(false)` cancels only an unacknowledged matching
+workflow while route data loads; an already-started run continues. Call
+`setPageReady(true)` after it renders. Keep the provider above the
+route outlet. Backend workflow tools are configured server-side and never need a
+browser handler. See the [workflow guide](https://chat.wp-nova.ai/page-workflows).
 
 For a docked sidebar, render a stable grid/flex container before the provider
 effect runs and configure it as the mount:
