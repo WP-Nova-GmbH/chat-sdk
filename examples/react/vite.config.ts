@@ -14,7 +14,7 @@ export default defineConfig((configEnv) => {
     const env = readExampleEnv(configEnv);
 
     return {
-        plugins: [novaTokenProxyPlugin("react-example", env)],
+        plugins: [novaTokenProxyPlugin(env)],
     };
 });
 
@@ -27,7 +27,7 @@ function readExampleEnv({ mode }: ConfigEnv): ExampleEnv {
     };
 }
 
-function novaTokenProxyPlugin(exampleName: string, env: ExampleEnv): Plugin {
+function novaTokenProxyPlugin(env: ExampleEnv): Plugin {
     return {
         name: "nova-token-dev-proxy",
         /** Reports a missing example user email without preventing Vite from starting. */
@@ -80,7 +80,6 @@ function novaTokenProxyPlugin(exampleName: string, env: ExampleEnv): Plugin {
                             email: env.testEmail,
                             publicSurfaceId,
                             origin,
-                            externalUserId: `${exampleName}:${env.testEmail}`,
                         }),
                     });
                 } catch (error) {
