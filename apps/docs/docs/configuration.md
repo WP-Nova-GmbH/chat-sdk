@@ -13,6 +13,7 @@ init({
   tokenEndpoint: "/api/nova-token",
   baseUrl: "https://chat.wp-nova.ai",
   theme: "dark",
+  locale: "en-GB",
   safeValueSelectors: ["#case-number", ".agent-safe-field"],
   routes: [
     { path: "/customers", description: "Customer lookup list with search" },
@@ -23,6 +24,14 @@ init({
       automaticWorkflows: ["Prepare a renewal summary on customer pages"],
     }),
   },
+  pageWorkflows: [
+    {
+      id: "customer-brief",
+      path: "/customers/:customerId",
+      execution: { mode: "research-and-compose" },
+      prompt: "Summarize the loaded customer using cited evidence.",
+    },
+  ],
   settle: {
     maxWaitMs: 5000,
     waitForNavigationSignal: true,
@@ -47,10 +56,12 @@ init({
 | `triggerIconColor` | No | `light`, `dark`, or a custom hex color for the launcher icon. |
 | `launcher` | No | Shows the SDK-owned launcher button. Defaults to `true`; set `false` for a host-owned trigger. |
 | `theme` | No | Host page color mode copied into the iframe: `light` or `dark`. Defaults to `light`. |
+| `locale` | No | Explicit BCP 47 host-language hint included in page context for automatic workflows. It does not replace the iframe's surface localization; when omitted, no `hostLocale` signal is added (browser preferences remain separate). |
 | `safeValueSelectors` | No | CSS selectors that opt field values into page snapshot capture. Field values still pass sensitivity checks. |
 | `voiceMode` | No | Enables the embedded voice button and delegates microphone access to the Nova iframe. Defaults to `false`. |
 | `routes` | No | Your site's navigable routes (`{ path, description }`), so the agent can navigate straight to a known page instead of hopping through visible links. See [Site routes](#site-routes). |
 | `siteCapabilities` | No | Enables Nova's `get_site_capabilities` lookup with a live, permission-aware host result. See [Site capability discovery](#site-capability-discovery). |
+| `pageWorkflows` | No | Exact page-triggered `research-and-compose` definitions. See [Automatic page workflows](./page-workflows.md). |
 | `settle` | No | Post-action snapshot readiness: `quietMs`, `maxWaitMs`, and `waitForNavigationSignal`. See [Post-action snapshots](#post-action-snapshots). |
 | `protocolVersion` | No | Bridge protocol override for compatibility testing. Do not set in normal integrations. |
 
@@ -286,7 +297,8 @@ fresh auth through the existing iframe. Presentation, mount, theme, and
 launcher color changes apply to the current element; a `theme` update additionally sends
 `HOST_THEME` to the existing iframe without fetching auth.
 
-A direct `init` call also refreshes `routes`, `siteCapabilities`, and `settle`.
+A direct `init` call also refreshes `routes`, `siteCapabilities`, `pageWorkflows`,
+`locale`, and `settle`.
 The capability lookup is advertised, updated, or removed in place without
 replacing the iframe. Treat settle options as mount-time configuration in
 framework integrations; the React wrapper observes route, theme, and capability

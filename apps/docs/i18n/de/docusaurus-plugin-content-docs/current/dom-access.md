@@ -43,7 +43,7 @@ iframe und wird nie als Host-Tool registriert.
 
 ### Seiten-Snapshots
 
-Wenn das iframe `REQUEST_SNAPSHOT` sendet, erfasst das SDK sichtbare Seitenstruktur, Text, Links, Bedienelemente, Labels, Auswahl, strukturierte Daten und stabile Element-Handles. Geschlossene Shadow Roots, Cross-Origin-iframes, Canvas-Bereiche und zu große Seiten werden als teilweise oder gekürzt markiert.
+Wenn das iframe `REQUEST_SNAPSHOT` sendet, erfasst das SDK sichtbare Seitenstruktur, Text, Links, Bedienelemente, Labels, Auswahl, strukturierte Daten, Sprachsignale und stabile Element-Handles. `languageSignals` enthält das normalisierte Host-`locale`, die Dokumentensprache und die bevorzugten Browsersprachen. Geschlossene Shadow Roots, Cross-Origin-iframes, Canvas-Bereiche und zu große Seiten werden als teilweise oder gekürzt markiert.
 
 ### Feldwerte sind standardmäßig gesperrt
 

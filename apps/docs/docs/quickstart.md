@@ -14,12 +14,18 @@ content the agent must never see.
 
 You need:
 
-- A Nova tenant with at least one active user whose email matches the users in your app.
+- A Nova tenant and a decision about whether this surface uses existing users only or confirmed just-in-time (JIT) user creation.
 - Access to Nova admin settings to create an Embedded Chat Surface.
 - A backend route that can read your authenticated user session.
 - The exact browser origins that will load the SDK, for example `https://app.example.com` and `http://127.0.0.1:5173`.
 
-Nova does not auto-provision embedded users; unmatched emails receive an unavailable-user state.
+In the default `existing_only` mode, unmatched emails receive an unavailable-user
+state. A surface configured for `jit_active_member` can offer explicit,
+confirmed creation of an active member. If the surface disables confirmation,
+it may provision during session mint instead; treat that as an explicit
+membership decision. These provisioning settings and `/embed/users` are Nova
+platform contracts, not browser SDK options, and require the matching Nova
+release/deployment.
 
 ## Step 1: Create a Surface
 
@@ -40,6 +46,11 @@ Configure the surface:
 - Enable page reading when the agent should understand the visible page.
 - Enable page navigation when the agent should use built-in page actions such as navigating, opening/clicking records, setting filters, scrolling, or refreshing context. Page navigation requires page reading.
 - Enable Page Tools when your SDK integration should expose `registerTool` definitions to the agent.
+- Choose the surface's user provisioning mode: `existing_only` keeps unknown
+  users unavailable; `jit_active_member` can provision a normal active member.
+  Keep confirmation enabled when creation must require an explicit iframe
+  approval. The setting is release/deployment dependent and can be disabled
+  only when provisioning at session mint is an intentional product decision.
 
 ## Step 2: Add the Token Endpoint
 
@@ -99,6 +110,13 @@ app.post("/api/nova-token", async (req, res) => {
     return res.status(400).json({ error: "Unexpected Nova surface or host origin" });
   }
 
+  // Optional: derive these grants from trusted server state when workflows use
+  // backend tools. Never accept them from the browser.
+  const backendToolGrants = await loadNovaBackendToolGrants({
+    userId: user.id,
+    publicSurfaceId,
+  });
+
   let upstream: Response;
   try {
     upstream = await fetch(`${novaApiUrl}/embed/session`, {
@@ -111,9 +129,11 @@ app.post("/api/nova-token", async (req, res) => {
       },
       body: JSON.stringify({
         email: user.email,
+        firstName: user.firstName, // optional; read from trusted server auth
+        lastName: user.lastName, // optional; read from trusted server auth
         publicSurfaceId,
         origin,
-        externalUserId: user.id,
+        ...(backendToolGrants?.length ? { backendToolGrants } : {}),
       }),
     });
   } catch (error) {
@@ -142,6 +162,11 @@ WEB_APP_URL=https://app.example.com
 
 If your deployment uses a different Nova API origin, use the API URL shown by your Nova admin environment. The browser app should never receive `NOVA_INTEGRATION_SECRET`.
 
+Each optional server-to-Nova grant has the shape
+`{ connectionKey, grant, allowedToolIds? }`. Bind it to the trusted user and
+embedded session, keep it server-side, and omit the field when no backend tool
+is needed. It is not an SDK/browser configuration field.
+
 ### Token Responses
 
 Pass both successful outcomes through unchanged:
@@ -167,6 +192,33 @@ Pass both successful outcomes through unchanged:
   "access_request_expires_in": 3600
 }
 ```
+
+Instead, a surface with confirmed JIT creation can return this unavailable
+response:
+
+```json
+{
+  "unavailable": true,
+  "email": "person@example.com",
+  "message": "We could not find an account for person@example.com.",
+  "message_is_custom": false,
+  "user_creation_required": true,
+  "user_creation_token": "<purpose-scoped capability>",
+  "user_creation_expires_in": 3600
+}
+```
+
+When confirmation is enabled, the iframe asks the person before using the
+creation capability, then calls `POST /embed/users` with
+`Authorization: Bearer <user_creation_token>` and refreshes the normal embedded
+session. A successful creation returns `{ "status": "access_available" }`; no
+chat token is issued before that confirmation. A surface configured to provision
+without confirmation may create during session mint instead; document that
+billable membership behavior to users. Pass these fields through unchanged; do
+not treat the creation capability as an access token or accept identity fields
+from the browser. JIT creation is limited to 100 new accounts per surface per
+hour by default (existing-member mints do not consume it), and existing-only
+surfaces continue to use the separate access-request action.
 
 Pass the complete unavailable response through unchanged. Nova localizes built-in
 copy when `message_is_custom` is `false` and preserves administrator copy when it
@@ -219,6 +271,9 @@ init({
 ```
 
 For framework wrappers, see [React](./react.md) and [Angular](./angular.md).
+
+For automatic page-triggered research, backend tools, readiness, and evidence
+citation, see [Automatic page workflows](./page-workflows.md).
 
 ## Step 4 (Optional): Register Page Tools
 

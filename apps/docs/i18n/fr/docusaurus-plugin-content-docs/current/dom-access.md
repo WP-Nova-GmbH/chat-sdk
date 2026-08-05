@@ -43,7 +43,7 @@ l’iframe et ne s’enregistre jamais dans l’hôte.
 
 ### Instantanés de page
 
-Lorsque l’iframe envoie `REQUEST_SNAPSHOT`, le SDK capture la structure visible de la page, le texte, les liens, les contrôles, les libellés, la sélection, les données structurées et les handles d’éléments stables. Les shadow roots fermés, les iframes cross-origin, les zones canvas et les pages trop grandes sont marquées comme partielles ou tronquées.
+Lorsque l’iframe envoie `REQUEST_SNAPSHOT`, le SDK capture la structure visible de la page, le texte, les liens, les contrôles, les libellés, la sélection, les données structurées, les signaux de langue et les handles d’éléments stables. `languageSignals` contient la `locale` hôte normalisée, la langue du document et les langues préférées du navigateur. Les shadow roots fermés, les iframes cross-origin, les zones canvas et les pages trop grandes sont marquées comme partielles ou tronquées.
 
 ### Les valeurs de champs sont refusées par défaut
 

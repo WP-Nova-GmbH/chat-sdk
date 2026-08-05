@@ -35,13 +35,25 @@ Le fetch du SDK contient les cookies mais pas l’en-tête Bearer propre à l’
 Une SPA Bearer doit créer, via un endpoint protégé séparé, une courte session
 opaque `HttpOnly`, résolue par l’endpoint de token puis révoquée au logout.
 
+### Résolution utilisateur et JIT
+
+L’e-mail est normalisé. `existing_only` laisse un utilisateur inconnu
+indisponible ; `jit_active_member` peut créer une adhésion active réelle. Avec
+confirmation, cela n’arrive qu’après l’action explicite dans l’iframe.
+`user_creation_token` est limité à cet usage, court, soumis à une limite de
+débit et n’est pas un token de chat. Les noms facultatifs viennent uniquement
+de la session serveur fiable. Transmettez `user_creation_required`, le token et
+son expiration sans modification.
+
 ### Permissions des outils
 
 Le code SDK déclare les outils complets via `registerTool` ; la surface ne
 conserve qu’un interrupteur d’autorisation Page Tools. Nova valide la définition
 et décide côté serveur si la confirmation iframe est requise. N’enregistrez un
 outil que lorsque l’utilisateur peut exécuter l’action UI/API sous-jacente.
-L’autorisation backend reste obligatoire.
+L’autorisation backend reste obligatoire. Les outils backend des workflows
+automatiques s’exécutent côté serveur ; les clés API ne vont jamais dans le
+navigateur et les écritures exigent une confirmation.
 
 ### CSP et framing
 

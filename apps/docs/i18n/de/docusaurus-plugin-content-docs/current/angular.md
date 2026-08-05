@@ -61,6 +61,11 @@ Tool-Definitionen. Filtere Routen/Tools nach Berechtigungen und signalisiere
 asynchron geladene Router-Ziele erst nach dem Rendern mit
 `wp-nova:settled`.
 
+Für `pageWorkflows` rufe `nova.setPageReady(false)` während des Ladens und
+`nova.setPageReady(true)` nach dem Rendern auf. Übergib `locale` und
+berechtigungsgefilterte Workflows. Siehe
+[Automatische Seiten-Workflows](./page-workflows.md).
+
 Wenn sich das Host-Theme nach dem Bootstrap ändern kann, binde die aktuelle
 `SdkConfig` an den `config`-Input der Komponente oder rufe
 `NovaChatService.init(updatedConfig)` auf. Ein geändertes `theme` aktualisiert

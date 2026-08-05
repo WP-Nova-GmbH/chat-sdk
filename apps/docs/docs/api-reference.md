@@ -31,6 +31,7 @@ import {
   destroy,
   registerTool,
   unregisterTool,
+  setPageReady,
   retain,
   release,
   defineElement,
@@ -107,8 +108,10 @@ export interface SdkConfig {
   theme?: HostTheme;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
+  locale?: string;
   routes?: SiteRoute[];
   siteCapabilities?: SiteCapabilitiesConfig;
+  pageWorkflows?: PageWorkflowDefinition[];
   settle?: {
     quietMs?: number;
     maxWaitMs?: number;
@@ -138,6 +141,11 @@ Nova supplies its default model instruction and the host provider supplies its
 live JSON-serializable result. The optional description override must contain
 20–2,000 characters.
 See [Configuration](./configuration.md) for the full options table.
+
+`locale` is an optional BCP 47 host locale. The SDK canonicalizes it and passes
+host, document, and browser language signals in page context. `pageWorkflows`
+contains exact path-triggered `research-and-compose` definitions; see
+[Automatic page workflows](./page-workflows.md).
 
 `presentation` defaults to `{ mode: "popover" }`. Sidebar width defaults to
 `384`, numeric values are clamped to `320–640`, and invalid runtime widths warn
@@ -229,6 +237,9 @@ export interface UnavailableUserResponse {
   message_is_custom?: boolean;
   access_request_token?: string;
   access_request_expires_in?: number;
+  user_creation_required?: boolean;
+  user_creation_token?: string;
+  user_creation_expires_in?: number;
   access_token?: undefined;
 }
 ```
@@ -236,6 +247,11 @@ export interface UnavailableUserResponse {
 `message_is_custom: false` identifies Nova's built-in message, which the iframe
 localizes. A value of `true` identifies administrator-authored copy that is shown
 verbatim.
+
+Nova emits either the access-request capability pair or the confirmed-JIT
+creation capability pair; these capability families are never combined in a
+platform response. The structural SDK type remains permissive so a proxy can
+forward additive fields unchanged.
 
 Return Nova's complete unresolved response without rewriting its status or fields.
 The optional capability powers the administrator access-request action and is not
@@ -256,6 +272,11 @@ export interface PageContext {
     meta?: Record<string, string>;
   };
   aiFields?: Record<string, string | undefined>;
+  languageSignals?: {
+    hostLocale?: string;
+    documentLocale?: string;
+    browserLocales?: string[];
+  };
   siteRoutes?: SiteRoute[];
   snapshot?: VisiblePageSnapshot;
 }
@@ -277,6 +298,90 @@ export interface VisiblePageSnapshot {
 
 Handles are valid only for the snapshot that issued them. Every tool result returns a fresh snapshot with re-issued handles.
 
+## Page Workflow Types
+
+The following structural types describe `SdkConfig.pageWorkflows`:
+
+```ts
+type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+type WorkflowToolReference =
+  | { location: "site"; toolId: string; contractVersion: string }
+  | { location: "backend"; connectionKey: string; toolId: string; contractVersion: string };
+
+type WorkflowInputBinding =
+  | { kind: "literal"; value: JsonValue }
+  | { kind: "path"; parameter: string };
+
+type WorkflowOutputAssertion =
+  | { pointer: string; operator: "exists" | "nonEmpty" }
+  | { pointer: string; operator: "equals"; value: JsonValue };
+
+interface PageWorkflowAvailableBackendTool {
+  connectionKey: string;
+  toolId: string;
+  contractVersion: string;
+}
+
+interface PageWorkflowExecution {
+  mode: "research-and-compose";
+  availableBackendTools?: PageWorkflowAvailableBackendTool[];
+}
+
+interface PageWorkflowRequiredTool {
+  id: string;
+  tool: WorkflowToolReference;
+  inputs: Record<string, WorkflowInputBinding>;
+  outputAssertions?: WorkflowOutputAssertion[];
+}
+
+export interface PageWorkflowDefinition {
+  id: string;
+  path: string;
+  execution: PageWorkflowExecution;
+  prompt: string;
+  requiredTools?: PageWorkflowRequiredTool[];
+}
+
+export interface PageWorkflowEvidenceSource {
+  id: string;
+  label: string;
+  description?: string;
+  observedAt?: string;
+}
+
+export interface PageWorkflowEvidenceEnvelope {
+  sources: PageWorkflowEvidenceSource[];
+}
+
+export type PageWorkflowCitationOrigin =
+  | "page"
+  | "required-tool"
+  | "backend-tool"
+  | "connector";
+
+export interface PageWorkflowCitationSource {
+  reference: string;
+  origin: PageWorkflowCitationOrigin;
+  title: string;
+  description: string;
+  observedAt?: string;
+}
+```
+
+`JsonValue` is JSON-serializable data. Required-tool assertions use RFC 6901
+JSON pointers. Evidence ids are internal; model-facing references are opaque
+values such as `[source:s1]`. The evidence and citation interfaces are exported
+from the package root. The smaller workflow helper types above are structural
+configuration types; import `PageWorkflowDefinition` when a named type is
+needed.
+
 ## Post-Action Settle API
 
 ```ts
@@ -288,6 +393,8 @@ export interface SettleOptions {
 
 export const DEFAULT_SETTLE: SettleOptions;
 export const SETTLED_EVENT = "wp-nova:settled";
+
+export function setPageReady(ready: boolean): void;
 ```
 
 `quietMs` is clamped to 0–1000 and `maxWaitMs` to

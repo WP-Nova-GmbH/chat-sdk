@@ -20,9 +20,17 @@ When the iframe sends `REQUEST_SNAPSHOT`, the SDK captures what the user can see
 - Visible controls with labels, roles, and stable handles.
 - Structured metadata such as selected meta tags and JSON-LD.
 - Explicit `data-ai-context` fields.
+- Language signals kept separate from visible text: the normalized host
+  `locale`, the document's `lang`, and the browser's preferred locales.
 - Field values only when they opt in and pass sensitivity checks.
 
 The SDK does not send screenshots or raw DOM HTML. Closed shadow roots, cross-origin iframes, canvas/WebGL regions, virtualized content, and oversized pages can make the snapshot `partial` or `truncated`.
+
+Language signals are hints, not authorization or instructions. `hostLocale` is
+the canonical BCP 47 value explicitly supplied through `SdkConfig.locale`;
+`documentLocale` and `browserLocales` are reported separately from the page and
+browser. Automatic workflows can use these hints to format a response, but the
+host application's permission and data rules remain authoritative.
 
 ## Field Values Are Default-Deny
 

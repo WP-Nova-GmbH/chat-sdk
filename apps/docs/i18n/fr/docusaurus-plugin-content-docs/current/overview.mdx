@@ -26,6 +26,9 @@ Le bridge du SDK gère trois capacités de la page hôte :
 - Des outils d’intégration définis par le SDK, enregistrés avec leur contrat
   complet et leur handler via `registerTool`. Le réglage Page Tools de la
   surface est uniquement l’autorisation côté serveur.
+- Des outils backend côté serveur et des workflows
+  `research-and-compose` configurés par `pageWorkflows`, déclenchés seulement
+  après la readiness exacte de la page.
 
 Nova peut aussi afficher `request_user_input` comme carte de choix interactive
 dans l’iframe. Cet outil de conversation et les actions de page intégrées ne
@@ -49,3 +52,5 @@ s’enregistrent pas dans la page hôte.
    instantanés, routes et spécifications d’outils enregistrées.
 5. Après une action, le SDK attend que la vue cible soit rendue avant d’envoyer
    le nouvel instantané.
+6. Un utilisateur inconnu reste indisponible en `existing_only` ; une surface
+   JIT confirmée peut créer une adhésion active avec un token de création limité.

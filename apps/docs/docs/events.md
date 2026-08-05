@@ -24,6 +24,9 @@ The SDK sends frames only to the iframe's exact origin. The iframe accepts frame
 | `CLIENT_TOOL_REQUEST` | iframe to SDK | Requests a built-in page action or registered integrator tool after any required confirmation. |
 | `CLIENT_TOOL_RESULT` | SDK to iframe | Returns the tool result and a fresh post-action snapshot. |
 | `CLIENT_TOOL_ERROR` | SDK to iframe | Returns typed failure details such as `no_handler`, `stale_handle`, `capture_error`, or `timeout`. |
+| `START_PAGE_WORKFLOW` | SDK to iframe | Starts the matching `research-and-compose` workflow with its expected URL and correlation id. |
+| `CANCEL_PAGE_WORKFLOW` | SDK to iframe | Cancels a workflow that has not started. A server-side run already in progress may continue. |
+| `PAGE_WORKFLOW_STATUS` | iframe to SDK | Reports `started`, `cached`, `completed`, `failed`, or `skipped`, plus an optional result id/message. |
 | `SURFACE_THEME` | iframe to SDK | Applies trusted surface theme values to SDK-owned launcher chrome. |
 | `MINIMIZE` | iframe to SDK | Hides the SDK-owned panel from the iframe header without removing or navigating the iframe. |
 
@@ -48,7 +51,7 @@ Bridge errors are explicit frames, not empty success responses.
 | `capture_error` | Snapshot capture failed while reading the page. |
 | `handler_threw` | A registered tool handler threw or rejected. |
 
-Unavailable users are not represented as transport errors. A `{ "unavailable": true, ... }` token response becomes `UNAVAILABLE` and is terminal for that mount.
+Unavailable users are not represented as transport errors. A `{ "unavailable": true, ... }` token response becomes `UNAVAILABLE`; it may include a JIT creation capability or an access-request capability. In confirmed JIT mode no chat token exists until creation succeeds; a surface that intentionally provisions during mint may issue the normal token in that response.
 
 ## Protocol Skew
 
@@ -68,6 +71,11 @@ Two window events integrate an SPA router with the SDK:
 If the hard wait cap is reached, the SDK returns a snapshot with
 `unsettled: true`; Nova can call `refresh_context`. See
 [Navigation and async pages](./navigation.md).
+
+Automatic workflows use the same exact-URL readiness boundary. Call
+`setPageReady(false)` while page evidence is changing and
+`setPageReady(true)` after it is rendered; the SDK preserves an
+in-flight run across a same-URL readiness refresh.
 
 An opt-in resizable sidebar also emits `wp-nova:sidebar-resize`. The event
 bubbles out of the custom element, is composed across its shadow boundary, and

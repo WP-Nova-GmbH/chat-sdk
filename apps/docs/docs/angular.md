@@ -23,8 +23,17 @@ export const appConfig: ApplicationConfig = {
       publicSurfaceId: import.meta.env["VITE_NOVA_PUBLIC_SURFACE_ID"],
       tokenEndpoint: "/api/nova-token",
       baseUrl: import.meta.env["VITE_NOVA_BASE_URL"],
+      locale: "en-GB",
       routes: [
         { path: "/customers", description: "Customer lookup list with search" },
+      ],
+      pageWorkflows: [
+        {
+          id: "customer-brief",
+          path: "/customers/:customerId",
+          execution: { mode: "research-and-compose" },
+          prompt: "Summarize the loaded customer with cited evidence.",
+        },
       ],
       settle: {
         maxWaitMs: 5000,
@@ -40,6 +49,12 @@ These reads use `import.meta.env`, which a Vite-based Angular build (like the
 With the Angular CLI builder, read the same values from an `environment.ts` file
 instead. Either way, only put browser-safe values in client config and keep the
 integration secret in your backend environment.
+
+In a component with `readonly nova = inject(NovaChatService)`, call
+`nova.setPageReady(false)` while a matching route is loading and
+`nova.setPageReady(true)` after its data is rendered. Configure
+`provideNovaChat()` at bootstrap and keep the root mount component present.
+See [Automatic page workflows](./page-workflows.md).
 
 ## Component Mount
 

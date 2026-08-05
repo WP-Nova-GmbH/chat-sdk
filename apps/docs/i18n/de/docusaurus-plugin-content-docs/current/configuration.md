@@ -22,9 +22,11 @@ Alle Optionen werden an `WpNova("init", config)` oder den Helper `init(config)` 
 | `triggerIconColor` | nein | `light`, `dark` oder eine Hex-Farbe. |
 | `launcher` | nein | Zeigt den SDK-eigenen Launcher. Standard ist `true`; für einen Host-Button auf `false` setzen. |
 | `theme` | nein | Aktueller Modus der Host-Seite: `light` oder `dark`. Standard ist `light`. |
+| `locale` | nein | Expliziter BCP-47-Sprachhinweis des Hosts im Seitenkontext für automatische Workflows; die Surface steuert weiterhin die iframe-Lokalisierung. |
 | `safeValueSelectors` | nein | CSS-Selektoren, die Feldwerte für die Snapshot-Erfassung freigeben. |
 | `voiceMode` | nein | Aktiviert Spracheingabe und Mikrofon-Delegation an das Nova-iframe. |
 | `routes` | nein | Berechtigungsgefilterte Site-Routen als `{ path, description }`. |
+| `pageWorkflows` | nein | Exakte `research-and-compose`-Workflows für passende Seiten. |
 | `settle` | nein | Post-Action-Readiness mit `quietMs`, `maxWaitMs` und `waitForNavigationSignal`. |
 | `protocolVersion` | nein | Bridge-Protokoll-Override für Kompatibilitätstests. |
 
@@ -186,6 +188,9 @@ Benutzer weitergeben:
 
 Nova verwendet `message_is_custom: false` für die lokalisierbare integrierte
 Nachricht und `true` für von Administratoren verfassten Surface-Text.
+
+Für Readiness, Backend-Tools, erforderliche Evidenz und Quellen siehe
+[Automatische Seiten-Workflows](./page-workflows.md).
 
 ### Reinitialisierung
 
