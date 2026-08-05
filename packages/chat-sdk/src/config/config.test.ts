@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_ACCENT, resolveConfig } from "./config.js";
+import {
+    DEFAULT_ACCENT,
+    DEFAULT_SIDEBAR_WIDTH,
+    resolveConfig,
+    SIDEBAR_WIDTH_MAX,
+    SIDEBAR_WIDTH_MIN,
+} from "./config.js";
 
 const REQUIRED_CONFIG = {
     publicSurfaceId: "surf_1",
@@ -114,6 +120,117 @@ test("host theme defaults to light and accepts an explicit dark mode", () => {
     assert.equal(resolveConfig({ ...REQUIRED_CONFIG, theme: "dark" }).theme, "dark");
 });
 
+test("host locale is optional, canonicalized, and rejects malformed tags", () => {
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => void warnings.push(args);
+    try {
+        assert.equal(resolveConfig(REQUIRED_CONFIG).hostLocale, undefined);
+        assert.equal(resolveConfig({ ...REQUIRED_CONFIG, locale: " de-de " }).hostLocale, "de-DE");
+        assert.equal(
+            resolveConfig({ ...REQUIRED_CONFIG, locale: "not_a_locale" }).hostLocale,
+            undefined,
+        );
+        assert.equal(warnings.length, 1);
+    } finally {
+        console.warn = originalWarn;
+    }
+});
+
+test("SDK launcher defaults to enabled and supports host-owned controls", () => {
+    assert.equal(resolveConfig(REQUIRED_CONFIG).launcherEnabled, true);
+    assert.equal(resolveConfig({ ...REQUIRED_CONFIG, launcher: true }).launcherEnabled, true);
+    assert.equal(resolveConfig({ ...REQUIRED_CONFIG, launcher: false }).launcherEnabled, false);
+});
+
+test("presentation defaults to the backward-compatible pop-over", () => {
+    const missing = resolveConfig(REQUIRED_CONFIG);
+    const explicit = resolveConfig({
+        ...REQUIRED_CONFIG,
+        presentation: { mode: "popover" },
+    });
+
+    assert.equal(missing.presentationMode, "popover");
+    assert.equal(explicit.presentationMode, "popover");
+    assert.equal(missing.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
+    assert.equal(explicit.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
+    assert.equal(missing.sidebarResizable, false);
+    assert.equal(explicit.sidebarResizable, false);
+});
+
+test("sidebar presentation defaults and clamps numeric widths", () => {
+    const sidebar = resolveConfig({
+        ...REQUIRED_CONFIG,
+        presentation: { mode: "sidebar" },
+    });
+
+    assert.deepEqual(
+        {
+            mode: sidebar.presentationMode,
+            width: sidebar.sidebarWidth,
+            resizable: sidebar.sidebarResizable,
+        },
+        { mode: "sidebar", width: DEFAULT_SIDEBAR_WIDTH, resizable: false },
+    );
+    assert.equal(
+        resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", resizable: true },
+        }).sidebarResizable,
+        true,
+    );
+    assert.equal(
+        resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", width: 200 },
+        }).sidebarWidth,
+        SIDEBAR_WIDTH_MIN,
+    );
+    assert.equal(
+        resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", width: 900 },
+        }).sidebarWidth,
+        SIDEBAR_WIDTH_MAX,
+    );
+    assert.equal(
+        resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", width: 512.5 },
+        }).sidebarWidth,
+        512.5,
+    );
+});
+
+test("malformed presentation values warn and use safe defaults", () => {
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => void warnings.push(args);
+    try {
+        const invalidWidth = resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", width: "wide" } as never,
+        });
+        const invalidMode = resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "drawer" } as never,
+        });
+        const invalidResizable = resolveConfig({
+            ...REQUIRED_CONFIG,
+            presentation: { mode: "sidebar", resizable: "yes" } as never,
+        });
+
+        assert.equal(invalidWidth.presentationMode, "sidebar");
+        assert.equal(invalidWidth.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
+        assert.equal(invalidMode.presentationMode, "popover");
+        assert.equal(invalidMode.sidebarWidth, DEFAULT_SIDEBAR_WIDTH);
+        assert.equal(invalidResizable.sidebarResizable, false);
+        assert.equal(warnings.length, 2);
+    } finally {
+        console.warn = originalWarn;
+    }
+});
+
 test("voice mode is disabled by default and omitted from the iframe URL", () => {
     const config = resolveConfig(REQUIRED_CONFIG);
 
@@ -177,6 +294,174 @@ test("site routes are capped at the server-side bound", () => {
 
         assert.equal(config.siteRoutes.length, 100);
         assert.equal(config.siteRoutes[99]?.path, "/page-99");
+    } finally {
+        console.warn = originalWarn;
+    }
+});
+
+test("page workflows default to empty and keep a minimal validated definition", () => {
+    assert.deepEqual(resolveConfig(REQUIRED_CONFIG).pageWorkflows, []);
+
+    const config = resolveConfig({
+        ...REQUIRED_CONFIG,
+        pageWorkflows: [
+            {
+                id: " summarize-intervention ",
+                path: " /call-center/interventions/:interventionId ",
+                prompt: " Summarize the transcript ",
+                execution: { mode: "research-and-compose" },
+            },
+        ],
+    });
+
+    assert.deepEqual(config.pageWorkflows, [
+        {
+            id: "summarize-intervention",
+            path: "/call-center/interventions/:interventionId",
+            prompt: "Summarize the transcript",
+            execution: { mode: "research-and-compose" },
+        },
+    ]);
+});
+
+test("page workflows reject malformed and ambiguous definitions", () => {
+    const warnings: unknown[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => void warnings.push(args);
+    try {
+        const config = resolveConfig({
+            ...REQUIRED_CONFIG,
+            pageWorkflows: [
+                {
+                    id: "valid",
+                    path: "/items/:itemId",
+                    prompt: "Summarize",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "valid",
+                    path: "/other/:id",
+                    prompt: "Duplicate id",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "other",
+                    path: "/items/:itemId",
+                    prompt: "Duplicate path",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "empty-prompt",
+                    path: "/empty",
+                    prompt: " ",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "bad-param",
+                    path: "/items/:123",
+                    prompt: "Invalid",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "query",
+                    path: "/items?all=true",
+                    prompt: "Invalid",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "9bad",
+                    path: "/invalid-id",
+                    prompt: "Invalid",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "long-path",
+                    path: `/${"x".repeat(500)}`,
+                    prompt: "Invalid",
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "long-prompt",
+                    path: "/long-prompt",
+                    prompt: "x".repeat(8001),
+                    execution: { mode: "research-and-compose" },
+                },
+                {
+                    id: "overlap",
+                    path: "/items/new",
+                    prompt: "Ambiguous",
+                    execution: { mode: "research-and-compose" },
+                },
+            ],
+        });
+
+        assert.deepEqual(config.pageWorkflows, [
+            {
+                id: "valid",
+                path: "/items/:itemId",
+                prompt: "Summarize",
+                execution: { mode: "research-and-compose" },
+            },
+        ]);
+        assert.equal(warnings.length, 9);
+    } finally {
+        console.warn = originalWarn;
+    }
+});
+
+test("page workflows require research-and-compose and normalize optional read-tool references", () => {
+    const warnings: unknown[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => void warnings.push(args);
+    try {
+        const config = resolveConfig({
+            ...REQUIRED_CONFIG,
+            pageWorkflows: [
+                { id: "missing", path: "/missing", prompt: "Missing mode" } as never,
+                {
+                    id: "research",
+                    path: "/cases/:caseId",
+                    prompt: "Research the documented next step.",
+                    execution: {
+                        mode: "research-and-compose",
+                        availableBackendTools: [
+                            {
+                                connectionKey: " telect ",
+                                toolId: " call_history ",
+                                contractVersion: " 1 ",
+                            },
+                        ],
+                    },
+                },
+                {
+                    id: "duplicate-tool",
+                    path: "/duplicate",
+                    prompt: "Invalid tool declarations.",
+                    execution: {
+                        mode: "research-and-compose",
+                        availableBackendTools: [
+                            { connectionKey: "telect", toolId: "history", contractVersion: "1" },
+                            { connectionKey: "telect", toolId: "history", contractVersion: "1" },
+                        ],
+                    },
+                },
+            ],
+        });
+
+        assert.deepEqual(config.pageWorkflows, [
+            {
+                id: "research",
+                path: "/cases/:caseId",
+                prompt: "Research the documented next step.",
+                execution: {
+                    mode: "research-and-compose",
+                    availableBackendTools: [
+                        { connectionKey: "telect", toolId: "call_history", contractVersion: "1" },
+                    ],
+                },
+            },
+        ]);
+        assert.equal(warnings.length, 2);
     } finally {
         console.warn = originalWarn;
     }

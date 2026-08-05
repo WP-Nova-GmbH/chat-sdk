@@ -19,12 +19,34 @@ import type {
     ClientToolCall,
     ClientToolResult,
     ClientToolSpec,
+    SiteCapabilitiesConfig,
     ToolDefinition,
     ToolHandler,
 } from "../protocol/types/index.js";
 
 const TOOL_NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
 const MIN_DESCRIPTION_LENGTH = 20;
+const MAX_DESCRIPTION_LENGTH = 2000;
+
+/** Reserved SDK-defined lookup backed by the host's `siteCapabilities` provider. */
+export const SITE_CAPABILITIES_TOOL_NAME = "get_site_capabilities";
+
+/**
+ * Default model instruction for capability-discovery questions.
+ *
+ * Keep the trigger language broad and imperative: this tool exists specifically
+ * because routes, visible UI, registered actions, and model memory are incomplete
+ * descriptions of what an evolving host application offers.
+ */
+export const SITE_CAPABILITIES_TOOL_DESCRIPTION =
+    "Always call this tool before answering any question about what you can do on " +
+    "this website, how you can help here, what you offer or support, which site " +
+    "features, actions, or workflows are available, or whether you can perform a " +
+    "site-specific task. This is the current, authoritative host-provided capability " +
+    "guide, including automatic workflows and features that may not appear in page " +
+    "content, routes, or other tools. Never answer such a capability-discovery " +
+    "question from memory or inference: call this tool first, then accurately explain " +
+    "its result in clear user-facing language. Do not call it for unrelated requests.";
 
 interface ToolRegistryEntry {
     spec: ClientToolSpec;
@@ -70,6 +92,7 @@ function describe(cause: unknown): string {
 export class ToolRegistry {
     private readonly tools = new Map<string, ToolRegistryEntry>();
     private readonly legacyHandlers = new Map<string, ToolHandler>();
+    private siteCapabilities?: ToolRegistryEntry;
     /** Notified whenever the set of advertised tools changes. */
     private onChange?: (tools: ClientToolSpec[]) => void;
 
@@ -87,9 +110,33 @@ export class ToolRegistry {
 
     /** Remove a model-callable SDK tool, if present. */
     unregister(name: string): void {
+        if (name === SITE_CAPABILITIES_TOOL_NAME) {
+            throw new Error(
+                `[wp-nova] "${SITE_CAPABILITIES_TOOL_NAME}" is configured through init.siteCapabilities`,
+            );
+        }
         if (this.tools.delete(name)) {
             this.onChange?.(this.advertisedTools());
         }
+    }
+
+    /**
+     * Configure or remove Nova's SDK-defined site-capabilities lookup.
+     *
+     * Reconfiguration replaces both the live provider and optional description
+     * without disturbing integrator-registered tools.
+     */
+    setSiteCapabilities(config?: SiteCapabilitiesConfig): void {
+        if (config == null) {
+            if (this.siteCapabilities) {
+                this.siteCapabilities = undefined;
+                this.onChange?.(this.advertisedTools());
+            }
+            return;
+        }
+
+        this.siteCapabilities = normalizeSiteCapabilities(config);
+        this.onChange?.(this.advertisedTools());
     }
 
     /**
@@ -113,7 +160,10 @@ export class ToolRegistry {
 
     /** Sorted list of SDK-declared tools (sent in REGISTER_TOOLS). */
     advertisedTools(): ClientToolSpec[] {
-        return Array.from(this.tools.values())
+        return [
+            ...Array.from(this.tools.values()),
+            ...(this.siteCapabilities ? [this.siteCapabilities] : []),
+        ]
             .map((entry) => entry.spec)
             .sort((a, b) => a.name.localeCompare(b.name));
     }
@@ -132,7 +182,10 @@ export class ToolRegistry {
         signal?: AbortSignal,
         settle: SettleOptions = DEFAULT_SETTLE,
     ): Promise<ClientToolResult> {
-        const handler = this.tools.get(call.name)?.handler ?? this.legacyHandlers.get(call.name);
+        const handler =
+            (call.name === SITE_CAPABILITIES_TOOL_NAME
+                ? this.siteCapabilities?.handler
+                : this.tools.get(call.name)?.handler) ?? this.legacyHandlers.get(call.name);
         if (!handler) {
             throw new NoHandlerError(call.name);
         }
@@ -166,6 +219,9 @@ function normalizeToolDefinition(tool: ToolDefinition): ToolRegistryEntry {
     }
     if (isNavigationAction(name)) {
         throw new Error(`[wp-nova] "${name}" is reserved for a built-in page action`);
+    }
+    if (name === SITE_CAPABILITIES_TOOL_NAME) {
+        throw new Error(`[wp-nova] "${name}" is reserved for init.siteCapabilities`);
     }
 
     const description = typeof tool.description === "string" ? tool.description.trim() : "";
@@ -202,6 +258,47 @@ function normalizeToolDefinition(tool: ToolDefinition): ToolRegistryEntry {
             ...(confirmationCopy ? { confirmationCopy } : {}),
         },
         handler: tool.handler,
+    };
+}
+
+function normalizeSiteCapabilities(config: SiteCapabilitiesConfig): ToolRegistryEntry {
+    if (!config || typeof config !== "object" || Array.isArray(config)) {
+        throw new Error("[wp-nova] init.siteCapabilities must be a configuration object");
+    }
+    if (typeof config.provider !== "function") {
+        throw new Error("[wp-nova] init.siteCapabilities requires a `provider` function");
+    }
+
+    let description = SITE_CAPABILITIES_TOOL_DESCRIPTION;
+    if (config.description !== undefined) {
+        if (typeof config.description !== "string") {
+            throw new Error("[wp-nova] init.siteCapabilities description must be a string");
+        }
+        description = config.description.trim();
+        if (description.length < MIN_DESCRIPTION_LENGTH) {
+            throw new Error(
+                `[wp-nova] init.siteCapabilities description must be at least ${MIN_DESCRIPTION_LENGTH} characters`,
+            );
+        }
+        if (description.length > MAX_DESCRIPTION_LENGTH) {
+            throw new Error(
+                `[wp-nova] init.siteCapabilities description must be at most ${MAX_DESCRIPTION_LENGTH} characters`,
+            );
+        }
+    }
+
+    return {
+        spec: {
+            name: SITE_CAPABILITIES_TOOL_NAME,
+            description,
+            args_schema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {},
+            },
+            mutating: false,
+        },
+        handler: () => config.provider(),
     };
 }
 

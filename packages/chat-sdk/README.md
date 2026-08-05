@@ -59,18 +59,83 @@ init({ publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
 | `publicSurfaceId` | yes | Non-secret `surf_…` handle. |
 | `tokenEndpoint` | yes | Customer backend endpoint that mints embed sessions. |
 | `baseUrl` | no | Nova iframe origin; defaults to `https://chat.wp-nova.ai`. |
-| `mount` | no | Host element/selector; defaults to `document.body`. |
+| `mount` | sidebar only | Host element/selector. Pop-over defaults to `document.body`; sidebar requires an explicit layout container. |
+| `presentation` | no | `{ mode: "popover" }` (default) or `{ mode: "sidebar", width?: number, resizable?: boolean }`. |
 | `title` | no | Pre-auth panel title. |
 | `accent` | no | Pre-auth accent color. |
 | `triggerColor` | no | Launcher color; defaults to `accent`. |
 | `triggerColorLight` | no | Light-mode launcher color; overrides `triggerColor`. |
 | `triggerColorDark` | no | Dark-mode launcher color; overrides `triggerColor`. |
 | `triggerIconColor` | no | `light`, `dark`, or hex. |
+| `launcher` | no | Show the SDK-owned launcher; defaults to `true`. |
 | `theme` | no | Host page mode (`light` or `dark`); defaults to `light` and updates live. |
 | `safeValueSelectors` | no | Selectors that opt safe field values into snapshots. |
 | `voiceMode` | no | Enables voice and iframe microphone delegation. |
 | `routes` | no | Permission-filtered `{ path, description }[]`, max 100. |
+| `siteCapabilities` | no | Live host result for Nova's SDK-defined capability-discovery tool. |
 | `settle` | no | `quietMs`, `maxWaitMs`, and `waitForNavigationSignal`. |
+
+## Pop-over or docked sidebar
+
+The same singleton iframe can render as the default fixed pop-over or as a
+column in a host-owned grid/flex layout:
+
+```html
+<div id="nova-layout">
+  <main><!-- application content --></main>
+</div>
+
+<style>
+  #nova-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 100dvh;
+    align-items: stretch;
+  }
+  #nova-layout > main { min-width: 0; }
+</style>
+```
+
+```ts
+init({
+  publicSurfaceId: "surf_…",
+  tokenEndpoint: "/api/nova-token",
+  mount: "#nova-layout",
+  presentation: { mode: "sidebar", width: 420, resizable: true },
+});
+```
+
+Sidebar width defaults to `384px`; finite values are clamped to `320–640px`.
+Omit `resizable` (or set it to `false`) for a fixed width. With
+`resizable: true`, an accessible separator supports pointer dragging, arrow
+keys, Home, and End. Committed changes emit a bubbling
+`wp-nova:sidebar-resize` event with `{ width }`; store that value and pass it
+back on later `init()` calls when the user's choice should persist.
+The SDK falls back to pop-over when the mount cannot fit the sidebar plus
+`384px` of main content, and returns to docked mode when space is available.
+Call `init()` again with a different `presentation` or `mount` to switch in
+place without replacing the iframe, token, tools, open state, or conversation.
+The host owns column order, vertical sizing, sticky offsets, and animation.
+
+## Host-owned launcher
+
+Set `launcher: false` and control the singleton panel from your own UI:
+
+```ts
+import { init, toggle } from "@wp-nova/chat-sdk";
+
+init({
+  publicSurfaceId: "surf_…",
+  tokenEndpoint: "/api/nova-token",
+  launcher: false,
+});
+
+document.querySelector("#assistant")?.addEventListener("click", toggle);
+```
+
+The global build supports `WpNova("open")`, `WpNova("close")`, and
+`WpNova("toggle")`. Use `subscribeOpenChange()` or the bubbling
+`wp-nova:open-change` event to keep host UI synchronized.
 
 ## Backend token contract
 
@@ -92,6 +157,16 @@ response/status through.
   "access_request_token": "<purpose-scoped capability>",
   "access_request_expires_in": 3600
 }
+
+// JIT-enabled unmatched email: the iframe asks before creating the user
+{
+  "unavailable": true,
+  "email": "user@acme.com",
+  "message": "No Nova account for this email.",
+  "user_creation_required": true,
+  "user_creation_token": "<purpose-scoped capability>",
+  "user_creation_expires_in": 3600
+}
 ```
 
 Never trust browser-supplied identity or expose the integration secret. A bearer
@@ -100,6 +175,34 @@ cookie session because the SDK does not inherit the app's bearer header.
 
 The SDK refreshes proactively at about 80% of `expires_in` and reactively after
 iframe `AUTH_EXPIRED`, always through `tokenEndpoint`.
+
+## Site capability discovery
+
+The current routes and callable tools are not a complete product description.
+Provide a live capability guide so Nova can accurately answer "what can you do
+here?", including automatic workflows and future host features:
+
+```ts
+init({
+  publicSurfaceId: "surf_…",
+  tokenEndpoint: "/api/nova-token",
+  siteCapabilities: {
+    provider: () => ({
+      features: ["Search customers", "Create support tickets"],
+      automaticWorkflows: [
+        "Prepare a renewal summary when an eligible customer page opens",
+      ],
+    }),
+  },
+});
+```
+
+The SDK advertises a reserved, read-only `get_site_capabilities` tool. Nova owns
+its default description, which requires a call before capability answers; the
+host owns only the permission-aware, JSON-serializable provider result. Page
+Tools must be enabled on the surface. Advanced integrations may override
+`siteCapabilities.description` with a 20–2,000-character instruction that
+preserves the same mandatory lookup behavior.
 
 ## Integrator tools
 
@@ -140,6 +243,8 @@ The mount is singleton-safe across duplicate `init`, HMR, and SPA remounts.
 Changes to iframe identity (`publicSurfaceId`, `baseUrl`, `voiceMode`, or
 `protocolVersion`) rebuild the frame and refresh auth. Use `destroy()` only when
 removing chat; framework wrappers pair shared `retain()`/`release()` mounts.
+Presentation and mount changes move/restyle the existing element without
+resetting the frame or authentication state.
 
 ### Page snapshots
 

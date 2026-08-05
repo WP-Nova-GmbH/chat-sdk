@@ -2,8 +2,8 @@
 
 /** Max number of stable handles issued per capture. */
 export const MAX_HANDLES = 200;
-/** Max visible-text characters carried in the snapshot. */
-export const VISIBLE_TEXT_CAP = 12_000;
+/** Max normalized rendered-text characters carried in the snapshot. */
+export const VISIBLE_TEXT_CAP = 200_000;
 /** Per-captured-field value cap (chars). */
 export const FIELD_VALUE_CAP = 500;
 /** Max visible links carried in the snapshot. */

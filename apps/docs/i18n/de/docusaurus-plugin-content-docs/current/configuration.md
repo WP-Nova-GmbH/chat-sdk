@@ -12,13 +12,15 @@ Alle Optionen werden an `WpNova("init", config)` oder den Helper `init(config)` 
 | `publicSurfaceId` | ja | Nicht geheimes Surface-Handle für das SDK. |
 | `tokenEndpoint` | ja | Kunden-Backend-Endpoint, der ein Embedded-Session-Token ausstellt. |
 | `baseUrl` | nein | Basis-URL des Nova-iframes. Standard ist `https://chat.wp-nova.ai`. |
-| `mount` | nein | CSS-Selektor oder Element, in das gemountet wird. Standard ist `document.body`. |
+| `mount` | nur Sidebar | CSS-Selektor oder `HTMLElement` für das Mounting. Pop-over verwendet standardmäßig `document.body`; die Sidebar erfordert einen expliziten Layout-Container. |
+| `presentation` | nein | `{ mode: "popover" }` (Standard) oder `{ mode: "sidebar", width?: number, resizable?: boolean }`. |
 | `title` | nein | Launcher- und Panel-Titel vor der Authentifizierung. |
 | `accent` | nein | Akzentfarbe vor der Authentifizierung. |
 | `triggerColor` | nein | Farbe des Launchers bzw. Öffnen-Buttons. Standard ist `accent`. |
 | `triggerColorLight` | nein | Launcher-Farbe im hellen Modus; überschreibt dort `triggerColor`. |
 | `triggerColorDark` | nein | Launcher-Farbe im dunklen Modus; überschreibt dort `triggerColor`. |
 | `triggerIconColor` | nein | `light`, `dark` oder eine Hex-Farbe. |
+| `launcher` | nein | Zeigt den SDK-eigenen Launcher. Standard ist `true`; für einen Host-Button auf `false` setzen. |
 | `theme` | nein | Aktueller Modus der Host-Seite: `light` oder `dark`. Standard ist `light`. |
 | `safeValueSelectors` | nein | CSS-Selektoren, die Feldwerte für die Snapshot-Erfassung freigeben. |
 | `voiceMode` | nein | Aktiviert Spracheingabe und Mikrofon-Delegation an das Nova-iframe. |
@@ -36,6 +38,8 @@ init({
   title: "Assistant",
   accent: "#8665e3",
   triggerIconColor: "light",
+  launcher: true,
+  presentation: { mode: "popover" },
   theme: "light",
 });
 ```
@@ -53,6 +57,84 @@ WP-Chat-Cookie noch ermittelt es den Modus selbst. Ein weiterer `init`-Aufruf
 mit geändertem `theme` aktualisiert Launcher, Panel und bestehendes iframe,
 ohne ein neues Token abzurufen oder die Konversation zurückzusetzen. Dasselbe
 gilt bei einer Änderung des Config-Werts in einem Framework-Wrapper.
+
+### Darstellung
+
+Die Standarddarstellung `popover` behält das feste Panel mit `384px × 640px`
+und wird bei Viewport-Breiten bis `480px` bildschirmfüllend. `sidebar` dockt
+dasselbe iframe als Spalte in einem Layout der Host-Seite an:
+
+```html
+<div id="nova-layout">
+  <main><!-- Anwendungsinhalt --></main>
+</div>
+
+<style>
+  #nova-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 100dvh;
+    align-items: stretch;
+  }
+  #nova-layout > main {
+    min-width: 0;
+  }
+</style>
+```
+
+```ts
+let mode: "popover" | "sidebar" = "sidebar";
+
+function applyPresentation() {
+  init({
+    publicSurfaceId: "surf_...",
+    tokenEndpoint: "/api/nova-token",
+    mount: "#nova-layout",
+    presentation:
+      mode === "sidebar"
+        ? { mode: "sidebar", width: 420, resizable: true }
+        : { mode: "popover" },
+  });
+}
+
+applyPresentation();
+mode = "popover";
+applyPresentation();
+```
+
+Die Sidebar-Breite ist standardmäßig `384px`. Endliche Zahlen werden auf
+`320–640px` begrenzt; ungültige Laufzeitwerte erzeugen eine Warnung und
+verwenden `384px`. Position und Reihenfolge der Spalten, verfügbare Blockhöhe,
+Sticky-/Header-Offsets und Animationen gehören vollständig der Host-Seite.
+
+Die Sidebar-Breite ist standardmäßig fest. `resizable: true` fügt an ihrer
+Inline-Startkante einen barrierefreien Separator hinzu. Er unterstützt
+Pointer-Ziehen, Links-/Rechts-Pfeil in `16px`-Schritten, Pos1 für `320px` und
+Ende für die größte Breite, die der aktuelle Container erlaubt. Dabei bleiben
+die Grenzen `320–640px` und `384px` Platz für den Hauptinhalt erhalten.
+
+Nach Abschluss eines Pointer-Ziehens und nach jeder unterstützten
+Tastaturänderung sendet der Separator das bubbling und composed Event
+`wp-nova:sidebar-resize` mit `{ width: number }` in `detail`. Das SDK wendet
+die Breite sofort an, ohne das iframe zu ersetzen. Speichere den Wert und
+übergib ihn bei späteren `init()`-Aufrufen wieder als `presentation.width`,
+wenn die Benutzerauswahl erhalten bleiben soll.
+
+Das SDK beobachtet die verfügbare Breite des Mount-Containers. Es dockt nur,
+wenn neben der konfigurierten Sidebar noch `384px` für den Hauptinhalt
+verfügbar sind. Die Standardbreite fällt daher unter `768px` auf Pop-over
+zurück und dockt automatisch wieder an, sobald genügend Platz vorhanden ist.
+
+Rufe `init()` erneut auf, um Modus, Breite oder Mount-Ziel zu ändern. Das SDK
+verschiebt und formatiert sein vorhandenes Custom Element und erhält iframe,
+Bridge, Token, registrierte Tools, Öffnungszustand und Konversation. Für
+`sidebar` ist ein expliziter, auflösbarer `mount` erforderlich; andernfalls
+wird ein aussagekräftiger Fehler ausgelöst.
+
+Öffnen und Schließen sind keine Darstellungsoptionen. Verwende den integrierten
+Launcher oder `open()`, `close()` und `toggle()`. Beim Schließen einer
+angedockten Sidebar fällt die Layout-Spalte auf Breite null zusammen.
+`launcher: false` ermöglicht dieselbe Steuerung über einen eigenen Host-Button.
 
 ### Site-Routen und asynchrone Navigation
 
@@ -114,7 +196,9 @@ baut das Element iframe und Bridge neu auf und holt ein frisches Token. Ein
 geänderter `tokenEndpoint` holt neue Authentifizierungsdaten für das bestehende
 iframe. Änderungen an `theme` oder Launcher-Farben werden live angewendet; ein
 neues `theme` wird zusätzlich per `HOST_THEME` an das bestehende iframe
-gesendet.
+gesendet. Änderungen an `presentation` oder `mount` gestalten beziehungsweise
+verschieben das vorhandene Element, ohne iframe oder Authentifizierung
+zurückzusetzen.
 
 ### Panel-Lebenszyklus
 
@@ -123,4 +207,9 @@ freien Platz unten rechts. Minimieren über den iframe-Header blendet das Panel
 aus, lässt das iframe aber gemountet und erhält damit Route und Konversation.
 Das SDK hält außerdem Pointer-, Maus- und Klick-Events des Launchers in seinem
 Shadow Root, damit Outside-Click-Handler der Host-Seite nicht auf dieselbe
-Aktivierung reagieren. Dafür ist kein Integrationscode erforderlich.
+Aktivierung reagieren.
+
+Für einen eigenen Host-Button setze `launcher: false` und rufe `open()`,
+`close()` oder `toggle()` auf. Eine Live-Änderung von `launcher` ersetzt das
+iframe nicht. `subscribeOpenChange()` oder `wp-nova:open-change` hält den
+eigenen Button synchron, wenn das iframe sich selbst minimiert.

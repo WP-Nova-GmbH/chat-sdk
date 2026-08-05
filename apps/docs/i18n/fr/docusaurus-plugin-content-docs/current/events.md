@@ -33,3 +33,10 @@ Les SPA utilisent aussi `wp-nova:navigate` pour le routeur same-origin et
 `wp-nova:settled` pour signaler que la vue cible est rendue. Si la limite
 post-action est atteinte, l’instantané est `unsettled` et Nova peut appeler
 `refresh_context`.
+
+Une barre latérale redimensionnable en option émet aussi
+`wp-nova:sidebar-resize`. L’événement sort du Custom Element en bubbling et
+composed, avec `{ width: number }` dans `detail`. Il est émis après validation
+d’un glisser au pointeur et après chaque redimensionnement au clavier.
+Enregistrez la largeur limitée et retransmettez-la comme `presentation.width`
+pour la conserver lors des appels ultérieurs à `init()`.

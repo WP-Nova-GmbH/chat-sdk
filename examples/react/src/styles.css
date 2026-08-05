@@ -78,7 +78,15 @@ dd {
     font-weight: 700;
 }
 
+.nova-host-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 100dvh;
+    align-items: stretch;
+}
+
 .app-shell {
+    min-width: 0;
     min-height: 100vh;
 }
 
@@ -101,6 +109,39 @@ dd {
 .ops-header h1 {
     font-size: clamp(1.6rem, 2vw, 2.45rem);
     line-height: 1.05;
+}
+
+.ops-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.chat-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: max-content;
+    border-color: #f0a202;
+    background: #f0a202;
+    color: #17201f;
+}
+
+.chat-trigger:hover {
+    border-color: #ffd36b;
+    background: #ffd36b;
+    color: #17201f;
+}
+
+.chat-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.chat-trigger span {
+    font-size: 1.1rem;
+    line-height: 1;
 }
 
 .eyebrow {
@@ -386,6 +427,11 @@ dd {
 @media (max-width: 720px) {
     .ops-header,
     .section-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ops-header-actions {
         align-items: stretch;
         flex-direction: column;
     }

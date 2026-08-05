@@ -6,6 +6,7 @@ import {
     EMBED_SOURCE,
     type EmbedFrame,
     type PageContext,
+    type PageWorkflowDefinition,
     SDK_SOURCE,
     type SdkFrame,
     type SurfaceDisplaySettings,
@@ -82,6 +83,9 @@ export class Bridge {
         accessRequestToken?: string,
         accessRequestExpiresIn?: number,
         messageIsCustom?: boolean,
+        userCreationRequired?: boolean,
+        userCreationToken?: string,
+        userCreationExpiresIn?: number,
     ): void {
         this.send({
             type: "UNAVAILABLE",
@@ -90,6 +94,9 @@ export class Bridge {
             messageIsCustom,
             accessRequestToken,
             accessRequestExpiresIn,
+            userCreationRequired,
+            userCreationToken,
+            userCreationExpiresIn,
         });
     }
 
@@ -106,6 +113,35 @@ export class Bridge {
     /** Apply the host page's current color mode without navigating the iframe. */
     sendHostTheme(theme: ResolvedConfig["theme"]): void {
         this.send({ type: "HOST_THEME", theme });
+    }
+
+    /** Keep the hosted iframe aware of the SDK-owned panel state. */
+    sendHostOpenState(open: boolean): void {
+        this.send({ type: "HOST_OPEN_STATE", open });
+    }
+
+    /** Ask a capable iframe to start one automatic workflow. */
+    sendStartPageWorkflow(
+        correlationId: string,
+        workflow: PageWorkflowDefinition,
+        expectedUrl: string,
+    ): void {
+        this.send({
+            type: "START_PAGE_WORKFLOW",
+            correlationId,
+            workflow,
+            expectedUrl,
+        });
+    }
+
+    /** Withdraw an automatic workflow that has not started yet. */
+    sendCancelPageWorkflow(correlationId: string): void {
+        this.send({ type: "CANCEL_PAGE_WORKFLOW", correlationId });
+    }
+
+    /** Require the reloaded iframe document to negotiate READY again. */
+    resetProtocolAcceptance(): void {
+        this.protocolAccepted = false;
     }
 
     /** Stamp the shared envelope (source + protocolVersion) and post the frame. */
@@ -135,12 +171,15 @@ export class Bridge {
         switch (data.type) {
             case "READY":
                 this.protocolAccepted =
-                    this.handlers.onReady(data.minProtocolVersion, data.maxProtocolVersion) !==
-                    false;
+                    this.handlers.onReady(
+                        data.minProtocolVersion,
+                        data.maxProtocolVersion,
+                        data.capabilities,
+                    ) !== false;
                 break;
             case "REQUEST_SNAPSHOT":
                 if (!this.protocolAccepted) return;
-                this.handleSnapshot(data.correlationId);
+                this.handleSnapshot(data.correlationId, data.workflowCorrelationId);
                 break;
             case "CLIENT_TOOL_REQUEST":
                 if (!this.protocolAccepted) return;
@@ -166,6 +205,15 @@ export class Bridge {
                     triggerIconColor: data.triggerIconColor,
                 });
                 break;
+            case "PAGE_WORKFLOW_STATUS":
+                if (!this.protocolAccepted) return;
+                this.handlers.onPageWorkflowStatus?.({
+                    correlationId: data.correlationId,
+                    status: data.status,
+                    resultId: data.resultId,
+                    message: data.message,
+                });
+                break;
             // CONFIRMATION_REQUEST is owned by the iframe UI; the SDK ignores it
             // and only ever runs an approved CLIENT_TOOL_REQUEST.
             default:
@@ -174,10 +222,10 @@ export class Bridge {
     }
 
     /** Capture a snapshot synchronously; reply with result or a typed error. */
-    private handleSnapshot(correlationId: string): void {
+    private handleSnapshot(correlationId: string, workflowCorrelationId?: string): void {
         let context: PageContext;
         try {
-            context = this.handlers.onSnapshotRequest();
+            context = this.handlers.onSnapshotRequest(workflowCorrelationId);
         } catch (err) {
             this.send({
                 type: "SNAPSHOT_ERROR",

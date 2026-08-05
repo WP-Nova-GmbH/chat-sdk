@@ -33,3 +33,10 @@ Host-SPAs verwenden zusätzlich zwei Window-Events: `wp-nova:navigate` für
 same-origin Router-Navigation und `wp-nova:settled` für die fertig gerenderte
 Zielansicht. Erreicht die Post-Action-Wartezeit ihr Limit, ist der Snapshot
 `unsettled` und Nova kann `refresh_context` aufrufen.
+
+Eine optional anpassbare Sidebar sendet außerdem
+`wp-nova:sidebar-resize`. Das Event verlässt das Custom Element als bubbling
+und composed Event und enthält `{ width: number }` in `detail`. Es wird nach
+einem abgeschlossenen Pointer-Ziehen und nach jeder unterstützten
+Tastaturänderung gesendet. Speichere die begrenzte Breite und übergib sie als
+`presentation.width`, wenn sie spätere `init()`-Aufrufe überdauern soll.

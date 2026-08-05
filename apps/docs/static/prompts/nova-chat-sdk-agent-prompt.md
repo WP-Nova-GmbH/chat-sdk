@@ -182,8 +182,8 @@ init({
 
 Only `publicSurfaceId` and `tokenEndpoint` are required. Other browser-safe
 options include `title`, `accent`, `triggerColor`, `triggerColorLight`,
-`triggerColorDark`, `triggerIconColor`, `theme`, `mount`, `safeValueSelectors`,
-`voiceMode`, `routes`, and `settle`. Theme-specific trigger colors override
+`triggerColorDark`, `triggerIconColor`, `launcher`, `theme`, `mount`,
+`safeValueSelectors`, `voiceMode`, `routes`, and `settle`. Theme-specific trigger colors override
 `triggerColor` only in their matching host mode. Enable voice only when requested
 and allow the iframe microphone in Permissions Policy.
 
@@ -202,7 +202,9 @@ instead of `import.meta.env` with the standard Angular CLI builder.
 
 Never remount for ordinary route changes. Opening chat hides the launcher;
 minimizing from the iframe header must leave the iframe mounted so its route and
-conversation persist. Revoke the host-side session on logout. Use published
+conversation persist. When the host needs its own trigger, set `launcher: false`
+and use `open`, `close`, or `toggle`; synchronize accessible host UI through
+`subscribeOpenChange` or `wp-nova:open-change`. Revoke the host-side session on logout. Use published
 package versions; never repack different bytes under an existing version.
 
 ## Tools and guided choices

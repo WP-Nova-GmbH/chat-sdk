@@ -172,9 +172,7 @@ function interpret(body: TokenEndpointResponse): TokenResult {
             email: typeof body.email === "string" ? body.email : "",
             message: typeof body.message === "string" ? body.message : "",
             messageIsCustom:
-                typeof body.message_is_custom === "boolean"
-                    ? body.message_is_custom
-                    : undefined,
+                typeof body.message_is_custom === "boolean" ? body.message_is_custom : undefined,
             accessRequestToken:
                 typeof body.access_request_token === "string"
                     ? body.access_request_token
@@ -183,6 +181,14 @@ function interpret(body: TokenEndpointResponse): TokenResult {
                 typeof body.access_request_expires_in === "number" &&
                 body.access_request_expires_in > 0
                     ? body.access_request_expires_in
+                    : undefined,
+            userCreationRequired: body.user_creation_required === true,
+            userCreationToken:
+                typeof body.user_creation_token === "string" ? body.user_creation_token : undefined,
+            userCreationExpiresIn:
+                typeof body.user_creation_expires_in === "number" &&
+                body.user_creation_expires_in > 0
+                    ? body.user_creation_expires_in
                     : undefined,
         };
     }

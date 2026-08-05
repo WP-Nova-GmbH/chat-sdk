@@ -92,6 +92,80 @@ Updating `theme` applies to the existing launcher, panel, and iframe without a
 new token request or conversation reset. `triggerColorLight` and
 `triggerColorDark` update the existing launcher without remounting.
 
+## Switchable Pop-over and Sidebar
+
+Bind a new `SdkConfig` reference when presentation changes. Put the empty
+wrapper mount after a stable layout container in the template so the container
+exists when Angular initializes the SDK:
+
+```ts
+import { Component, HostListener } from "@angular/core";
+import {
+  NovaChatComponent,
+  type SdkConfig,
+  type SidebarResizeDetail,
+} from "@wp-nova/chat-sdk-angular";
+
+@Component({
+  standalone: true,
+  imports: [NovaChatComponent],
+  template: `
+    <div id="nova-layout" class="nova-layout">
+      <main>
+        <button type="button" (click)="togglePresentation()">
+          Switch presentation
+        </button>
+        <router-outlet />
+      </main>
+    </div>
+    <wp-nova-chat-mount [config]="config" />
+  `,
+  styles: `
+    .nova-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      min-height: 100dvh;
+      align-items: stretch;
+    }
+    main { min-width: 0; }
+  `,
+})
+export class AppComponent {
+  mode: "popover" | "sidebar" = "popover";
+  width = 420;
+  config: SdkConfig = this.buildConfig();
+
+  togglePresentation() {
+    this.mode = this.mode === "popover" ? "sidebar" : "popover";
+    this.config = this.buildConfig();
+  }
+
+  @HostListener("window:wp-nova:sidebar-resize", ["$event"])
+  rememberWidth(event: CustomEvent<SidebarResizeDetail>) {
+    this.width = event.detail.width;
+    this.config = this.buildConfig();
+  }
+
+  private buildConfig(): SdkConfig {
+    return {
+      publicSurfaceId: "surf_...",
+      tokenEndpoint: "/api/nova-token",
+      mount: "#nova-layout",
+      presentation:
+        this.mode === "sidebar"
+          ? { mode: "sidebar", width: this.width, resizable: true }
+          : { mode: "popover" },
+    };
+  }
+}
+```
+
+Angular already responds to a new `config` reference. The core reuses its
+iframe and conversation while it changes layout or moves to a new mount. See
+[Configuration: Presentation](./configuration.md#presentation) for the host
+layout contract, fixed versus resizable width, persistence, and responsive
+fallback.
+
 ## Service API
 
 Use `NovaChatService` when registration belongs in a service or feature initializer:
@@ -110,6 +184,25 @@ export class CustomerToolRegistration {
   }
 }
 ```
+
+The service also exposes `open()`, `close()`, and `toggle()` for host-owned
+controls. Disable the SDK launcher in configuration and wire any Angular button:
+
+```ts
+provideNovaChat({
+  publicSurfaceId: "surf_...",
+  tokenEndpoint: "/api/nova-token",
+  launcher: false,
+});
+```
+
+```html
+<button type="button" (click)="nova.toggle()">Assistant</button>
+<wp-nova-chat-mount />
+```
+
+Keep `nova` public or delegate through a component method when the template
+needs access to it.
 
 The same definition can be passed through the component's `tools` input. See
 [Tools and guided workflows](./tools.md) for confirmation, abort, and handler rules.
