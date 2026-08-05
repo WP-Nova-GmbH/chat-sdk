@@ -10,16 +10,20 @@ A reliable integration starts with product, security, and navigation decisions. 
 | Decision | Questions to answer | Where it is implemented |
 | --- | --- | --- |
 | Users and scope | Which users, roles, tenants, modules, routes, and environments get chat? | Surface membership, SDK `enabled` state, and conditional tool/route registration. |
+| User provisioning | Should unknown app users remain blocked, request access, or receive a confirmed JIT member-creation option? | Surface provisioning mode, trusted token-endpoint identity, and the iframe confirmation flow. |
 | Host authentication | Does the app use a same-origin cookie session or a browser-held bearer token? Where does the backend get the trusted email? | Customer backend token endpoint; bearer apps may need a cookie bootstrap. |
 | Origins | Which exact production, staging, and local origins load the SDK? | Surface `allowedOrigins` and backend origin validation. |
 | Page reading | Should the agent see the current page? Which values are safe, and which regions must be excluded? | Surface Page Reading, `data-wp-nova-include`, `safeValueSelectors`, and `data-wp-nova-ignore`. |
 | Built-in page control | Should the agent navigate, open records, click controls, set filters, or scroll? | Surface Page Navigation, route manifest, semantic DOM controls, and SPA navigation adapter. Page Navigation depends on Page Reading. |
 | Custom tools | Which app APIs or workflows deserve dedicated read-only or mutating tools? | Surface Page Tools gate plus SDK `registerTool` definitions and handlers. |
+| Backend tools | Which server-side read tools can support research, and which writes require confirmation? | Nova backend connection/catalog, delegated grants, `availableBackendTools`, and server authorization. |
+| Automatic page workflows | Which exact pages should trigger a research-and-compose brief, what evidence is required, and how should citations appear? | `pageWorkflows`, `setPageReady`, required-tool assertions, evidence sources, and the workflow prompt. |
 | Guided choices | Which workflows require the agent to choose from customers, suppliers, categories, or other live options? | Read-only lookup tools that return bounded choices; Nova renders `request_user_input` in the iframe. |
 | Site routes | Should the agent know routes that are not visible on the current page? Which roles can reach each route, and where do parameter ids come from? | `SdkConfig.routes`, filtered for the signed-in user. |
 | SPA readiness | Does navigation wait for loaders, queries, lazy chunks, or transitions? What proves the destination is ready? | `wp-nova:navigate`, `settle.waitForNavigationSignal`, and `wp-nova:settled`. |
 | Appearance | What are the visible title, primary/accent color, launcher and icon colors, logo, host light/dark source, and any per-mode launcher colors? | Surface display settings plus browser-safe `theme`, first-paint colors, and live host-theme synchronization. |
 | Voice | Should the embed expose voice, and does the host Permissions Policy allow the iframe microphone? | `voiceMode` and `Permissions-Policy`. |
+| Locale | Which BCP 47 host-language hint should workflow context receive? | `locale` plus the host's locale state; surface settings still control iframe localization. |
 | Mount lifecycle | Where is the persistent app shell? When should chat be disabled or destroyed? | Root provider/component; do not remount on ordinary SPA route changes. |
 | Verification | Which mapped and unmapped users, roles, routes, tools, and sensitive pages cover the real risk? | Automated tests and the browser smoke matrix. |
 
@@ -82,9 +86,10 @@ See [Tools and guided workflows](./tools.md) for concrete contracts.
 
 An integration is ready when:
 
-- mapped/unmapped users, exact origins, and server-only secrets behave correctly;
+- mapped/unmapped users, confirmed JIT creation or access requests, exact origins, and server-only secrets behave correctly;
 - chat persists across routes, is revoked on logout, and matches the host product;
 - routes and tools follow permissions, while backend authorization remains enforced;
-- async navigation returns loaded content rather than a stale snapshot;
+- async navigation and workflow readiness return loaded content rather than a stale snapshot;
+- workflow evidence is deterministic, citations are safe, and same-URL readiness refreshes preserve an in-flight run;
 - lookups ground choices, mutations confirm once, and failures are structured;
 - privacy tests, type checks, automated tests, build, and browser smoke checks pass.

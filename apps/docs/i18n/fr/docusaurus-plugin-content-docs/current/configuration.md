@@ -22,9 +22,11 @@ Toutes les options sont transmises à `WpNova("init", config)` ou au helper `ini
 | `triggerIconColor` | non | `light`, `dark` ou une couleur hexadécimale. |
 | `launcher` | non | Affiche le lanceur du SDK. Par défaut : `true` ; utilisez `false` pour un bouton hôte. |
 | `theme` | non | Mode actuel de la page hôte : `light` ou `dark`. Par défaut : `light`. |
+| `locale` | non | Indication de langue BCP 47 explicitement fournie par l’hôte dans le contexte de page ; la surface contrôle toujours la localisation de l’iframe. |
 | `safeValueSelectors` | non | Sélecteurs CSS qui autorisent la capture des valeurs de champ dans les instantanés. |
 | `voiceMode` | non | Active la voix et délègue le microphone à l’iframe Nova. |
 | `routes` | non | Routes du site filtrées par permissions, sous forme `{ path, description }`. |
+| `pageWorkflows` | non | Définitions `research-and-compose` déclenchées par une page exacte. |
 | `settle` | non | Disponibilité post-action : `quietMs`, `maxWaitMs` et `waitForNavigationSignal`. |
 | `protocolVersion` | non | Override du protocole de bridge pour les tests de compatibilité. |
 
@@ -190,6 +192,9 @@ utilisateurs non associés :
 
 Nova utilise `message_is_custom: false` pour son message intégré traduisible et
 `true` pour le texte de surface rédigé par un administrateur.
+
+Pour la readiness, les outils backend, les preuves requises et les sources,
+voir les [workflows automatiques de page](./page-workflows.md).
 
 ### Réinitialisation
 

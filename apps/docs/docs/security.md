@@ -51,9 +51,22 @@ The SDK sends `origin` in the token request body. Your backend should also forwa
 
 Development origin mode is useful for temporary local review, but production embeds should use the allowlist.
 
-## User Resolution
+## User Resolution and JIT Creation
 
-Nova resolves the email asserted by your backend to an active, non-deleted tenant user. If no user matches, Nova returns:
+Nova normalizes the email asserted by your backend and resolves it to an active,
+non-deleted tenant user. The surface chooses either `existing_only` (the safe
+default) or `jit_active_member`. In the latter mode, an unmatched email can
+receive a purpose-scoped creation capability, but Nova creates a real active
+member only after the person explicitly confirms in the iframe when the
+surface requires confirmation. A surface may intentionally disable that
+setting and provision during session mint; treat that as a billable membership
+decision and expose it clearly in administration.
+
+`userProvisioningMode`, the confirmation setting, and `POST /embed/users` are
+Nova platform contracts. They are available only when the deployed Nova
+environment contains the corresponding release; they are not SDK config fields.
+
+If no existing user matches, Nova returns:
 
 ```json
 {
@@ -66,10 +79,33 @@ Nova resolves the email asserted by your backend to an active, non-deleted tenan
 }
 ```
 
-No user is provisioned, no thread is created, and no chat token is issued. The
-access-request capability is separately purpose-scoped and cannot authenticate
-chat APIs. Pass the complete response and status through unchanged so the iframe
-can show the configured message and administrator-notification action.
+For a surface using confirmed JIT creation, the unresolved response uses the
+creation capability instead:
+
+```json
+{
+  "unavailable": true,
+  "email": "person@example.com",
+  "message": "We could not find an account for person@example.com.",
+  "message_is_custom": false,
+  "user_creation_required": true,
+  "user_creation_token": "<purpose-scoped capability>",
+  "user_creation_expires_in": 3600
+}
+```
+
+In `existing_only`, no user is provisioned, no thread is created, and no chat
+token is issued. In confirmed JIT mode, the user-creation capability is
+separately purpose-scoped, expires, is rate-limited, and cannot authenticate
+chat APIs; the iframe must confirm before calling `POST /embed/users`. Only
+after creation succeeds is a normal chat token issued. If confirmation is
+disabled, the capability is not needed and provisioning occurs during minting.
+Pass the complete response and status through unchanged so the iframe can show
+the configured action. Do not forward browser-supplied names or email; optional
+names come from the trusted server session. A legacy `emailVerified` field is
+not an authorization signal; Nova normalizes the email and does not require
+email verification for JIT creation. New creation is limited to 100 per
+surface per hour by default.
 The `message_is_custom` discriminator lets the iframe localize Nova's built-in
 message while preserving administrator-authored surface copy.
 
@@ -80,6 +116,13 @@ whether Nova accepts them. Nova's relayed `mutating` flag is authoritative and
 controls iframe confirmation. Register only tools the current user may use, and
 enforce the same permission again in the backend. See
 [Tools and guided workflows](./tools.md).
+
+Backend tools used by automatic workflows are server-to-server capabilities.
+Keep API keys and catalogs on the server, scope delegated grants to the current
+user, surface, connection, and allowed tool ids, and authorize again at
+execution time. The browser does not register a handler. Automatic research
+should use read-only tools; writes require an explicit confirmed chat action.
+See [Automatic page workflows](./page-workflows.md).
 
 ## Page Snapshot Privacy
 

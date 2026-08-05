@@ -116,6 +116,12 @@ Un adaptateur robuste conserve la destination en attente dans une ref, attend qu
 
 Placez le provider au-dessus du route outlet afin qu’il reste monté pendant toute cette séquence.
 
+Les workflows automatiques peuvent réutiliser la readiness des données de
+route, mais `setPageReady` est indépendant de `wp-nova:settled`, qui termine
+seulement l’attente de snapshot. Appelez `setPageReady(false)` pendant le
+chargement puis `setPageReady(true)` après le rendu ; l’URL doit correspondre exactement au modèle `pageWorkflows`. Voir les
+[workflows automatiques de page](./page-workflows.md).
+
 ## Après les outils personnalisés
 
 Les outils personnalisés reçoivent eux aussi un snapshot stabilisé après l’action. Après une mutation, attendez l’API, actualisez les données visibles et renvoyez une URL stable. Ne signalez pas l’échec d’une mutation réussie uniquement parce qu’une actualisation ultérieure du cache a échoué. Consultez [Outils et workflows guidés](./tools.md).

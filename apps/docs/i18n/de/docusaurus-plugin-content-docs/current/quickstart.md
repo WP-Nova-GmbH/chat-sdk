@@ -6,8 +6,9 @@ title: Schnellstart
 ## Schnellstart
 
 Plane vor dem Einbau Authentifizierung, berechtigte Benutzer/Module,
-Page Reading/Navigation/Tools, Host-Tools, Routen, Datenschutz, Readiness und
-Primärfarbe. Wähle danach den Script-Tag oder npm.
+Page Reading/Navigation/Tools, Host-Tools, Routen, Datenschutz, Readiness,
+JIT-Benutzererstellung, Workflows und Primärfarbe. Wähle danach den Script-Tag
+oder npm.
 
 ### Script Tag
 
@@ -98,9 +99,10 @@ app.post("/api/nova-token", async (req, res) => {
     },
     body: JSON.stringify({
       email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
       publicSurfaceId: req.body.publicSurfaceId,
       origin: req.body.origin,
-      externalUserId: user.id,
     }),
   });
 
@@ -123,9 +125,40 @@ Antwort keinen Chat-Token:
 }
 ```
 
+Im bestätigten JIT-Modus verwendet Nova stattdessen:
+
+```json
+{
+  "unavailable": true,
+  "email": "person@example.com",
+  "message": "Es wurde kein Nova-Konto gefunden.",
+  "message_is_custom": false,
+  "user_creation_required": true,
+  "user_creation_token": "<zweckgebundene Berechtigung>",
+  "user_creation_expires_in": 3600
+}
+```
+
 Gib Status und Antworttext unverändert weiter. `message_is_custom: false` erlaubt
 dem iframe, Novas integrierte Nachricht in der aktiven UI-Sprache anzuzeigen;
 benutzerdefinierter Administrator-Text ist mit `true` markiert.
+
+Wenn Workflows Backend-Tools verwenden, kann das Backend optional
+`backendToolGrants` mit `{ connectionKey, grant, allowedToolIds? }` an Nova
+übergeben. Diese Grants kommen ausschließlich aus vertrauenswürdiger
+Serverlogik, sind an Benutzer und Session gebunden und erreichen nie den
+Browser.
+
+Die Surface entscheidet zwischen `existing_only` und `jit_active_member`. Im
+bestätigten JIT-Modus zeigt das iframe eine explizite Bestätigung und verwendet
+danach das zweckgebundene Creation-Token über `POST /embed/users`, bevor eine
+normale Chat-Session ausgestellt wird. Eine erfolgreiche Antwort ist
+`{ "status": "access_available" }`. Eine Surface kann Provisioning ohne Bestätigung erlauben;
+dann erfolgt es bereits beim Minting und kann eine abrechenbare Mitgliedschaft
+anlegen. Gib alle Felder unverändert weiter und vertraue niemals Browserdaten
+für Identität. JIT-Erstellung ist separat rate-limitiert.
+Provisioning-Modus und `POST /embed/users` sind Nova-Plattformverträge, keine
+SDK-Konfigurationsfelder, und benötigen das passende Nova-Deployment.
 
 ### Routen und Readiness
 
@@ -134,3 +167,6 @@ Host `wp-nova:navigate` ab. Wenn Routendaten asynchron laden, setze
 `settle.waitForNavigationSignal: true` und sende `wp-nova:settled` erst nach
 gerenderter Zielroute samt benötigten Daten. Ein Timeout markiert den Snapshot
 als `unsettled`, damit Nova `refresh_context` verwenden kann.
+
+Für automatische Seiten-Workflows, Backend-Tools und Quellen siehe
+[Automatische Seiten-Workflows](./page-workflows.md).

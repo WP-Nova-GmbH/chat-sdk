@@ -34,6 +34,7 @@ The bridge exposes capabilities only when the surface allows them:
 - **Page snapshots:** visible text, links, controls, labels, selection, structured metadata, safe field values, and stable element handles.
 - **Built-in page actions:** navigation and page interaction tools that act on handles from the latest snapshot.
 - **Integrator-defined tools:** customer app actions defined and implemented in the browser with `registerTool`.
+- **Backend tools and automatic page workflows:** server-authorized research tools and bounded `research-and-compose` runs configured with `pageWorkflows`.
 
 The browser sends SDK-declared tool specs to Nova each turn. Nova validates them
 server-side and ignores them when the surface disables Page Tools. Nova may also
@@ -55,10 +56,10 @@ to the iframe and does not need a host handler.
 3. The host page loads the SDK and calls `WpNova("init", { publicSurfaceId, tokenEndpoint })`.
 4. The SDK mounts `<wp-nova-chat>`, points its iframe at `<baseUrl>/embed/chat?surface=<publicSurfaceId>`, and fetches a token from your backend.
 5. Your backend calls Nova `POST /embed/session` with the integration secret, the authenticated user's email, the public surface id, and the host origin.
-6. The SDK forwards the token to the iframe, or forwards the unavailable-user response when the email does not match an active Nova tenant user.
+6. The SDK forwards the token to the iframe, or forwards an unavailable-user response. A confirmed-JIT surface can return a purpose-scoped creation capability for explicit iframe confirmation; a surface that disables confirmation may provision during mint instead.
 7. During chat, the iframe sends bridge requests such as `REQUEST_SNAPSHOT`, `AUTH_EXPIRED`, or `CLIENT_TOOL_REQUEST`.
-8. The SDK replies only after strict origin and source checks, and captures a fresh page snapshot after tool execution.
+8. The SDK replies only after strict origin and source checks, captures a fresh page snapshot after tool execution, and can start a matching page workflow once the host marks the exact URL ready.
 
 ## Start Here
 
-Start with [Plan your integration](./planning.md), then follow the [Quickstart](./quickstart.md). The planning guide helps you decide auth, tools, routes, async-page readiness, privacy, and branding before the code path is fixed.
+Start with [Plan your integration](./planning.md), then follow the [Quickstart](./quickstart.md). The planning guide helps you decide auth, JIT provisioning, tools, routes, workflow readiness, privacy, and branding before the code path is fixed.

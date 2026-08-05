@@ -4,7 +4,7 @@ Framework-agnostic browser SDK for embedding Nova chat. It mounts a Nova-hosted
 iframe and bridges visible page context, navigation, and integrator-defined tools.
 Your backend holds the integration secret and mints short-lived embed sessions.
 
-📖 **Documentation:** [https://wp-nova.ai/chat-sdk](https://wp-nova.ai/chat-sdk)
+📖 **Documentation:** [https://chat.wp-nova.ai](https://chat.wp-nova.ai)
 
 ## Install
 
@@ -69,10 +69,12 @@ init({ publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
 | `triggerIconColor` | no | `light`, `dark`, or hex. |
 | `launcher` | no | Show the SDK-owned launcher; defaults to `true`. |
 | `theme` | no | Host page mode (`light` or `dark`); defaults to `light` and updates live. |
+| `locale` | no | Explicit BCP 47 host-language hint included in page context for automatic workflows; it does not control iframe localization. |
 | `safeValueSelectors` | no | Selectors that opt safe field values into snapshots. |
 | `voiceMode` | no | Enables voice and iframe microphone delegation. |
 | `routes` | no | Permission-filtered `{ path, description }[]`, max 100. |
 | `siteCapabilities` | no | Live host result for Nova's SDK-defined capability-discovery tool. |
+| `pageWorkflows` | no | Exact page-triggered `research-and-compose` definitions. |
 | `settle` | no | `quietMs`, `maxWaitMs`, and `waitForNavigationSignal`. |
 
 ## Pop-over or docked sidebar
@@ -176,6 +178,13 @@ cookie session because the SDK does not inherit the app's bearer header.
 The SDK refreshes proactively at about 80% of `expires_in` and reactively after
 iframe `AUTH_EXPIRED`, always through `tokenEndpoint`.
 
+An unresolved response may also contain `user_creation_required`,
+`user_creation_token`, and `user_creation_expires_in` when the surface allows
+confirmed JIT creation. The iframe asks for confirmation, calls the scoped
+creation endpoint, and then refreshes a normal chat session. `existing_only`
+surfaces continue to use `access_request_token`; pass all fields through
+unchanged and never accept browser-supplied identity.
+
 ## Site capability discovery
 
 The current routes and callable tools are not a complete product description.
@@ -232,7 +241,7 @@ registerTool({
 - `registerToolHandler` remains execution-only compatibility and does not
   advertise a tool.
 
-See the [full documentation](https://wp-nova.ai/chat-sdk) for tool limits,
+See the [full documentation](https://chat.wp-nova.ai) for tool limits,
 permissions, guided choices, structured errors, and idempotency.
 
 ## Runtime behavior
@@ -285,6 +294,18 @@ The SDK emits cancelable `wp-nova:navigate` before same-origin document
 navigation. An SPA may prevent it and use its router. After async route data
 renders, dispatch `wp-nova:settled`. Default post-action settling is 200 ms of
 DOM quiet with a 1600 ms cap; cap-hit snapshots are marked `unsettled`.
+
+### Automatic page workflows
+
+Configure `pageWorkflows` with an exact pathname template, a
+`research-and-compose` execution, optional deterministic `requiredTools`, and
+read-only `availableBackendTools`. Call the exported `setPageReady(false)` while
+matching route data is loading and `setPageReady(true)` after it renders. The
+workflow starts only while chat is open, authenticated, iframe-ready, and
+capable; same-URL readiness refreshes preserve an in-flight run. Backend tools
+run server-side with `connectionKey`/`toolId`/`contractVersion` catalogs—there is
+no browser handler. Results may include opaque evidence references such as
+`[source:s1]`. See the [automatic page workflows guide](https://chat.wp-nova.ai/page-workflows).
 
 ## Bridge protocol
 

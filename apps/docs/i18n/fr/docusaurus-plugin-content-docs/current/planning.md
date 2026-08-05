@@ -10,16 +10,19 @@ Une intégration fiable commence par des décisions sur le produit, la sécurit�
 | Décision | Questions à trancher | Où est-elle implémentée ? |
 | --- | --- | --- |
 | Utilisateurs et périmètre | Quels utilisateurs, rôles, tenants, modules, routes et environnements ont accès au chat ? | Appartenance à la surface, état `enabled` du SDK et enregistrement conditionnel des outils et routes. |
+| Provisioning utilisateur | Les utilisateurs inconnus doivent-ils rester bloqués ou obtenir une adhésion JIT confirmée ? | Mode de provisioning de la surface et identité fiable de l’endpoint de token. |
 | Authentification de l’application hôte | L’application utilise-t-elle une session par cookie de même origine ou un jeton bearer conservé dans le navigateur ? Où le backend obtient-il l’adresse e-mail fiable ? | Endpoint de jeton du backend client ; les applications bearer peuvent nécessiter l’amorçage d’un cookie. |
 | Origines | Quelles origines exactes de production, de préproduction et locales chargent le SDK ? | `allowedOrigins` de la surface et validation de l’origine par le backend. |
 | Lecture de la page | L’agent doit-il voir la page actuelle ? Quelles valeurs sont sûres et quelles zones doivent être exclues ? | Page Reading de la surface, `data-wp-nova-include`, `safeValueSelectors` et `data-wp-nova-ignore`. |
 | Contrôle de page intégré | L’agent doit-il naviguer, ouvrir des enregistrements, cliquer sur des contrôles, définir des filtres ou faire défiler la page ? | Page Navigation de la surface, manifeste des routes, contrôles DOM sémantiques et adaptateur de navigation SPA. Page Navigation dépend de Page Reading. |
 | Outils personnalisés | Quelles API ou quels workflows de l’application justifient des outils dédiés, en lecture seule ou avec mutation ? | Activation Page Tools de la surface, définitions `registerTool` du SDK et handlers. |
+| Outils backend et workflows | Quels outils serveur en lecture seule et quelles pages exactes doivent alimenter la recherche et la composition automatique ? | `availableBackendTools`, `pageWorkflows`, `setPageReady` et sources. |
 | Choix guidés | Quels workflows exigent que l’agent choisisse parmi des clients, des fournisseurs, des catégories ou d’autres options dynamiques ? | Outils de recherche en lecture seule qui renvoient un nombre limité de choix ; Nova affiche `request_user_input` dans l’iframe. |
 | Routes du site | L’agent doit-il connaître des routes qui ne sont pas visibles sur la page actuelle ? Quels rôles peuvent atteindre chaque route et d’où proviennent les identifiants des paramètres ? | `SdkConfig.routes`, filtré pour l’utilisateur connecté. |
 | Préparation de la SPA | La navigation attend-elle des loaders, des requêtes, des chunks chargés à la demande ou des transitions ? Qu’est-ce qui prouve que la destination est prête ? | `wp-nova:navigate`, `settle.waitForNavigationSignal` et `wp-nova:settled`. |
 | Apparence | Quels sont le titre, la couleur principale/d’accent, les couleurs du lanceur et de l’icône, et le logo ? Quelle est la source du mode clair/sombre de l’hôte, et faut-il des couleurs de lanceur propres à chaque mode ? | Paramètres d’affichage de la surface, valeurs navigateur sûres pour `theme` et les couleurs au premier affichage, et synchronisation en direct du thème hôte. |
 | Voix | L’intégration doit-elle proposer le mode vocal et la Permissions Policy de l’hôte autorise-t-elle l’iframe à utiliser le microphone ? | `voiceMode` et `Permissions-Policy`. |
+| Locale | Quelle indication de langue BCP 47 doit recevoir le contexte du workflow ? | `locale` et l’état de langue de l’hôte ; la surface contrôle toujours la localisation de l’iframe. |
 | Cycle de vie du montage | Où se trouve le shell persistant de l’application ? Quand le chat doit-il être désactivé ou détruit ? | Provider/composant racine ; ne le remontez pas lors des changements de route SPA ordinaires. |
 | Vérification | Quels utilisateurs associés ou non, rôles, routes, outils et pages sensibles couvrent les risques réels ? | Tests automatisés et matrice de tests de bon fonctionnement dans le navigateur. |
 
@@ -83,9 +86,10 @@ Consultez [Outils et workflows guidés](./tools.md) pour des contrats concrets.
 
 Une intégration est prête lorsque :
 
-- les utilisateurs associés/non associés, les origines exactes et les secrets réservés au serveur se comportent correctement ;
+- les utilisateurs associés/non associés, le JIT confirmé, les origines exactes et les secrets réservés au serveur se comportent correctement ;
 - le chat persiste entre les routes, son accès est révoqué à la déconnexion et son apparence correspond au produit hôte ;
 - les routes et outils respectent les autorisations, tandis que le backend continue de les faire appliquer ;
 - la navigation asynchrone renvoie le contenu chargé plutôt qu’un snapshot obsolète ;
+- les workflows démarrent après la readiness et citent des preuves sûres ;
 - les recherches fondent les choix sur des données réelles, les mutations demandent une seule confirmation et les erreurs sont structurées ;
 - les tests de confidentialité, la vérification des types, les tests automatisés, le build et les tests de bon fonctionnement dans le navigateur réussissent.

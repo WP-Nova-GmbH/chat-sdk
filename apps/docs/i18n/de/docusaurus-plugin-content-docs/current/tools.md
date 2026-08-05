@@ -3,7 +3,9 @@ id: tools
 title: Tools und geführte Abläufe
 ---
 
-Der eingebettete Nova-Chat kann Konversationstools, integrierte Seitensteuerungen und SDK-definierte Host-Tools verwenden. Sie haben unterschiedliche Verantwortliche und Sicherheitsregeln.
+Der eingebettete Nova-Chat kann Konversationstools, integrierte Seitensteuerungen,
+SDK-definierte Host-Tools und serverseitige Backend-Tools verwenden. Sie haben
+unterschiedliche Verantwortliche und Sicherheitsregeln.
 
 ## Tool-Kategorien
 
@@ -12,9 +14,16 @@ Der eingebettete Nova-Chat kann Konversationstools, integrierte Seitensteuerunge
 | Konversation | `request_user_input` | Nova-iframe/-Backend | Nein. Das iframe rendert und beantwortet die Auswahlkarte. |
 | Integrierte Seitensteuerung | `navigate`, `click`, `open_record`, `set_filter`, `scroll_to`, `refresh_context` | Deklaration durch Nova; Ausführung durch das SDK | Kein benutzerdefinierter Handler. Erfordert Page Navigation. |
 | SDK-definiertes Host-Tool | `list_customers`, `create_ticket`, `set_customer_status` | Deine Integration | Ja, registriert mit der vollständigen Tool-Definition. Erfordert Page Tools. |
+| Backend-Tool | Domain-spezifische Recherche | Server/Nova-Verbindung | Kein Browser-Handler; serverseitige Autorisierung. |
 | Nova-Server-Tool | Wissenssuche oder andere Nova-seitige Funktionen | Nova | Kein Handler auf der Host-Seite. Die Verfügbarkeit hängt vom Nova-Agenten ab. |
 
 Registriere weder `request_user_input` noch den Namen einer integrierten Seitensteuerung. Diese Namen sind reserviert. Browser-Tools werden über mehrere Turns hinweg sequenziell ausgeführt; entwirf einen mehrstufigen Ablauf als Folge von Aufrufen, die sich auf aktuelle Daten stützen, und nicht als parallele Browser-Aktionen.
+
+Backend-Tools werden nicht mit `registerTool` registriert. API-Schlüssel,
+Kataloge und `connectionKey`/`toolId`/`contractVersion` bleiben serverseitig.
+Automatische Workflows verwenden nur freigegebene Lesetools; Schreibvorgänge
+bleiben bestätigte Chat-Aktionen. Siehe
+[Automatische Seiten-Workflows](./page-workflows.md).
 
 ## Integrierte Seitensteuerungen
 

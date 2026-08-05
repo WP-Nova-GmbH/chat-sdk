@@ -10,16 +10,19 @@ Eine zuverlässige Integration beginnt mit Produkt-, Sicherheits- und Navigation
 | Entscheidung | Zu beantwortende Fragen | Ort der Implementierung |
 | --- | --- | --- |
 | Benutzer und Umfang | Für welche Benutzer, Rollen, Mandanten, Module, Routen und Umgebungen ist der Chat verfügbar? | Surface-Mitgliedschaft, SDK-Zustand `enabled` sowie bedingte Registrierung von Tools und Routen. |
+| Benutzerbereitstellung | Sollen unbekannte Benutzer blockiert bleiben oder eine bestätigte JIT-Mitgliedschaft erhalten? | Provisioning-Modus der Surface und vertrauenswürdiger Token-Endpoint. |
 | Host-Authentifizierung | Verwendet die Anwendung eine Same-Origin-Cookie-Session oder ein Bearer-Token im Browser? Woher erhält das Backend die vertrauenswürdige E-Mail-Adresse? | Token-Endpunkt im Kunden-Backend; Anwendungen mit Bearer-Token benötigen gegebenenfalls ein Cookie-Bootstrap. |
 | Origins | Von welchen exakten Produktions-, Staging- und lokalen Origins wird das SDK geladen? | `allowedOrigins` der Surface und Origin-Validierung im Backend. |
 | Seiteninhalt lesen | Soll der Agent die aktuelle Seite sehen? Welche Werte sind unbedenklich und welche Bereiche müssen ausgeschlossen werden? | Page Reading der Surface, `data-wp-nova-include`, `safeValueSelectors` und `data-wp-nova-ignore`. |
 | Integrierte Seitensteuerung | Soll der Agent navigieren, Datensätze öffnen, Bedienelemente anklicken, Filter setzen oder scrollen? | Page Navigation der Surface, Routenmanifest, semantische DOM-Bedienelemente und SPA-Navigationsadapter. Page Navigation setzt Page Reading voraus. |
 | Benutzerdefinierte Tools | Welche APIs oder Abläufe der Anwendung sollten eigene schreibgeschützte oder verändernde Tools erhalten? | Page-Tools-Freigabe der Surface sowie SDK-Definitionen und Handler für `registerTool`. |
+| Backend-Tools und Workflows | Welche serverseitigen Lesetools und welche exakten Seiten sollen Forschung und automatische Zusammenfassungen unterstützen? | `availableBackendTools`, `pageWorkflows`, `setPageReady` und Quellenverträge. |
 | Geführte Auswahl | In welchen Abläufen muss der Agent aus Kunden, Lieferanten, Kategorien oder anderen aktuellen Optionen auswählen? | Schreibgeschützte Lookup-Tools, die eine begrenzte Auswahl zurückgeben; Nova rendert `request_user_input` im iframe. |
 | Site-Routen | Soll der Agent Routen kennen, die auf der aktuellen Seite nicht sichtbar sind? Welche Rollen dürfen die einzelnen Routen erreichen und woher stammen Parameter-IDs? | `SdkConfig.routes`, gefiltert für den angemeldeten Benutzer. |
 | SPA-Bereitschaft | Muss die Navigation auf Loader, Queries, Lazy Chunks oder Übergänge warten? Woran ist erkennbar, dass das Ziel bereit ist? | `wp-nova:navigate`, `settle.waitForNavigationSignal` und `wp-nova:settled`. |
 | Erscheinungsbild | Welche Werte sollen Titel, Primär-/Akzentfarbe, Launcher- und Icon-Farben sowie Logo haben? Woher stammt der Hell-/Dunkelmodus des Hosts, und braucht der Launcher modusspezifische Farben? | Anzeigeeinstellungen der Surface sowie browsersichere Werte für `theme`, Farben beim ersten Render und Live-Synchronisierung des Host-Themes. |
 | Spracheingabe | Soll das Embed Spracheingabe anbieten und erlaubt die Permissions Policy des Hosts dem iframe den Mikrofonzugriff? | `voiceMode` und `Permissions-Policy`. |
+| Locale | Welcher BCP-47-Sprachhinweis soll den Workflow-Kontext erreichen? | `locale` und der Host-Sprachzustand; die Surface steuert weiterhin die iframe-Lokalisierung. |
 | Mount-Lebenszyklus | Wo befindet sich die persistente App-Shell? Wann soll der Chat deaktiviert oder zerstört werden? | Root-Provider/-Komponente; bei gewöhnlichen SPA-Routenwechseln nicht neu mounten. |
 | Verifizierung | Welche zugeordneten und nicht zugeordneten Benutzer, Rollen, Routen, Tools und sensiblen Seiten decken das tatsächliche Risiko ab? | Automatisierte Tests und Browser-Smoke-Testmatrix. |
 
@@ -83,9 +86,10 @@ Konkrete Verträge findest du unter [Tools und geführte Abläufe](./tools.md).
 
 Eine Integration ist bereit, wenn:
 
-- zugeordnete und nicht zugeordnete Benutzer, exakte Origins und ausschließlich serverseitige Secrets korrekt behandelt werden;
+- zugeordnete, nicht zugeordnete und bestätigte JIT-Benutzer, exakte Origins und ausschließlich serverseitige Secrets korrekt behandelt werden;
 - der Chat über Routenwechsel hinweg bestehen bleibt, beim Abmelden widerrufen wird und zum Host-Produkt passt;
 - Routen und Tools den Berechtigungen folgen, während die Autorisierung im Backend weiterhin erzwungen wird;
 - asynchrone Navigation geladene Inhalte statt eines veralteten Snapshots zurückgibt;
+- automatische Workflows erst nach Readiness starten und Evidenz sicher zitieren;
 - Lookups Auswahlmöglichkeiten auf aktuelle Daten stützen, Mutationen einmal bestätigt und Fehler strukturiert zurückgegeben werden;
 - Datenschutztests, Typprüfungen, automatisierte Tests, Build und Browser-Smoke-Tests erfolgreich sind.
