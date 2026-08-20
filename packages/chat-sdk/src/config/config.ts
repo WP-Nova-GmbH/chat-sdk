@@ -8,6 +8,7 @@ import {
     pageWorkflowPathsOverlap,
 } from "../page/workflows.js";
 import {
+    type ChatUiDesign,
     type HostTheme,
     type PageWorkflowDefinition,
     PROTOCOL_VERSION,
@@ -88,6 +89,8 @@ export interface ResolvedConfig {
     safeValueSelectors: string[];
     /** Whether the embedded iframe may expose voice mode and request microphone access. */
     voiceModeEnabled: boolean;
+    /** Which chat design the iframe was built to render. */
+    uiDesign: ChatUiDesign;
     /** Validated integrator-declared site routes attached to every page capture. */
     siteRoutes: SiteRoute[];
     /** Validated automatic page workflows evaluated after an explicit ready signal. */
@@ -323,6 +326,13 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
     if (voiceModeEnabled) {
         url.searchParams.set("voice", "1");
     }
+    // Only the opt-out is spelled on the URL: an embed with no `ui` parameter is
+    // the current design, so a stale cached iframe src can never pin an
+    // integrator to a design they did not ask for.
+    const uiDesign: ChatUiDesign = config.ui === "classic" ? "classic" : "current";
+    if (uiDesign === "classic") {
+        url.searchParams.set("ui", "classic");
+    }
     const theme: HostTheme = config.theme === "dark" ? "dark" : "light";
     const themeTriggerColor = theme === "dark" ? config.triggerColorDark : config.triggerColorLight;
     const triggerColor =
@@ -352,6 +362,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
             ? config.safeValueSelectors.filter((s) => typeof s === "string" && s.trim())
             : [],
         voiceModeEnabled,
+        uiDesign,
         siteRoutes: resolveSiteRoutes(config.routes),
         pageWorkflows: resolvePageWorkflows(config.pageWorkflows),
         settle: resolveSettle(config.settle),

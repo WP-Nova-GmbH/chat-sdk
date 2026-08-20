@@ -93,6 +93,7 @@ export interface SdkConfig {
   locale?: string;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
+  ui?: "current" | "classic";
   routes?: Array<{ path: string; description: string }>;
   pageWorkflows?: Array<{
     id: string;

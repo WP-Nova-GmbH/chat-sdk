@@ -22,6 +22,7 @@ Alle Optionen werden an `WpNova("init", config)` oder den Helper `init(config)` 
 | `triggerIconColor` | nein | `light`, `dark` oder eine Hex-Farbe. |
 | `launcher` | nein | Zeigt den SDK-eigenen Launcher. Standard ist `true`; für einen Host-Button auf `false` setzen. |
 | `theme` | nein | Aktueller Modus der Host-Seite: `light` oder `dark`. Standard ist `light`. |
+| `ui` | nein | Welches Chat-Design das iframe rendert: `current` (Standard) oder `classic`. Siehe [Chat-Design](#chat-design). |
 | `locale` | nein | Expliziter BCP-47-Sprachhinweis des Hosts im Seitenkontext für automatische Workflows; die Surface steuert weiterhin die iframe-Lokalisierung. |
 | `safeValueSelectors` | nein | CSS-Selektoren, die Feldwerte für die Snapshot-Erfassung freigeben. |
 | `voiceMode` | nein | Aktiviert Spracheingabe und Mikrofon-Delegation an das Nova-iframe. |
@@ -43,6 +44,7 @@ init({
   launcher: true,
   presentation: { mode: "popover" },
   theme: "light",
+  ui: "current",
 });
 ```
 
@@ -60,6 +62,46 @@ mit geändertem `theme` aktualisiert Launcher, Panel und bestehendes iframe,
 ohne ein neues Token abzurufen oder die Konversation zurückzusetzen. Dasselbe
 gilt bei einer Änderung des Config-Werts in einem Framework-Wrapper.
 
+
+### Chat-Design
+
+Der Chat im iframe existiert in zwei Designs. `ui` wählt eines davon:
+
+```ts
+init({
+  publicSurfaceId: "srf_live_...",
+  tokenEndpoint: "/api/nova-token",
+  ui: "classic",
+});
+```
+
+| Wert | Was gerendert wird |
+| --- | --- |
+| `current` (Standard) | Das überarbeitete Panel, für das `384px`-Popover und die angedockte Sidebar gleichermaßen ausgelegt: kompakter 52px-Header, Begrüßung in der Display-Schrift des Produkts, zweistufige Berechtigungskarte und ein Composer im Maßstab einer schmalen Spalte. Der leere Zustand scrollt, statt abzuschneiden, wenn Begrüßung, Berechtigungskarte und Vorschlagsfragen nicht zusammen hineinpassen. |
+| `classic` | Das Design von vor der Überarbeitung, unverändert: 60px-Header mit 48px-Aktionen, Markenkachel über der Begrüßung, getönte Berechtigungskarte und größere Antwortschrift. |
+
+Beide Designs zeigen dieselbe Konversation, dasselbe Berechtigungsmodell und
+dieselben Tools. Es unterscheidet sich nur die Darstellung — was der Assistent
+auf deiner Seite sehen und tun darf, ändert sich nicht.
+
+#### Wann `classic` sinnvoll ist
+
+Wenn die eigene Seite bereits um das frühere Panel herum abgestimmt ist und der
+visuelle Wechsel selbst geplant werden soll. Es ist ein Opt-out, kein dauerhafter
+Modus: neue Arbeit fließt in `current`, das Flag sollte also wieder verschwinden.
+
+#### Die Wahl gilt ab dem Mount
+
+Das Design wird beim Bau der iframe-URL festgelegt, nicht zur Laufzeit
+ausgehandelt. Ein weiterer `init`-Aufruf mit geändertem `ui` ändert die
+iframe-`src`, baut damit iframe und Bridge neu auf und holt ein frisches Token —
+derselbe Weg wie bei `publicSurfaceId` oder `baseUrl`. **Eine offene
+Konversation überlebt diesen Neuaufbau nicht.** Setze `ui` deshalb einmal aus
+deiner Konfiguration oder deinem Feature-Flag, bevor das Panel geöffnet wird.
+
+Alles außer einem exakten `"classic"` fällt auf `current` zurück; ein Tippfehler
+oder ein veralteter Wert kann Nutzer also nie auf einem Design zurücklassen, das
+niemand gewählt hat.
 
 ### Darstellung
 
@@ -211,7 +253,8 @@ Für Readiness, Backend-Tools, erforderliche Evidenz und Quellen siehe
 
 Das SDK ist singleton-sicher. Ein erneuter `init`-Aufruf während HMR oder eines
 Remounts auf Routenebene verwendet das vorhandene Custom Element wieder. Wenn
-sich `publicSurfaceId`, `baseUrl`, `voiceMode` oder `protocolVersion` ändern,
+sich `publicSurfaceId`, `baseUrl`, `voiceMode`, `ui` oder `protocolVersion`
+ändern,
 baut das Element iframe und Bridge neu auf und holt ein frisches Token. Ein
 geänderter `tokenEndpoint` holt neue Authentifizierungsdaten für das bestehende
 iframe. Änderungen an `theme` oder Launcher-Farben werden live angewendet; ein

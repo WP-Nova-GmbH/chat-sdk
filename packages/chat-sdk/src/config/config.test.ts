@@ -248,6 +248,40 @@ test("voice mode opt-in adds the iframe URL capability signal", () => {
     assert.equal(new URL(config.iframeSrc).searchParams.get("voice"), "1");
 });
 
+test("the chat design defaults to the current one and is not spelled on the URL", () => {
+    const config = resolveConfig(REQUIRED_CONFIG);
+
+    assert.equal(config.uiDesign, "current");
+    assert.equal(new URL(config.iframeSrc).searchParams.has("ui"), false);
+});
+
+test("opting into the classic design pins it on the iframe URL", () => {
+    const config = resolveConfig({
+        ...REQUIRED_CONFIG,
+        ui: "classic",
+    });
+
+    assert.equal(config.uiDesign, "classic");
+    assert.equal(new URL(config.iframeSrc).searchParams.get("ui"), "classic");
+});
+
+test("an unrecognized chat design falls back to the current one", () => {
+    const config = resolveConfig({
+        ...REQUIRED_CONFIG,
+        ui: "legacy" as never,
+    });
+
+    assert.equal(config.uiDesign, "current");
+    assert.equal(new URL(config.iframeSrc).searchParams.has("ui"), false);
+});
+
+test("changing the chat design changes the iframe src, so the frame is rebuilt", () => {
+    const current = resolveConfig(REQUIRED_CONFIG);
+    const classic = resolveConfig({ ...REQUIRED_CONFIG, ui: "classic" });
+
+    assert.notEqual(current.iframeSrc, classic.iframeSrc);
+});
+
 test("site routes default to empty when not configured", () => {
     assert.deepEqual(resolveConfig(REQUIRED_CONFIG).siteRoutes, []);
 });

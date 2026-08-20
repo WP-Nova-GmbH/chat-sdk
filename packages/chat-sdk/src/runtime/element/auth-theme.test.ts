@@ -33,6 +33,7 @@ test("a development-mode token grant badges the launcher", async () => {
         triggerIconColor: "light",
         safeValueSelectors: [],
         voiceModeEnabled: false,
+        uiDesign: "current" as const,
         protocolVersion: 1,
     };
 
@@ -81,6 +82,7 @@ test("a production token grant leaves the launcher unbadged", async () => {
         triggerIconColor: "light",
         safeValueSelectors: [],
         voiceModeEnabled: false,
+        uiDesign: "current" as const,
         protocolVersion: 1,
     };
 

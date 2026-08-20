@@ -56,6 +56,7 @@ init({
 | `triggerIconColor` | No | `light`, `dark`, or a custom hex color for the launcher icon. |
 | `launcher` | No | Shows the SDK-owned launcher button. Defaults to `true`; set `false` for a host-owned trigger. |
 | `theme` | No | Host page color mode copied into the iframe: `light` or `dark`. Defaults to `light`. |
+| `ui` | No | Which chat design the iframe renders: `current` (default) or `classic`. See [Chat design](#chat-design). |
 | `locale` | No | Explicit BCP 47 host-language hint included in page context for automatic workflows. It does not replace the iframe's surface localization; when omitted, no `hostLocale` signal is added (browser preferences remain separate). |
 | `safeValueSelectors` | No | CSS selectors that opt field values into page snapshot capture. Field values still pass sensitivity checks. |
 | `voiceMode` | No | Enables the embedded voice button and delegates microphone access to the Nova iframe. Defaults to `false`. |
@@ -78,6 +79,7 @@ init({
   launcher: true,
   presentation: { mode: "popover" },
   theme: "light",
+  ui: "current",
 });
 ```
 
@@ -99,6 +101,45 @@ mode to the existing iframe without navigating it, re-fetching the token
 endpoint, or losing the open conversation. Framework wrappers do the same when
 their `theme` config value changes.
 
+
+## Chat design
+
+The chat inside the iframe ships in two designs. `ui` selects one:
+
+```ts
+init({
+  publicSurfaceId: "surf_...",
+  tokenEndpoint: "/api/nova-token",
+  ui: "classic",
+});
+```
+
+| Value | What renders |
+| --- | --- |
+| `current` (default) | The reworked panel. Measured for the `384px` pop-over and the docked sidebar alike: a compact 52px header, the greeting set in the product's display type, a two-plane permission notice, and a composer sized for a narrow column. The empty state scrolls instead of clipping when the greeting, the permission notice, and the suggested questions do not all fit. |
+| `classic` | The design that shipped before the rework, unchanged: a 60px header with 48px actions, a brand tile above the greeting, the tinted permission card, and the larger answer type. |
+
+Both designs render the same conversation, the same permission model, and the
+same tools. Only presentation differs, so switching between them changes nothing
+about what the assistant can see or do on your page.
+
+### When to pin `classic`
+
+Pin it when your page's own chrome is already measured around the previous
+panel and you want to schedule the visual change yourself. It is an opt-out, not
+a long-term mode: new work goes into `current`, so plan to drop the flag.
+
+### Switching is a boot-time decision
+
+The design is chosen when the SDK builds the iframe URL, not negotiated at
+runtime. Calling `init` again with a different `ui` value changes the iframe
+`src`, which rebuilds the frame and bridge and fetches a fresh token — the same
+path a `publicSurfaceId` or `baseUrl` change takes. **An open conversation does
+not survive that rebuild**, so treat `ui` as mount-time configuration and set it
+once, from your own config or feature flag, before the panel opens.
+
+Anything other than an exact `"classic"` resolves to `current`, so a typo or a
+stale value can never leave your users on a design nobody chose.
 
 ## Presentation
 
@@ -305,7 +346,7 @@ for the complete contract.
 
 The SDK is singleton-safe. Re-running `init` during HMR, route-level remounts, or duplicate script loads reuses the existing custom element.
 
-If `publicSurfaceId`, `baseUrl`, `voiceMode`, or `protocolVersion` changes, the
+If `publicSurfaceId`, `baseUrl`, `voiceMode`, `ui`, or `protocolVersion` changes, the
 element rebuilds the iframe and bridge, clears buffered auth, and fetches a
 fresh token before posting auth to the iframe. A `tokenEndpoint` change fetches
 fresh auth through the existing iframe. Presentation, mount, theme, and

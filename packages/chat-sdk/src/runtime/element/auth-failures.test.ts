@@ -32,6 +32,7 @@ test("unavailable token response is terminal and does not schedule a retry", asy
         triggerIconColor: "light",
         safeValueSelectors: [],
         voiceModeEnabled: false,
+        uiDesign: "current" as const,
         protocolVersion: 1,
     };
 
@@ -83,6 +84,7 @@ test("token transport errors schedule a cooldown retry", async () => {
         triggerIconColor: "light",
         safeValueSelectors: [],
         voiceModeEnabled: false,
+        uiDesign: "current" as const,
         protocolVersion: 1,
     };
 
@@ -142,6 +144,7 @@ test("token transport errors are forwarded to a ready iframe", async () => {
         triggerIconColor: "light",
         safeValueSelectors: [],
         voiceModeEnabled: false,
+        uiDesign: "current" as const,
         protocolVersion: 1,
     };
     element.iframeReady = true;
