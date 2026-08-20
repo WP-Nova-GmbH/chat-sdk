@@ -184,6 +184,11 @@ export function App() {
                     : ({ mode: "popover" } as const),
             safeValueSelectors: parseSelectorList(settings.safeValueSelectors),
             voiceMode: true,
+            // Spelled out although it is also the default, so the example shows the
+            // option: "classic" is the design every existing embed has, and switching
+            // to "current" opts into the reworked panel. The design is read when the
+            // iframe is built, so it is a mount-time choice, not a live toggle.
+            ui: "classic" as const,
         }),
         [presentationMode, settings, sidebarResizable, sidebarWidth],
     );

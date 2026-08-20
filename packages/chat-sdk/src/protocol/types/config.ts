@@ -65,11 +65,7 @@ export interface PageWorkflowEvidenceEnvelope {
 }
 
 /** Origin classes exposed by Nova for a completed workflow citation. */
-export type PageWorkflowCitationOrigin =
-    | "page"
-    | "required-tool"
-    | "backend-tool"
-    | "connector";
+export type PageWorkflowCitationOrigin = "page" | "required-tool" | "backend-tool" | "connector";
 
 /** Safe, opaque citation metadata returned with a completed workflow result. */
 export interface PageWorkflowCitationSource {
@@ -103,6 +99,17 @@ export interface PageWorkflowDefinition {
 
 /** Host-page color mode forwarded to the embedded chat UI. */
 export type HostTheme = "light" | "dark";
+
+/**
+ * Which visual design the Nova-hosted chat renders inside the iframe.
+ *
+ * `current` is the reworked panel: measured for the 384px pop-over and the docked
+ * sidebar alike, with the quieter type and spacing of the rest of the product.
+ * `classic` is the design that shipped before it, and is the default — every SDK
+ * released so far predates this option, so a surface only moves to the new design
+ * when its host upgrades and asks for it by name.
+ */
+export type ChatUiDesign = "current" | "classic";
 
 /** Resolves the capabilities the current host user can use on this site. */
 export type SiteCapabilitiesProvider = () => unknown | Promise<unknown>;
@@ -215,6 +222,13 @@ export interface SdkConfig {
      * eligibility unless the host opts in.
      */
     voiceMode?: boolean;
+    /**
+     * Which chat design the iframe renders. Defaults to "classic", the design
+     * every existing embed already shows; set "current" to opt into the reworked
+     * panel. Chosen when the iframe is built, so changing it re-creates the frame
+     * rather than restyling a live conversation.
+     */
+    ui?: ChatUiDesign;
     /**
      * Declares the host site's navigable routes so the agent can jump straight
      * to a known page ("take me to settings") in a single navigate call instead

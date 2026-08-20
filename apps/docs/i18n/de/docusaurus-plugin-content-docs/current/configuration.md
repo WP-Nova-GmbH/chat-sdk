@@ -22,6 +22,7 @@ Alle Optionen werden an `WpNova("init", config)` oder den Helper `init(config)` 
 | `triggerIconColor` | nein | `light`, `dark` oder eine Hex-Farbe. |
 | `launcher` | nein | Zeigt den SDK-eigenen Launcher. Standard ist `true`; für einen Host-Button auf `false` setzen. |
 | `theme` | nein | Aktueller Modus der Host-Seite: `light` oder `dark`. Standard ist `light`. |
+| `ui` | nein | Welches Chat-Design das iframe rendert: `classic` (Standard) oder `current`. Siehe [Chat-Design](#chat-design). |
 | `locale` | nein | Expliziter BCP-47-Sprachhinweis des Hosts im Seitenkontext für automatische Workflows; die Surface steuert weiterhin die iframe-Lokalisierung. |
 | `safeValueSelectors` | nein | CSS-Selektoren, die Feldwerte für die Snapshot-Erfassung freigeben. |
 | `voiceMode` | nein | Aktiviert Spracheingabe und Mikrofon-Delegation an das Nova-iframe. |
@@ -43,6 +44,7 @@ init({
   launcher: true,
   presentation: { mode: "popover" },
   theme: "light",
+  ui: "classic",
 });
 ```
 
@@ -59,6 +61,53 @@ WP-Chat-Cookie noch ermittelt es den Modus selbst. Ein weiterer `init`-Aufruf
 mit geändertem `theme` aktualisiert Launcher, Panel und bestehendes iframe,
 ohne ein neues Token abzurufen oder die Konversation zurückzusetzen. Dasselbe
 gilt bei einer Änderung des Config-Werts in einem Framework-Wrapper.
+
+
+### Chat-Design
+
+Der Chat im iframe existiert in zwei Designs. `ui` wählt eines davon:
+
+```ts
+init({
+  publicSurfaceId: "srf_live_...",
+  tokenEndpoint: "/api/nova-token",
+  ui: "current",
+});
+```
+
+| Wert | Was gerendert wird |
+| --- | --- |
+| `current` | Das überarbeitete Panel, für das `384px`-Popover und die angedockte Sidebar gleichermaßen ausgelegt: kompakter 52px-Header, Begrüßung in der Display-Schrift des Produkts, zweistufige Berechtigungskarte und ein Composer im Maßstab einer schmalen Spalte. Der leere Zustand scrollt, statt abzuschneiden, wenn Begrüßung, Berechtigungskarte und Vorschlagsfragen nicht zusammen hineinpassen. |
+| `classic` (Standard) | Das Design, das jedes bestehende Embed heute zeigt: 60px-Header mit 48px-Aktionen, Markenkachel über der Begrüßung, getönte Berechtigungskarte und größere Antwortschrift. |
+
+Beide Designs zeigen dieselbe Konversation, dasselbe Berechtigungsmodell und
+dieselben Tools. Es unterscheidet sich nur die Darstellung — was der Assistent
+auf deiner Seite sehen und tun darf, ändert sich nicht.
+
+#### Warum `classic` der Standard ist
+
+Jedes bisher veröffentlichte SDK — 1.1.0 und älter — kennt diese Option nicht und
+kann sie nicht senden. Ein Embed ohne `ui` muss deshalb das Design behalten, für
+das die Host-Seite gebaut wurde: ein Nova-Deploy darf eine laufende Integration
+niemals umstylen, die das nie angefordert hat. Auch ein SDK-Update allein ändert
+nichts — auf das neue Design wechselt man mit `ui: "current"`, sobald die eigene
+Oberfläche dafür bereit ist.
+
+Neue Arbeit fließt in `current`; `classic` ist die Kompatibilitätsposition, kein
+zweites gepflegtes Design.
+
+#### Die Wahl gilt ab dem Mount
+
+Das Design wird beim Bau der iframe-URL festgelegt, nicht zur Laufzeit
+ausgehandelt. Ein weiterer `init`-Aufruf mit geändertem `ui` ändert die
+iframe-`src`, baut damit iframe und Bridge neu auf und holt ein frisches Token —
+derselbe Weg wie bei `publicSurfaceId` oder `baseUrl`. **Eine offene
+Konversation überlebt diesen Neuaufbau nicht.** Setze `ui` deshalb einmal aus
+deiner Konfiguration oder deinem Feature-Flag, bevor das Panel geöffnet wird.
+
+Alles außer einem exakten `"current"` fällt auf `classic` zurück; ein Tippfehler,
+ein älteres SDK oder eine veraltete iframe-`src` kann Nutzer also nie auf ein
+Design umschalten, das niemand gewählt hat.
 
 ### Darstellung
 
@@ -103,6 +152,20 @@ applyPresentation();
 mode = "popover";
 applyPresentation();
 ```
+
+Die Spalte heftet sich selbst an den Viewport (`position: sticky`, `100dvh`).
+Der Chat bleibt damit vollständig sichtbar, während der Seiteninhalt daneben
+scrollt; eine eigene Höhe muss nicht gesetzt werden. Soll die Spalte einen
+fixierten Header freilassen, setze `--wpn-sidebar-offset` auf dessen Höhe:
+
+```css
+#nova-layout > wp-nova-chat {
+  --wpn-sidebar-offset: 64px;
+}
+```
+
+Ein Mount-Element mit eigener definierter Höhe — etwa eine App-Shell mit eigenen
+Scroll-Bereichen — behält diese; die Spalte wächst nie über ihren Mount hinaus.
 
 Die Sidebar-Breite ist standardmäßig `384px`. Endliche Zahlen werden auf
 `320–640px` begrenzt; ungültige Laufzeitwerte erzeugen eine Warnung und
@@ -196,7 +259,8 @@ Für Readiness, Backend-Tools, erforderliche Evidenz und Quellen siehe
 
 Das SDK ist singleton-sicher. Ein erneuter `init`-Aufruf während HMR oder eines
 Remounts auf Routenebene verwendet das vorhandene Custom Element wieder. Wenn
-sich `publicSurfaceId`, `baseUrl`, `voiceMode` oder `protocolVersion` ändern,
+sich `publicSurfaceId`, `baseUrl`, `voiceMode`, `ui` oder `protocolVersion`
+ändern,
 baut das Element iframe und Bridge neu auf und holt ein frisches Token. Ein
 geänderter `tokenEndpoint` holt neue Authentifizierungsdaten für das bestehende
 iframe. Änderungen an `theme` oder Launcher-Farben werden live angewendet; ein

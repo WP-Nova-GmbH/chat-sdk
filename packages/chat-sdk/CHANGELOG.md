@@ -1,5 +1,12 @@
 # @wp-nova/chat-sdk
 
+## 1.1.1
+
+### Patch Changes
+
+- Add a `ui` config option that picks which chat design the embedded iframe renders. It defaults to `"classic"`, the design every existing embed already shows, so a surface only moves to the reworked panel when its host upgrades and asks for `"current"` by name. The design is chosen when the iframe is built, so changing it re-creates the frame rather than restyling a live conversation.
+- Dock the sidebar presentation to the viewport instead of stretching it to the document. Stretching handed the element its grid row's height, so on a long host page the panel became a column taller than the window and the composer sat below the fold. It is sticky and viewport-tall now, with `--wpn-sidebar-offset` to clear a fixed host header, and a mount that already has a definite height still wins.
+
 ## 1.1.0
 
 ### Minor Changes

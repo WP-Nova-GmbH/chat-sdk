@@ -56,6 +56,7 @@ init({
 | `triggerIconColor` | No | `light`, `dark`, or a custom hex color for the launcher icon. |
 | `launcher` | No | Shows the SDK-owned launcher button. Defaults to `true`; set `false` for a host-owned trigger. |
 | `theme` | No | Host page color mode copied into the iframe: `light` or `dark`. Defaults to `light`. |
+| `ui` | No | Which chat design the iframe renders: `classic` (default) or `current`. See [Chat design](#chat-design). |
 | `locale` | No | Explicit BCP 47 host-language hint included in page context for automatic workflows. It does not replace the iframe's surface localization; when omitted, no `hostLocale` signal is added (browser preferences remain separate). |
 | `safeValueSelectors` | No | CSS selectors that opt field values into page snapshot capture. Field values still pass sensitivity checks. |
 | `voiceMode` | No | Enables the embedded voice button and delegates microphone access to the Nova iframe. Defaults to `false`. |
@@ -78,6 +79,7 @@ init({
   launcher: true,
   presentation: { mode: "popover" },
   theme: "light",
+  ui: "classic",
 });
 ```
 
@@ -98,6 +100,52 @@ mode explicitly. Calling `init` again with a different `theme` sends the new
 mode to the existing iframe without navigating it, re-fetching the token
 endpoint, or losing the open conversation. Framework wrappers do the same when
 their `theme` config value changes.
+
+
+## Chat design
+
+The chat inside the iframe ships in two designs. `ui` selects one:
+
+```ts
+init({
+  publicSurfaceId: "surf_...",
+  tokenEndpoint: "/api/nova-token",
+  ui: "current",
+});
+```
+
+| Value | What renders |
+| --- | --- |
+| `classic` (default) | The design every existing embed already shows: a 60px header with 48px actions, a brand tile above the greeting, the tinted permission card, and the larger answer type. |
+| `current` | The reworked panel. Measured for the `384px` pop-over and the docked sidebar alike: a compact 52px header, the greeting set in the product's display type, a two-plane permission notice, and a composer sized for a narrow column. The empty state scrolls instead of clipping when the greeting, the permission notice, and the suggested questions do not all fit. |
+
+Both designs render the same conversation, the same permission model, and the
+same tools. Only presentation differs, so switching between them changes nothing
+about what the assistant can see or do on your page.
+
+### Why `classic` is the default
+
+Every SDK released so far — 1.1.0 and earlier — predates this option and cannot
+send it, so an embed that does not ask has to keep the design its host page was
+built against. A Nova deploy must never restyle a live integration that never
+opted in. Upgrading the SDK alone changes nothing either: you move to the new
+design by passing `ui: "current"`, when your own chrome is ready for it.
+
+New work goes into `current`, so treat `classic` as the compatibility position
+rather than a second supported design.
+
+### Switching is a boot-time decision
+
+The design is chosen when the SDK builds the iframe URL, not negotiated at
+runtime. Calling `init` again with a different `ui` value changes the iframe
+`src`, which rebuilds the frame and bridge and fetches a fresh token — the same
+path a `publicSurfaceId` or `baseUrl` change takes. **An open conversation does
+not survive that rebuild**, so treat `ui` as mount-time configuration and set it
+once, from your own config or feature flag, before the panel opens.
+
+Anything other than an exact `"current"` resolves to `classic`, so a typo, an
+older SDK, or a stale cached iframe src can never flip your users onto a design
+nobody chose.
 
 ## Presentation
 
@@ -145,6 +193,20 @@ panel (and its full-screen rule at viewport widths of `480px` or less).
   }
 </script>
 ```
+
+The dock pins itself to the viewport (`position: sticky` at `100dvh`), so the
+whole chat stays on screen while your content scrolls beside it — you do not need
+to size it. If your page has a fixed header the dock should clear, set
+`--wpn-sidebar-offset` on the element (or any ancestor) to its height:
+
+```css
+#nova-layout > wp-nova-chat {
+  --wpn-sidebar-offset: 64px;
+}
+```
+
+A mount that already has a definite height of its own — an app shell with its own
+scroll regions — keeps that height instead; the dock never grows past its mount.
 
 Sidebar width defaults to `384px`. Finite numeric widths are clamped to
 `320–640px`; malformed runtime values log a warning and use `384px`.
@@ -290,7 +352,7 @@ for the complete contract.
 
 The SDK is singleton-safe. Re-running `init` during HMR, route-level remounts, or duplicate script loads reuses the existing custom element.
 
-If `publicSurfaceId`, `baseUrl`, `voiceMode`, or `protocolVersion` changes, the
+If `publicSurfaceId`, `baseUrl`, `voiceMode`, `ui`, or `protocolVersion` changes, the
 element rebuilds the iframe and bridge, clears buffered auth, and fetches a
 fresh token before posting auth to the iframe. A `tokenEndpoint` change fetches
 fresh auth through the existing iframe. Presentation, mount, theme, and

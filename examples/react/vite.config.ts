@@ -6,7 +6,7 @@ const EXAMPLE_ROOT = fileURLToPath(new URL(".", import.meta.url));
 
 interface ExampleEnv {
     integrationSecret: string;
-    tokenBaseUrl: string;
+    apiUrl: string;
     testEmail: string;
 }
 
@@ -22,7 +22,7 @@ function readExampleEnv({ mode }: ConfigEnv): ExampleEnv {
     const env = loadEnv(mode, EXAMPLE_ROOT, "");
     return {
         integrationSecret: readString(env.NOVA_INTEGRATION_SECRET),
-        tokenBaseUrl: trimTrailingSlash(readString(env.NOVA_TOKEN_BASE_URL)),
+        apiUrl: trimTrailingSlash(readString(env.NOVA_API_URL)),
         testEmail: readString(env.NOVA_TEST_EMAIL),
     };
 }
@@ -69,7 +69,7 @@ function novaTokenProxyPlugin(env: ExampleEnv): Plugin {
 
                 let upstream: Response;
                 try {
-                    upstream = await fetch(`${env.tokenBaseUrl}/embed/session`, {
+                    upstream = await fetch(`${env.apiUrl}/embed/session`, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -103,7 +103,7 @@ function novaTokenProxyPlugin(env: ExampleEnv): Plugin {
 
 function missingProxyEnv(env: ExampleEnv): string[] {
     const missing: string[] = [];
-    if (!env.tokenBaseUrl) missing.push("NOVA_TOKEN_BASE_URL");
+    if (!env.apiUrl) missing.push("NOVA_API_URL");
     if (!env.integrationSecret) missing.push("NOVA_INTEGRATION_SECRET");
     if (!env.testEmail) missing.push("NOVA_TEST_EMAIL");
     return missing;

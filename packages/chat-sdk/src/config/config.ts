@@ -8,6 +8,7 @@ import {
     pageWorkflowPathsOverlap,
 } from "../page/workflows.js";
 import {
+    type ChatUiDesign,
     type HostTheme,
     type PageWorkflowDefinition,
     PROTOCOL_VERSION,
@@ -88,6 +89,8 @@ export interface ResolvedConfig {
     safeValueSelectors: string[];
     /** Whether the embedded iframe may expose voice mode and request microphone access. */
     voiceModeEnabled: boolean;
+    /** Which chat design the iframe was built to render; defaults to the previous one. */
+    uiDesign: ChatUiDesign;
     /** Validated integrator-declared site routes attached to every page capture. */
     siteRoutes: SiteRoute[];
     /** Validated automatic page workflows evaluated after an explicit ready signal. */
@@ -323,6 +326,14 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
     if (voiceModeEnabled) {
         url.searchParams.set("voice", "1");
     }
+    // Only the opt-in is spelled on the URL. Every SDK released so far predates
+    // this parameter and cannot send it, so an embed with no `ui` has to mean the
+    // design that host's page was built against — otherwise a Nova deploy would
+    // silently restyle live integrations that never asked for it.
+    const uiDesign: ChatUiDesign = config.ui === "current" ? "current" : "classic";
+    if (uiDesign === "current") {
+        url.searchParams.set("ui", "current");
+    }
     const theme: HostTheme = config.theme === "dark" ? "dark" : "light";
     const themeTriggerColor = theme === "dark" ? config.triggerColorDark : config.triggerColorLight;
     const triggerColor =
@@ -352,6 +363,7 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
             ? config.safeValueSelectors.filter((s) => typeof s === "string" && s.trim())
             : [],
         voiceModeEnabled,
+        uiDesign,
         siteRoutes: resolveSiteRoutes(config.routes),
         pageWorkflows: resolvePageWorkflows(config.pageWorkflows),
         settle: resolveSettle(config.settle),

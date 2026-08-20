@@ -1,5 +1,13 @@
 # @wp-nova/chat-sdk-react
 
+## 1.1.1
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @wp-nova/chat-sdk@1.1.1
+
 ## 1.1.0
 
 ### Minor Changes

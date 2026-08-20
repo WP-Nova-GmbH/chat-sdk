@@ -240,8 +240,11 @@ init({
 Only `publicSurfaceId` and `tokenEndpoint` are required. Other browser-safe
 options include `title`, `accent`, `triggerColor`, `triggerColorLight`,
 `triggerColorDark`, `triggerIconColor`, `launcher`, `theme`, `mount`,
-`safeValueSelectors`, `voiceMode`, `locale`, `routes`, `pageWorkflows`, and
-`settle`. Theme-specific trigger colors override
+`safeValueSelectors`, `voiceMode`, `ui`, `locale`, `routes`, `pageWorkflows`,
+and `settle`. `ui` selects the chat design (`classic` by default, which is what every existing
+embed shows; pass `current` to opt into the reworked panel). It is decided when
+the iframe is built, so set it once and never toggle it under a live
+conversation. Theme-specific trigger colors override
 `triggerColor` only in their matching host mode. Enable voice only when requested
 and allow the iframe microphone in Permissions Policy.
 `locale` is an explicit host-language hint for page/workflow context; it does

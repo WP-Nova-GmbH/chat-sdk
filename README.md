@@ -35,7 +35,7 @@ npm --workspace @wp-nova/chat-sdk-angular run build
 React, on `http://127.0.0.1:4311`:
 
 ```bash
-NOVA_TOKEN_BASE_URL=http://localhost:8400 \
+NOVA_API_URL=https://chat.wp-nova.ai/api \
 NOVA_INTEGRATION_SECRET="<surface integration secret>" \
 NOVA_TEST_EMAIL="react-operator@example.com" \
 VITE_NOVA_PUBLIC_SURFACE_ID="<surface public id>" \

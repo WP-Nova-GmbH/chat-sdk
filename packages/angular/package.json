@@ -1,6 +1,6 @@
 {
     "name": "@wp-nova/chat-sdk-angular",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "Angular component and service wrappers for the Nova Chat SDK.",
     "license": "MIT",
     "private": false,
@@ -21,13 +21,13 @@
     },
     "peerDependencies": {
         "@angular/core": ">=17 <22",
-        "@wp-nova/chat-sdk": "^1.1.0",
+        "@wp-nova/chat-sdk": "^1.1.1",
         "rxjs": ">=7.8 <8"
     },
     "devDependencies": {
         "@angular/compiler-cli": "^20.3.27",
         "@angular/core": "^20.3.27",
-        "@wp-nova/chat-sdk": "1.1.0",
+        "@wp-nova/chat-sdk": "1.1.1",
         "@wp-nova/typescript-config": "*",
         "jsdom": "^29.1.1",
         "ng-packagr": "^20.3.0",

@@ -185,6 +185,7 @@ export function NovaChatProvider({
         config.locale,
         config.safeValueSelectors,
         config.voiceMode,
+        config.ui,
         config.routes,
         config.pageWorkflows,
         config.siteCapabilities?.description,
