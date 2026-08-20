@@ -39,7 +39,7 @@ const CONFIG = {
     hasFirstPaintLauncherColor: true,
     safeValueSelectors: [],
     voiceModeEnabled: false,
-    uiDesign: "current" as const,
+    uiDesign: "classic" as const,
     siteRoutes: [],
     pageWorkflows: [],
     settle: { quietMs: 200, maxWaitMs: 1600 },

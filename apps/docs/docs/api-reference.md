@@ -108,7 +108,7 @@ export interface SdkConfig {
   theme?: HostTheme;
   safeValueSelectors?: string[];
   voiceMode?: boolean;
-  ui?: "current" | "classic";
+  ui?: "classic" | "current";
   locale?: string;
   routes?: SiteRoute[];
   siteCapabilities?: SiteCapabilitiesConfig;
@@ -137,9 +137,10 @@ page's current color mode to the iframe without reading an iframe-owned cookie.
 Changing it through another `init` call updates the existing iframe in place
 without acquiring a new token. Notably, `voiceMode` (default `false`) enables
 the embedded voice button and delegates microphone access to the Nova iframe.
-`ui` (default `"current"`) selects the chat design; `"classic"` pins the design
-that shipped before the rework. It is decided when the iframe is built, so
-changing it rebuilds the frame and ends the open conversation — see
+`ui` (default `"classic"`) selects the chat design; `"current"` opts into the
+reworked panel. The default is the design every existing embed already shows,
+because released SDKs cannot send this parameter. It is decided when the iframe
+is built, so changing it rebuilds the frame and ends the open conversation — see
 [Chat design](./configuration.md#chat-design).
 `siteCapabilities` enables the reserved, read-only `get_site_capabilities` tool;
 Nova supplies its default model instruction and the host provider supplies its

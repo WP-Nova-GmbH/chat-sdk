@@ -72,7 +72,7 @@ init({ publicSurfaceId: "surf_…", tokenEndpoint: "/api/nova-token" });
 | `locale` | no | Explicit BCP 47 host-language hint included in page context for automatic workflows; it does not control iframe localization. |
 | `safeValueSelectors` | no | Selectors that opt safe field values into snapshots. |
 | `voiceMode` | no | Enables voice and iframe microphone delegation. |
-| `ui` | no | Chat design: `current` (default) or `classic`. Decided at mount; changing it rebuilds the frame. |
+| `ui` | no | Chat design: `classic` (default) or `current`. Decided at mount; changing it rebuilds the frame. |
 | `routes` | no | Permission-filtered `{ path, description }[]`, max 100. |
 | `siteCapabilities` | no | Live host result for Nova's SDK-defined capability-discovery tool. |
 | `pageWorkflows` | no | Exact page-triggered `research-and-compose` definitions. |

@@ -56,7 +56,7 @@ init({
 | `triggerIconColor` | No | `light`, `dark`, or a custom hex color for the launcher icon. |
 | `launcher` | No | Shows the SDK-owned launcher button. Defaults to `true`; set `false` for a host-owned trigger. |
 | `theme` | No | Host page color mode copied into the iframe: `light` or `dark`. Defaults to `light`. |
-| `ui` | No | Which chat design the iframe renders: `current` (default) or `classic`. See [Chat design](#chat-design). |
+| `ui` | No | Which chat design the iframe renders: `classic` (default) or `current`. See [Chat design](#chat-design). |
 | `locale` | No | Explicit BCP 47 host-language hint included in page context for automatic workflows. It does not replace the iframe's surface localization; when omitted, no `hostLocale` signal is added (browser preferences remain separate). |
 | `safeValueSelectors` | No | CSS selectors that opt field values into page snapshot capture. Field values still pass sensitivity checks. |
 | `voiceMode` | No | Enables the embedded voice button and delegates microphone access to the Nova iframe. Defaults to `false`. |
@@ -79,7 +79,7 @@ init({
   launcher: true,
   presentation: { mode: "popover" },
   theme: "light",
-  ui: "current",
+  ui: "classic",
 });
 ```
 
@@ -110,24 +110,29 @@ The chat inside the iframe ships in two designs. `ui` selects one:
 init({
   publicSurfaceId: "surf_...",
   tokenEndpoint: "/api/nova-token",
-  ui: "classic",
+  ui: "current",
 });
 ```
 
 | Value | What renders |
 | --- | --- |
-| `current` (default) | The reworked panel. Measured for the `384px` pop-over and the docked sidebar alike: a compact 52px header, the greeting set in the product's display type, a two-plane permission notice, and a composer sized for a narrow column. The empty state scrolls instead of clipping when the greeting, the permission notice, and the suggested questions do not all fit. |
-| `classic` | The design that shipped before the rework, unchanged: a 60px header with 48px actions, a brand tile above the greeting, the tinted permission card, and the larger answer type. |
+| `classic` (default) | The design every existing embed already shows: a 60px header with 48px actions, a brand tile above the greeting, the tinted permission card, and the larger answer type. |
+| `current` | The reworked panel. Measured for the `384px` pop-over and the docked sidebar alike: a compact 52px header, the greeting set in the product's display type, a two-plane permission notice, and a composer sized for a narrow column. The empty state scrolls instead of clipping when the greeting, the permission notice, and the suggested questions do not all fit. |
 
 Both designs render the same conversation, the same permission model, and the
 same tools. Only presentation differs, so switching between them changes nothing
 about what the assistant can see or do on your page.
 
-### When to pin `classic`
+### Why `classic` is the default
 
-Pin it when your page's own chrome is already measured around the previous
-panel and you want to schedule the visual change yourself. It is an opt-out, not
-a long-term mode: new work goes into `current`, so plan to drop the flag.
+Every SDK released so far — 1.1.0 and earlier — predates this option and cannot
+send it, so an embed that does not ask has to keep the design its host page was
+built against. A Nova deploy must never restyle a live integration that never
+opted in. Upgrading the SDK alone changes nothing either: you move to the new
+design by passing `ui: "current"`, when your own chrome is ready for it.
+
+New work goes into `current`, so treat `classic` as the compatibility position
+rather than a second supported design.
 
 ### Switching is a boot-time decision
 
@@ -138,8 +143,9 @@ path a `publicSurfaceId` or `baseUrl` change takes. **An open conversation does
 not survive that rebuild**, so treat `ui` as mount-time configuration and set it
 once, from your own config or feature flag, before the panel opens.
 
-Anything other than an exact `"classic"` resolves to `current`, so a typo or a
-stale value can never leave your users on a design nobody chose.
+Anything other than an exact `"current"` resolves to `classic`, so a typo, an
+older SDK, or a stale cached iframe src can never flip your users onto a design
+nobody chose.
 
 ## Presentation
 

@@ -226,7 +226,7 @@ export function resolvedConfig(overrides: Partial<ResolvedConfig> = {}): Resolve
         hasFirstPaintLauncherColor: true,
         safeValueSelectors: [],
         voiceModeEnabled: false,
-        uiDesign: "current",
+        uiDesign: "classic",
         siteRoutes: [],
         pageWorkflows: [],
         settle: { quietMs: 200, maxWaitMs: 1600 },

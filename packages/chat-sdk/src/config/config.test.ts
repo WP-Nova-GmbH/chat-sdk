@@ -248,36 +248,48 @@ test("voice mode opt-in adds the iframe URL capability signal", () => {
     assert.equal(new URL(config.iframeSrc).searchParams.get("voice"), "1");
 });
 
-test("the chat design defaults to the current one and is not spelled on the URL", () => {
+test("the chat design defaults to the previous one and is not spelled on the URL", () => {
+    // Every released SDK predates `ui`, so an embed that never asks must keep the
+    // design its host built against rather than following a Nova deploy.
     const config = resolveConfig(REQUIRED_CONFIG);
 
-    assert.equal(config.uiDesign, "current");
+    assert.equal(config.uiDesign, "classic");
     assert.equal(new URL(config.iframeSrc).searchParams.has("ui"), false);
 });
 
-test("opting into the classic design pins it on the iframe URL", () => {
+test("asking for classic explicitly matches the default and stays off the URL", () => {
     const config = resolveConfig({
         ...REQUIRED_CONFIG,
         ui: "classic",
     });
 
     assert.equal(config.uiDesign, "classic");
-    assert.equal(new URL(config.iframeSrc).searchParams.get("ui"), "classic");
+    assert.equal(new URL(config.iframeSrc).searchParams.has("ui"), false);
 });
 
-test("an unrecognized chat design falls back to the current one", () => {
+test("opting into the current design pins it on the iframe URL", () => {
     const config = resolveConfig({
         ...REQUIRED_CONFIG,
-        ui: "legacy" as never,
+        ui: "current",
     });
 
     assert.equal(config.uiDesign, "current");
+    assert.equal(new URL(config.iframeSrc).searchParams.get("ui"), "current");
+});
+
+test("an unrecognized chat design falls back to the previous one", () => {
+    const config = resolveConfig({
+        ...REQUIRED_CONFIG,
+        ui: "brand-new" as never,
+    });
+
+    assert.equal(config.uiDesign, "classic");
     assert.equal(new URL(config.iframeSrc).searchParams.has("ui"), false);
 });
 
 test("changing the chat design changes the iframe src, so the frame is rebuilt", () => {
-    const current = resolveConfig(REQUIRED_CONFIG);
-    const classic = resolveConfig({ ...REQUIRED_CONFIG, ui: "classic" });
+    const classic = resolveConfig(REQUIRED_CONFIG);
+    const current = resolveConfig({ ...REQUIRED_CONFIG, ui: "current" });
 
     assert.notEqual(current.iframeSrc, classic.iframeSrc);
 });

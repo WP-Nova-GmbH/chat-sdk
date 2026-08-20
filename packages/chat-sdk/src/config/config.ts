@@ -89,7 +89,7 @@ export interface ResolvedConfig {
     safeValueSelectors: string[];
     /** Whether the embedded iframe may expose voice mode and request microphone access. */
     voiceModeEnabled: boolean;
-    /** Which chat design the iframe was built to render. */
+    /** Which chat design the iframe was built to render; defaults to the previous one. */
     uiDesign: ChatUiDesign;
     /** Validated integrator-declared site routes attached to every page capture. */
     siteRoutes: SiteRoute[];
@@ -326,12 +326,13 @@ export function resolveConfig(config: SdkConfig): ResolvedConfig {
     if (voiceModeEnabled) {
         url.searchParams.set("voice", "1");
     }
-    // Only the opt-out is spelled on the URL: an embed with no `ui` parameter is
-    // the current design, so a stale cached iframe src can never pin an
-    // integrator to a design they did not ask for.
-    const uiDesign: ChatUiDesign = config.ui === "classic" ? "classic" : "current";
-    if (uiDesign === "classic") {
-        url.searchParams.set("ui", "classic");
+    // Only the opt-in is spelled on the URL. Every SDK released so far predates
+    // this parameter and cannot send it, so an embed with no `ui` has to mean the
+    // design that host's page was built against — otherwise a Nova deploy would
+    // silently restyle live integrations that never asked for it.
+    const uiDesign: ChatUiDesign = config.ui === "current" ? "current" : "classic";
+    if (uiDesign === "current") {
+        url.searchParams.set("ui", "current");
     }
     const theme: HostTheme = config.theme === "dark" ? "dark" : "light";
     const themeTriggerColor = theme === "dark" ? config.triggerColorDark : config.triggerColorLight;

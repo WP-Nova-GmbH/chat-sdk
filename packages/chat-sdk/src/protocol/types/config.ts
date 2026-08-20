@@ -105,8 +105,9 @@ export type HostTheme = "light" | "dark";
  *
  * `current` is the reworked panel: measured for the 384px pop-over and the docked
  * sidebar alike, with the quieter type and spacing of the rest of the product.
- * `classic` is the design that shipped before it, kept whole for integrators
- * whose page is already tuned around it.
+ * `classic` is the design that shipped before it, and is the default — every SDK
+ * released so far predates this option, so a surface only moves to the new design
+ * when its host upgrades and asks for it by name.
  */
 export type ChatUiDesign = "current" | "classic";
 
@@ -222,9 +223,10 @@ export interface SdkConfig {
      */
     voiceMode?: boolean;
     /**
-     * Which chat design the iframe renders. Defaults to "current"; set "classic"
-     * to stay on the previous one. Chosen when the iframe is built, so changing
-     * it re-creates the frame rather than restyling a live conversation.
+     * Which chat design the iframe renders. Defaults to "classic", the design
+     * every existing embed already shows; set "current" to opt into the reworked
+     * panel. Chosen when the iframe is built, so changing it re-creates the frame
+     * rather than restyling a live conversation.
      */
     ui?: ChatUiDesign;
     /**
