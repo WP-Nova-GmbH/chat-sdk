@@ -28,6 +28,7 @@
         "version-packages": "changeset version",
         "check-angular-publishable": "node scripts/check-angular-publishable.mjs",
         "release": "npm run build && npm run check-angular-publishable && node scripts/publish-packages.mjs",
+        "prepublishOnly": "node scripts/refuse-root-publish.mjs",
         "publish": "npm run release"
     },
     "devDependencies": {
