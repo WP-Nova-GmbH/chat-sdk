@@ -99,6 +99,7 @@ mode to the existing iframe without navigating it, re-fetching the token
 endpoint, or losing the open conversation. Framework wrappers do the same when
 their `theme` config value changes.
 
+
 ## Presentation
 
 The default `popover` presentation keeps the existing fixed `384px × 640px`
@@ -145,6 +146,20 @@ panel (and its full-screen rule at viewport widths of `480px` or less).
   }
 </script>
 ```
+
+The dock pins itself to the viewport (`position: sticky` at `100dvh`), so the
+whole chat stays on screen while your content scrolls beside it — you do not need
+to size it. If your page has a fixed header the dock should clear, set
+`--wpn-sidebar-offset` on the element (or any ancestor) to its height:
+
+```css
+#nova-layout > wp-nova-chat {
+  --wpn-sidebar-offset: 64px;
+}
+```
+
+A mount that already has a definite height of its own — an app shell with its own
+scroll regions — keeps that height instead; the dock never grows past its mount.
 
 Sidebar width defaults to `384px`. Finite numeric widths are clamped to
 `320–640px`; malformed runtime values log a warning and use `384px`.

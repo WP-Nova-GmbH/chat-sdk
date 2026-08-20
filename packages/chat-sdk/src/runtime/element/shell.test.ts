@@ -380,6 +380,18 @@ test("sidebar fills its layout column and collapses the host width while closed"
     );
     assert.equal(html.includes("inline-size:0;min-inline-size:0;block-size:0"), true);
     assert.equal(html.includes("--wpn-sidebar-width:420px"), true);
+    // The dock is pinned to the viewport, never stretched to the host document: a grid
+    // row as tall as the page would otherwise push the composer below the fold.
+    assert.equal(
+        html.includes(":host([data-wpn-effective-presentation='sidebar']){position:sticky;"),
+        true,
+    );
+    assert.equal(html.includes("align-self:start;"), true);
+    assert.equal(
+        html.includes("block-size:calc(100dvh - var(--wpn-sidebar-offset,0px));max-block-size:100%;"),
+        true,
+    );
+    assert.equal(html.includes("align-self:stretch"), false);
     assert.equal(
         html.includes("width:100%;height:100%;max-width:none;max-height:none;border-radius:0;"),
         true,

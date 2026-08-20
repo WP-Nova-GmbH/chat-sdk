@@ -60,6 +60,7 @@ mit geändertem `theme` aktualisiert Launcher, Panel und bestehendes iframe,
 ohne ein neues Token abzurufen oder die Konversation zurückzusetzen. Dasselbe
 gilt bei einer Änderung des Config-Werts in einem Framework-Wrapper.
 
+
 ### Darstellung
 
 Die Standarddarstellung `popover` behält das feste Panel mit `384px × 640px`
@@ -103,6 +104,20 @@ applyPresentation();
 mode = "popover";
 applyPresentation();
 ```
+
+Die Spalte heftet sich selbst an den Viewport (`position: sticky`, `100dvh`).
+Der Chat bleibt damit vollständig sichtbar, während der Seiteninhalt daneben
+scrollt; eine eigene Höhe muss nicht gesetzt werden. Soll die Spalte einen
+fixierten Header freilassen, setze `--wpn-sidebar-offset` auf dessen Höhe:
+
+```css
+#nova-layout > wp-nova-chat {
+  --wpn-sidebar-offset: 64px;
+}
+```
+
+Ein Mount-Element mit eigener definierter Höhe — etwa eine App-Shell mit eigenen
+Scroll-Bereichen — behält diese; die Spalte wächst nie über ihren Mount hinaus.
 
 Die Sidebar-Breite ist standardmäßig `384px`. Endliche Zahlen werden auf
 `320–640px` begrenzt; ungültige Laufzeitwerte erzeugen eine Warnung und

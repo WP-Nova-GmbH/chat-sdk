@@ -310,7 +310,17 @@ export class ChatShell {
             "iframe{border:0;flex:1 1 auto;width:100%;height:100%;display:block;background:var(--wpn-frame-background);}",
             "@keyframes wpn-in{from{opacity:0;transform:translateY(8px) scale(.96);}to{opacity:1;transform:none;}}",
             // --- sidebar: an in-flow final grid/flex child ---------------------
-            ":host([data-wpn-effective-presentation='sidebar']){block-size:100%;height:100%;align-self:stretch;}",
+            // Docked to the viewport, not stretched to the document. `align-self:stretch`
+            // handed the element its grid row's height, and a host row is normally as tall
+            // as the page — so on a long page the panel became a 1600px column inside a
+            // 900px window and the composer sat below the fold. Sticky + `100dvh` keeps the
+            // whole chat on screen while the host content scrolls beside it; the
+            // `max-block-size:100%` clamp means a mount that already has a definite height
+            // (an app shell with its own scroll regions) still wins. `--wpn-sidebar-offset`
+            // lets a host with a fixed header push the dock down past it.
+            ":host([data-wpn-effective-presentation='sidebar']){position:sticky;",
+            "inset-block-start:var(--wpn-sidebar-offset,0px);align-self:start;",
+            "block-size:calc(100dvh - var(--wpn-sidebar-offset,0px));max-block-size:100%;}",
             ":host([data-wpn-effective-presentation='sidebar'][open]){inline-size:var(--wpn-sidebar-width);}",
             ":host([data-wpn-effective-presentation='sidebar']) #panel{position:relative;right:auto;bottom:auto;",
             "width:100%;height:100%;max-width:none;max-height:none;border-radius:0;",
